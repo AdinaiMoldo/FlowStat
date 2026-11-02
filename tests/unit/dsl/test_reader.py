@@ -122,3 +122,10 @@ def test_mapping_lookup_by_key() -> None:
     found = node.get("b")
     assert isinstance(found, Scalar) and found.value == 2
     assert node.get("c") is None
+
+
+def test_quoted_scalars_are_marked_so_that_expression_columns_can_be_computed() -> None:
+    node = ok("a: \"x == 1\"\nb: 'y'\nc: plain\n")
+    assert isinstance(node, Mapping)
+    flags = {e.key.value: e.value.quoted for e in node.entries if isinstance(e.value, Scalar)}
+    assert flags == {"a": True, "b": True, "c": False}

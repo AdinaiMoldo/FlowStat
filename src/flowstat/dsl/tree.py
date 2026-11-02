@@ -14,6 +14,7 @@ class Scalar:
     line: int
     column: int
     value: object  # str, int, float, bool or None
+    quoted: bool = False  # written in quotes: the text starts one column after `column`
 
 
 @dataclass(frozen=True, slots=True)

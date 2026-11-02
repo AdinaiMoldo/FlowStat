@@ -10,6 +10,7 @@ from typing import Any
 
 from ruamel.yaml import YAML
 from ruamel.yaml.error import YAMLError
+from ruamel.yaml.scalarstring import DoubleQuotedScalarString, SingleQuotedScalarString
 
 from flowstat.dsl.tree import Entry, Mapping, Scalar, Sequence, YNode
 from flowstat.model.diagnostics import Diagnostic, Severity
@@ -61,13 +62,15 @@ def _convert(value: Any, line: int, column: int) -> YNode:
     anchor = getattr(value, "anchor", None)
     if anchor is not None and getattr(anchor, "value", None) is not None:
         raise _Unsupported("YAML anchors and aliases are not supported", line, column)
-    return Scalar(line, column, _plain(value))
+    quoted = isinstance(value, SingleQuotedScalarString | DoubleQuotedScalarString)
+    return Scalar(line, column, _plain(value), quoted)
 
 
 def read_yaml(text: str) -> tuple[YNode | None, list[Diagnostic]]:
     """Read ``text``. Returns the tree, or None together with the diagnostics of the problem."""
     yaml = YAML(typ="rt")
     yaml.allow_duplicate_keys = False
+    yaml.preserve_quotes = True  # tells quoted text from plain text, for expression columns
     try:
         data = yaml.load(text)
     except YAMLError as exc:
