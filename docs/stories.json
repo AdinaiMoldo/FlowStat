@@ -1,0 +1,308 @@
+[
+  {
+    "id": "US-01",
+    "story": "As a designer, I save a workflow as a new version so that published versions never change",
+    "criteria": "Given v2 is published, when I save edits, then v3 is created as a draft and v2 is unchanged",
+    "function": "A1",
+    "sp": 5,
+    "priority": "Must",
+    "milestone": "M1"
+  },
+  {
+    "id": "US-02",
+    "story": "As a designer, I pick regions and forms from a catalogue",
+    "criteria": "Given the catalogue has 9 regions, when I use ref: regions, then the input accepts only those codes and the version stores a snapshot of the catalogue",
+    "function": "A4",
+    "sp": 3,
+    "priority": "Must",
+    "milestone": "M1"
+  },
+  {
+    "id": "US-03",
+    "story": "As a designer, I get a precise error when my text is not a valid workflow document",
+    "criteria": "Given a missing colon on line 14, when I validate, then one error points to line 14 and its column. Given two steps with the same id, then the error points to the second",
+    "function": "B1",
+    "sp": 5,
+    "priority": "Must",
+    "milestone": "M1"
+  },
+  {
+    "id": "US-04",
+    "story": "As a designer, I see unknown references and cycles with line numbers",
+    "criteria": "Given b needs c, which does not exist, when I validate, then an error points to the line of c. Given a to b to a, then exactly one error lists the path a, b, a",
+    "function": "C1",
+    "sp": 5,
+    "priority": "Must",
+    "milestone": "M1"
+  },
+  {
+    "id": "US-05",
+    "story": "As a designer, I fan a step out over all regions",
+    "criteria": "Given foreach region in catalogue.regions and 9 regions, when I publish, then the plan has 9 instances load[key]. Given an error in the template, then it is reported once, at the template line",
+    "function": "C1",
+    "sp": 8,
+    "priority": "Must",
+    "milestone": "M1"
+  },
+  {
+    "id": "US-06",
+    "story": "As an operator, I run a workflow and independent steps run in parallel",
+    "criteria": "Given a and b are independent, c needs both and m = 2, when I run, then a and b overlap in time and c starts after both succeed",
+    "function": "C3",
+    "sp": 8,
+    "priority": "Must",
+    "milestone": "M2"
+  },
+  {
+    "id": "US-07",
+    "story": "As an operator, I get correct skips, failures and quorum behaviour",
+    "criteria": "Given b has a false when, c needs b (all_success) and d needs b (all_done), when I run, then b and c are SKIPPED and d runs. Given 9 loads, 2 failing and at_least: 7, then consolidate runs; with 3 failing it is UPSTREAM_FAILED",
+    "function": "C3",
+    "sp": 8,
+    "priority": "Must",
+    "milestone": "M2"
+  },
+  {
+    "id": "US-08",
+    "story": "As an operator, I approve or reject a run that waits for me",
+    "criteria": "Given a run reaches approval.wait, then it is WAITING and releases its slot. When I answer rejected, then the step is SUCCEEDED with decision rejected and the branch guarded by that decision runs",
+    "function": "C3",
+    "sp": 5,
+    "priority": "Must",
+    "milestone": "M2"
+  },
+  {
+    "id": "US-09",
+    "story": "As an operator, I see an explicit outcome for every run",
+    "criteria": "Given goals: {any_of: [publish, return_to_regions]} and a rejection, then return_to_regions runs and the run is SUCCEEDED. Given a run in which no goal succeeded, then it ends as GOAL_NOT_REACHED",
+    "function": "C3",
+    "sp": 3,
+    "priority": "Must",
+    "milestone": "M2"
+  },
+  {
+    "id": "US-10",
+    "story": "As a designer, I declare a contract on a step's output",
+    "criteria": "Given ensures: publish.written > 0 and an action that writes 0 rows, when it runs, then the step fails with a contract violation",
+    "function": "C3, C1",
+    "sp": 3,
+    "priority": "Must",
+    "milestone": "M2"
+  },
+  {
+    "id": "US-11",
+    "story": "As an operator, I see the history of a run",
+    "criteria": "Given a finished run, when I open it, then each step shows status, start, end and error message",
+    "function": "A2",
+    "sp": 3,
+    "priority": "Must",
+    "milestone": "M2"
+  },
+  {
+    "id": "US-12",
+    "story": "As a designer, I read a regional xlsx form and write results to the database in steps",
+    "criteria": "Given a valid form file, when xlsx.read runs, then its output has the declared schema. Given a missing file, then the step fails with the path in the message",
+    "function": "B6",
+    "sp": 8,
+    "priority": "Must",
+    "milestone": "M2"
+  },
+  {
+    "id": "US-13",
+    "story": "As an operator, transient errors are retried",
+    "criteria": "Given retry: {max: 3} and an action failing twice, when I run, then the step succeeds on the third attempt with growing delays",
+    "function": "C4",
+    "sp": 2,
+    "priority": "Must",
+    "milestone": "M3"
+  },
+  {
+    "id": "US-14",
+    "story": "As an operator, a failed run is compensated in the right order",
+    "criteria": "Given a, then b succeeded, both with compensate, and c failed under the compensate policy, then compensation of b finishes before compensation of a starts and the run is COMPENSATED",
+    "function": "C4",
+    "sp": 8,
+    "priority": "Must",
+    "milestone": "M3"
+  },
+  {
+    "id": "US-15",
+    "story": "As an operator, a run survives an engine crash",
+    "criteria": "Given the engine is killed while idempotent b is RUNNING, when it restarts, then a is not re-run, b runs once more with the same idempotency key, and the run completes",
+    "function": "C4",
+    "sp": 8,
+    "priority": "Must",
+    "milestone": "M3"
+  },
+  {
+    "id": "US-16",
+    "story": "As an operator, I decide about steps whose outcome is unknown after a crash",
+    "criteria": "Given the engine is killed while a non-idempotent step is RUNNING, when it restarts, then the step is UNCERTAIN and nothing is re-run automatically; I can mark it done or retry it",
+    "function": "C4",
+    "sp": 5,
+    "priority": "Must",
+    "milestone": "M3"
+  },
+  {
+    "id": "US-17",
+    "story": "As a developer, I test recovery against an action server that misbehaves",
+    "criteria": "Given the server executes a request and drops the response, when the engine retries with the same key, then the effect exists exactly once",
+    "function": "C4",
+    "sp": 5,
+    "priority": "Must",
+    "milestone": "M3"
+  },
+  {
+    "id": "US-18",
+    "story": "As a designer, I see type errors in parameters and conditions",
+    "criteria": "Given when: load.rows > 5 where rows is a list, when I validate, then an error says that a list cannot be compared with a number, at that column, and no follow-up errors appear",
+    "function": "C1",
+    "sp": 8,
+    "priority": "Must",
+    "milestone": "M5"
+  },
+  {
+    "id": "US-19",
+    "story": "As a designer, I get correct types for fan-in references",
+    "criteria": "Given consolidate takes check[*].rows, when I validate, then the parameter has the type list of rows. Given an action that expects a single rows value, then an error shows the mismatch",
+    "function": "C1",
+    "sp": 5,
+    "priority": "Should",
+    "milestone": "M5"
+  },
+  {
+    "id": "US-20",
+    "story": "As a designer, I am told when branches overlap or do not cover every case",
+    "criteria": "Given publish guarded by decision approved and return_to_regions by rejected, then there is no warning. Given the decision enum also contains escalated, then a warning names escalated as uncovered",
+    "function": "C6",
+    "sp": 8,
+    "priority": "Must",
+    "milestone": "M4"
+  },
+  {
+    "id": "US-21",
+    "story": "As a designer, I am warned about outputs that may not exist",
+    "criteria": "Given c references approve, which has a when, when I validate, then a warning names the condition that can skip approve. Given the guard of c implies the guard of approve, then there is no warning",
+    "function": "C2",
+    "sp": 8,
+    "priority": "Must",
+    "milestone": "M5"
+  },
+  {
+    "id": "US-22",
+    "story": "As a designer, I am warned when a goal or a quorum is not guaranteed",
+    "criteria": "Given any_of goals with guards that do not cover every case, then GOAL_MAY_BE_SKIPPED appears with a witness value. Given a reference that needs 8 elements of a group with at_least: 7, then a warning appears",
+    "function": "C2",
+    "sp": 5,
+    "priority": "Should",
+    "milestone": "M5"
+  },
+  {
+    "id": "US-23",
+    "story": "As a designer, I learn about steps that can never run",
+    "criteria": "Given a step whose guard contradicts the constraints on the inputs, when I validate, then DEAD_STEP names it",
+    "function": "C6",
+    "sp": 3,
+    "priority": "Should",
+    "milestone": "M4"
+  },
+  {
+    "id": "US-24",
+    "story": "As a designer, I get a generated minimal test set",
+    "criteria": "Given the example, when I request tests, then the inputs produced execute and skip each guarded step at least once where feasible, run with mocked actions, and any difference between predicted and observed skips is reported",
+    "function": "C6",
+    "sp": 8,
+    "priority": "Should",
+    "milestone": "M4"
+  },
+  {
+    "id": "US-25",
+    "story": "As an external system, I start a run over REST",
+    "criteria": "Given a published workflow, when I POST valid inputs, then I receive a run id. Invalid inputs return 422 with field errors",
+    "function": "B4",
+    "sp": 5,
+    "priority": "Must",
+    "milestone": "M6"
+  },
+  {
+    "id": "US-26",
+    "story": "As a designer, I edit in an IDE with live diagnostics",
+    "criteria": "Given an error is typed, when I pause for 500 ms, then a marker appears at its position",
+    "function": "B2",
+    "sp": 8,
+    "priority": "Should",
+    "milestone": "M7"
+  },
+  {
+    "id": "US-27",
+    "story": "As a designer, completion shows only data available at the cursor",
+    "criteria": "Given the cursor is inside ${ in step c, when I request completion, then only inputs and outputs of steps guaranteed at c are suggested",
+    "function": "B2, C2",
+    "sp": 3,
+    "priority": "Should",
+    "milestone": "M7"
+  },
+  {
+    "id": "US-28",
+    "story": "As a designer, I see the workflow as a graph",
+    "criteria": "Given a valid workflow, when I open the preview, then every step instance is a node and every dependency an arrow; conditional steps are marked and fan-out instances are grouped",
+    "function": "B3",
+    "sp": 5,
+    "priority": "Should",
+    "milestone": "M7"
+  },
+  {
+    "id": "US-29",
+    "story": "As an admin, I restrict publishing to designers",
+    "criteria": "Given a user with the operator role, when they publish, then the API returns 403",
+    "function": "A3",
+    "sp": 3,
+    "priority": "Should",
+    "milestone": "M6"
+  },
+  {
+    "id": "US-30",
+    "story": "As an admin, I deploy a workflow as a separate service",
+    "criteria": "Given v4 is published, when I deploy it, then the service answers on its endpoint and returns the same results as the core's executor for the same inputs",
+    "function": "B5",
+    "sp": 13,
+    "priority": "Must",
+    "milestone": "M6"
+  },
+  {
+    "id": "US-31",
+    "story": "As an admin, I see the runs of deployed services in the core",
+    "criteria": "Given a deployed service completes a run, when its outbox ships the events, then the core shows the history. Given the same batch is delivered twice, then no duplicate events appear. The registry shows version, endpoint and status",
+    "function": "A6, A2",
+    "sp": 5,
+    "priority": "Must",
+    "milestone": "M7"
+  },
+  {
+    "id": "US-32",
+    "story": "As a designer, I learn which running instances can move to a new version",
+    "criteria": "Given a run of v3 waiting at approval and v4 adds a step after approval, then the run is migratable. Given v4 changes a completed step, then it is not, with the reason. Given v4 adds a region, then its instances are shown as pending",
+    "function": "C5",
+    "sp": 13,
+    "priority": "Should",
+    "milestone": "M8"
+  },
+  {
+    "id": "US-33",
+    "story": "As an operator, I move a migratable run to the new version",
+    "criteria": "Given a migratable run, when I confirm, then the service of v4 owns it and every command to the old owner is rejected. Given a crash during the handover, then after restart exactly one owner remains",
+    "function": "C5",
+    "sp": 8,
+    "priority": "Should",
+    "milestone": "M8"
+  },
+  {
+    "id": "US-34",
+    "story": "As an admin, I see failure rate and average duration per workflow",
+    "criteria": "Given 10 runs with 2 failures, when I open statistics, then the failure rate shows 20%",
+    "function": "A5",
+    "sp": 3,
+    "priority": "Could",
+    "milestone": "M8"
+  }
+]
