@@ -10,6 +10,8 @@
 | `algorithms/` | One algorithm card per C function |
 | `diagrams/` | PlantUML sources |
 | `research/` | Benchmarks and their conclusions |
+| `process.md` | The cycle of a milestone and the documents kept alive |
+| `milestones/` | One file per milestone: goal, stories, review, retrospective |
 | `journal.md` | Decision journal |
 | `backlog.md` | Live backlog, statuses, burndown |
 | `traceability.md` | UR/DR, story, function, design element, test, result |

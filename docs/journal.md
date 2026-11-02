@@ -24,3 +24,7 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Chose: every C function has two levels (a known algorithm with our transformation, then an algorithm built on its result); see `docs/algorithms/README.md`. I4 and I5 are split into two milestones each, and a hardening milestone M9 is added.
 - Rejected: replacing C5 with write-conflict analysis (it would change DR-01, US-32/33 and the diagrams, and overlaps C2/C6). C5 stays; in M8 conformance is built before handover.
 - Reason for the split: smaller milestones (about 20 to 30 SP) lower the risk of a late surprise.
+
+## 2026-11-03 Working practice follows FleetSync
+
+- Chose: the plan of the Project Proposal stays as it is; the way of working (goal, readiness audit, journal, research notes, review and retrospective per milestone, verification pass against the code) follows the FleetSync project. See `process.md`.
