@@ -73,7 +73,7 @@ literal   : int | float | string ('...' or "...") | 'true' | 'false' | 'null'
 ```
 
 Precedence from the loosest to the tightest: `or`, `and`, `not`, comparison, `+ -`, `* / %`,
-unary minus, postfix. Comparison does not chain: `a < b < c` is an error. Built-in functions:
+unary minus, postfix. Comparison does not chain: `a < b < c` is an error (E-EXPR-003). Built-in functions:
 `len`, `sum`, `min`, `max`, `count`, `exists`.
 
 An expression outside the analysable fragment (a function call that is not built in, a regular
@@ -120,6 +120,7 @@ for steps that came from `foreach` expansion, through the source map).
 | E-EXPR-003 | error | chained comparison | parser |
 | E-EXPR-004 | error | invalid escape sequence in a string | lexer |
 | E-EXPR-005 | error | unexpected character (a lone `=` suggests `==`) | lexer |
+| E-EXPR-006 | error | expression nested more than 128 levels | parser |
 | E-REF-001 | error | reference to an unknown step, input or catalogue list | phase 1-2 |
 | E-GRAPH-001 | error | dependency cycle (the shortest cycle is reported) | phase 3 |
 | E-TYPE-001 | error | type mismatch | phase 4 (M5) |
