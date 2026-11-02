@@ -18,3 +18,9 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 
 - Chose: priority of C3 from the longest chain of steps that can run in the same execution, decided by the solver of C6 (built in I4). I2 ships the plain longest path as the baseline.
 - Measured with: benchmark FIFO against plain against feasible (to be done in I4).
+
+## 2026-11-02 Two levels per C function, nine milestones
+
+- Chose: every C function has two levels (a known algorithm with our transformation, then an algorithm built on its result); see `docs/algorithms/README.md`. I4 and I5 are split into two milestones each, and a hardening milestone M9 is added.
+- Rejected: replacing C5 with write-conflict analysis (it would change DR-01, US-32/33 and the diagrams, and overlaps C2/C6). C5 stays; in M8 conformance is built before handover.
+- Reason for the split: smaller milestones (about 20 to 30 SP) lower the risk of a late surprise.
