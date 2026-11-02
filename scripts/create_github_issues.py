@@ -47,7 +47,8 @@ def main(only: list[str]) -> None:
         ]
         body = (
             f"**Story**\n\n{s['story']}\n\n**Acceptance criteria**\n\n{s['criteria']}\n\n"
-            f"**Function:** {s['function']}  \n**Story points:** {s['sp']}  \n**Priority:** {s['priority']}"
+            f"**Function:** {s['function']}  \n**Story points:** {s['sp']}  \n"
+            f"**Priority:** {s['priority']}"
         )
         cmd = [
             "api",
