@@ -12,11 +12,11 @@ steps:
   check:
     foreach: region in catalogue.regions
     action: statguard.validate
-    needs: [load[region]]
+    needs: ["load[region]"]
     with: {rows: "${load[region].rows}"}
   consolidate:
     action: stats.aggregate
-    needs: [check[*]]
+    needs: ["check[*]"]
     join: {at_least: 7}
     with: {parts: "${check[*].rows}"}
   approve:

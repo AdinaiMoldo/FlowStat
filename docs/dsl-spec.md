@@ -47,7 +47,7 @@ step_ref  : ident
 path      : ident ( '.' ident | '[' (ident | int | '*') ']' )*
 ```
 
-`needs` takes step references. A `foreach` step named `load` becomes the steps
+`needs` takes step references. In YAML a reference with brackets must be quoted: `needs: ["load[region]"]` (an unquoted `[load[region]]` is a YAML syntax error). A `foreach` step named `load` becomes the steps
 `load[BIS]`, `load[OSC]`, ... when the version is published (DR-03: the graph is static).
 `check[*]` in `needs` stands for all instances of `check`.
 
@@ -115,6 +115,12 @@ for steps that came from `foreach` expansion, through the source map).
 | E-SHAPE-001 | error | unknown key (with did-you-mean) | shape validator |
 | E-SHAPE-002 | error | required key missing | shape validator |
 | E-SHAPE-003 | error | value has the wrong kind (map, list, scalar) | shape validator |
+| E-SHAPE-004 | error | value not allowed (not in the list, fails the pattern, below the minimum, empty) | shape validator |
+| E-SHAPE-005 | error | not exactly one of several alternative keys (for example `goals`) | shape validator |
+| E-YAML-001 | error | YAML syntax error | reader |
+| E-YAML-002 | error | duplicate key | reader |
+| E-YAML-003 | error | empty document | reader |
+| E-YAML-004 | error | anchors and aliases are not supported | reader |
 | E-EXPR-001 | error | unexpected token in an expression | parser |
 | E-EXPR-002 | error | unterminated string or `${` | lexer |
 | E-EXPR-003 | error | chained comparison | parser |
