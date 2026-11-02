@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flowstat"
+version = "0.1.0"
+description = "Configurable workflow engine with a typed YAML DSL, static analysis and crash recovery"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    # B1: the only third-party library under the compiler (reads YAML text into a tree with positions).
+    # Exact versions go into the lock file at the start of I1 (docs/reuse.md).
+    "ruamel.yaml",
+]
+
+[project.optional-dependencies]
+# Category B components. They live outside the C1-C6 packages (see tests/architecture).
+api = ["fastapi", "pydantic", "uvicorn"]
+actions = ["openpyxl", "pandas", "httpx"]
+deploy = ["jinja2", "docker"]
+dev = ["pytest", "pytest-cov", "hypothesis", "mypy", "ruff", "pre-commit"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+flowstat = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "."]
+addopts = "-ra --strict-markers"
+markers = [
+    "golden: input and expected output are stored in files",
+    "property: random inputs against an invariant (seed is printed)",
+    "crash: crash and fault injection",
+    "acceptance: Given/When/Then criteria of a user story",
+    "benchmark: measurements, not pass/fail tests",
+]
+
+[tool.coverage.run]
+source = ["flowstat"]
+branch = true
+
+[tool.coverage.report]
+# CI gate (docs/engineering-rules.md, rule "CI gate"): coverage of C1-C6 packages is at least 90%.
+fail_under = 90
+show_missing = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.12"
+mypy_path = "src"
+strict = true
+files = ["src/flowstat", "tests"]

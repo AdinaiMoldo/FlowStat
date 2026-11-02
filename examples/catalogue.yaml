@@ -1,0 +1,12 @@
+# Synthetic catalogue snapshot. Nine regional offices: the seven oblasts plus the cities of
+# Bishkek and Osh, which have republican status. Codes are invented for tests.
+regions:
+  - {code: BIS, name: Bishkek}
+  - {code: OSC, name: Osh city}
+  - {code: BAT, name: Batken}
+  - {code: JAL, name: Jalal-Abad}
+  - {code: ISK, name: Issyk-Kul}
+  - {code: NAR, name: Naryn}
+  - {code: OSH, name: Osh oblast}
+  - {code: TAL, name: Talas}
+  - {code: CHU, name: Chui}

@@ -1,0 +1,30 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    # NFR-07 (portability): the suite runs on Linux and on Windows from the first commit.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: python -m pip install -e ".[dev]"
+      - name: Lint
+        run: python -m ruff check .
+      - name: Types
+        run: python -m mypy
+      - name: Architecture rules (layering, allowed imports)
+        run: python -m pytest tests/architecture -q
+      - name: Tests and coverage gate (at least 90 percent)
+        run: python -m pytest --cov --cov-report=term-missing

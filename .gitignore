@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+htmlcov/
+
+# Secrets and local state: real Committee data and credentials are never committed
+.env
+.env.*
+*.sqlite
+*.sqlite3
+*.db
+data/
+
+# Editors and OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Generated diagram images are rebuilt from the PlantUML sources
+docs/diagrams/out/
