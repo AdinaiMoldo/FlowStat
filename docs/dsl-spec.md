@@ -127,8 +127,21 @@ for steps that came from `foreach` expansion, through the source map).
 | E-EXPR-004 | error | invalid escape sequence in a string | lexer |
 | E-EXPR-005 | error | unexpected character (a lone `=` suggests `==`) | lexer |
 | E-EXPR-006 | error | expression nested more than 128 levels | parser |
-| E-REF-001 | error | reference to an unknown step, input or catalogue list | phase 1-2 |
-| E-GRAPH-001 | error | dependency cycle (the shortest cycle is reported) | phase 3 |
+| E-REF-001 | error | unknown step, input or goal | compiler |
+| E-REF-002 | error | malformed step reference in `needs` | compiler |
+| E-REF-003 | error | catalogue list used by `foreach` is empty | compiler |
+| E-REF-004 | error | unknown attribute of a loop variable | compiler |
+| E-REF-005 | error | loop variable not defined for this step, or no such instance | compiler |
+| E-REF-006 | error | `[*]` on a step that is not a foreach step | compiler |
+| E-REF-007 | error | step is used but is not a dependency (not an ancestor) | compiler |
+| E-REF-008 | error | unknown action | compiler |
+| E-REF-009 | error | a goal names a foreach step | compiler |
+| E-REF-010 | error | `at_least` larger than the number of dependencies | compiler |
+| E-REF-011 | error | indexing a step by number is not supported | compiler |
+| E-REF-012 | error | unknown catalogue list | compiler |
+| E-REF-013 | error | foreach step referenced without `[var]` or `[*]` | compiler |
+| E-GRAPH-001 | error | dependency cycle (the shortest one is reported) | compiler |
+| E-CAT-001 to E-CAT-004 | error | invalid catalogue file (shape, item, missing or duplicate code) | catalogue loader |
 | E-TYPE-001 | error | type mismatch | phase 4 (M5) |
 | W-TYPE-002 | warning | output that may be an error is read without a guard | phase 4 (M5) |
 

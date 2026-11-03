@@ -13,8 +13,8 @@ import pytest
 from flowstat.dsl.reader import read_yaml
 from flowstat.dsl.shape import check_shape
 from flowstat.model.diagnostics import Diagnostic
+from tests.unit.markers import MARK, split_markers
 
-MARK = "⟦"
 HEAD = "workflow: demo\nversion: 1\n"
 STEPS = "steps:\n  a:\n    action: xlsx.read\n"
 GOALS = "goals: {any_of: [a]}\n"
@@ -24,22 +24,6 @@ STEP_HEAD = HEAD + "steps:\n  a:\n    action: x.y\n"
 def step(line: str) -> str:
     """A document whose only step has an extra line."""
     return STEP_HEAD + line + "\n" + GOALS
-
-
-def split_markers(text: str) -> tuple[str, list[tuple[int, int]]]:
-    clean: list[str] = []
-    positions: list[tuple[int, int]] = []
-    line, col = 1, 1
-    for ch in text:
-        if ch == MARK:
-            positions.append((line, col))
-            continue
-        clean.append(ch)
-        if ch == "\n":
-            line, col = line + 1, 1
-        else:
-            col += 1
-    return "".join(clean), positions
 
 
 def run(text: str) -> tuple[list[Diagnostic], list[tuple[int, int]]]:
