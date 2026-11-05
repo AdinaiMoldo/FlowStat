@@ -59,9 +59,25 @@ class StepDecl:
 
 
 @dataclass(frozen=True)
+class InputDecl:
+    name: str
+    pos: Pos
+    type: str
+    type_pos: Pos
+    pattern: str | None
+    pattern_pos: Pos | None
+    ref: str | None
+    ref_pos: Pos | None
+    has_default: bool
+    default: object
+    required: bool
+
+
+@dataclass(frozen=True)
 class Workflow:
     name: str
     version: int
+    inputs: tuple[InputDecl, ...]
     input_names: frozenset[str]
     steps: tuple[StepDecl, ...]
     goal_kind: str
@@ -178,6 +194,44 @@ def _build_step(name: Scalar, body: Mapping, diags: list[Diagnostic]) -> StepDec
     )
 
 
+def _build_input(name: Scalar, body: Mapping, diags: list[Diagnostic]) -> InputDecl:
+    type_node = _scalar(body.get("type"))
+    pattern = _scalar(body.get("pattern"))
+    ref = _scalar(body.get("ref"))
+    default = body.get("default")
+    required = _scalar(body.get("required"))
+    pattern_text = None if pattern is None else str(pattern.value)
+    if pattern is not None and pattern_text is not None:
+        try:
+            re.compile(pattern_text)
+        except re.error as error:
+            pos = content_pos(pattern)
+            diags.append(
+                Diagnostic(
+                    "E-SHAPE-004",
+                    Severity.ERROR,
+                    f"the pattern is not a valid regular expression: {error}",
+                    pos.line,
+                    pos.column,
+                )
+            )
+            pattern_text = None
+    has_default = default is not None
+    return InputDecl(
+        name=str(name.value),
+        pos=Pos(name.line, name.column),
+        type=_text(type_node),
+        type_pos=content_pos(type_node) if type_node else Pos(name.line, name.column),
+        pattern=pattern_text,
+        pattern_pos=content_pos(pattern) if pattern else None,
+        ref=None if ref is None else str(ref.value),
+        ref_pos=content_pos(ref) if ref else None,
+        has_default=has_default,
+        default=_plain(default) if default is not None else None,
+        required=not has_default and not (required is not None and required.value is False),
+    )
+
+
 def build_workflow(root: Mapping) -> tuple[Workflow, list[Diagnostic]]:
     """Build the typed view. The tree must have passed the shape check."""
     diags: list[Diagnostic] = []
@@ -188,11 +242,12 @@ def build_workflow(root: Mapping) -> tuple[Workflow, list[Diagnostic]]:
             if isinstance(entry.value, Mapping):
                 steps.append(_build_step(entry.key, entry.value, diags))
     inputs_node = root.get("inputs")
-    input_names = (
-        frozenset(str(e.key.value) for e in inputs_node.entries)
-        if isinstance(inputs_node, Mapping)
-        else frozenset()
-    )
+    inputs: list[InputDecl] = []
+    if isinstance(inputs_node, Mapping):
+        for entry in inputs_node.entries:
+            if isinstance(entry.value, Mapping):
+                inputs.append(_build_input(entry.key, entry.value, diags))
+    input_names = frozenset(i.name for i in inputs)
     goals_node = root.get("goals")
     goal_kind, goals = "any_of", []
     if isinstance(goals_node, Mapping):
@@ -209,6 +264,7 @@ def build_workflow(root: Mapping) -> tuple[Workflow, list[Diagnostic]]:
         Workflow(
             name=_text(root.get("workflow")),
             version=int(version.value) if version and isinstance(version.value, int) else 1,
+            inputs=tuple(inputs),
             input_names=input_names,
             steps=tuple(steps),
             goal_kind=goal_kind,

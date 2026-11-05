@@ -250,6 +250,7 @@ INPUT_SHAPE = Map(
             required=True,
         ),
         "pattern": Key(Str()),
+        "ref": Key(Str(_IDENT, hint="the name of a catalogue list")),
         "default": Key(AnyValue()),
         "required": Key(Bool()),
     }

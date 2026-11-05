@@ -16,7 +16,7 @@ same layer do not import each other. `tests/architecture/test_layers.py` enforce
 
 ```text
 layer 8   api            deploy
-layer 7   migration                      C5
+layer 7   migration        service        C5 / orchestration of repo, compiler and later layers
 layer 6   actions        recovery        B6 / C4
 layer 5   engine                         C3
 layer 4   analysis                       C2, feasible critical path

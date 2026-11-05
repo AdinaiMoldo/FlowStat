@@ -190,6 +190,15 @@ def test_empty_catalogue_list_is_an_error() -> None:
     assert [d.code for d in result.diagnostics] == ["E-REF-003"]
 
 
+def test_quorum_is_not_checked_against_a_list_that_failed() -> None:
+    steps = (
+        "  a:\n    foreach: r in catalogue.nothing\n    action: x.y\n"
+        '  b:\n    action: x.y\n    needs: ["a[*]"]\n    join: {at_least: 2}\n'
+    )
+    result = compile_workflow(doc(steps, "goals: {any_of: [b]}\n"), catalogue())
+    assert [d.code for d in result.diagnostics] == ["E-REF-012"]
+
+
 def test_unknown_action_is_reported_with_a_registry() -> None:
     clean, expected = split_markers(doc("  a:\n    action: " + MARK + "x.y\n"))
     result = compile_workflow(clean, catalogue(), frozenset({"other.action"}))
