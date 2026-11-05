@@ -64,3 +64,12 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Rejected: Python truthiness (a number in a `when` would silently work and hide a mistake), and `null` for a missing field (a typo in a field name would silently make a condition false).
 - Checked with: the evaluator is compared with Python on random expressions (same value on every case in the common fragment) and with golden cases for every error code.
 
+## 2026-11-05 Scheduler as a pure state machine
+
+- Chose: the scheduler takes events (`step_done`, `step_failed`, `step_waiting`, `signal`, `cancel`) with the time of the event and returns commands (`Start`, `Cancel`). It starts no thread, sleeps never and reads no clock. The thread pool of production and the simulated clock of the tests are two drivers around the same core.
+- Chose: `when` is evaluated when a step is decided (all dependencies terminal), not when a worker is free. The references of a condition point to ancestors only, so the value cannot depend on timing.
+- Chose: the default failure policy stops the run; `continue` lets the failure travel through the joins. A stopped run ends as FAILED, a finished run whose goals do not hold ends as GOAL_NOT_REACHED.
+- Deferred: `retry` (C4, M3) and a timeout of a waiting step (M3). The compiler accepts `retry`; the engine does not apply it yet, and `dsl-spec.md` 5.1 says so.
+- Rejected: a recursive finish/decide cascade (a failure in a chain of 3,000 steps would exceed the recursion limit); the scheduler uses a queue.
+- Checked with: 250 random workflows against an independent oracle (final states and outcome for 1, 2, 3 and 100 workers), runs of the same workflow under five different seeds and worker counts (identical states, outputs and errors), the invariants of the Proposal (no step starts before its dependencies are terminal, every step is terminal at the end, at most m running), and 4 acceptance tests of the stories.
+

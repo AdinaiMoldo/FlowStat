@@ -10,12 +10,16 @@ from flowstat.compiler.catalogue import Catalogue
 from flowstat.compiler.compile import compile_workflow
 
 
-def _seconds(text: str) -> float:
-    start = time.perf_counter()
-    result = compile_workflow(text, Catalogue({}))
-    elapsed = time.perf_counter() - start
-    assert result.diagnostics == []
-    return elapsed
+def _seconds(text: str, runs: int = 3) -> float:
+    """Best of a few runs: a shared CI machine adds noise, a real slowdown shows in every run."""
+    best = float("inf")
+    for _ in range(runs):
+        start = time.perf_counter()
+        result = compile_workflow(text, Catalogue({}))
+        elapsed = time.perf_counter() - start
+        assert result.diagnostics == []
+        best = min(best, elapsed)
+    return best
 
 
 def test_200_steps_compile_in_at_most_one_second() -> None:

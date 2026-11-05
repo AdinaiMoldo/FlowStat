@@ -152,6 +152,31 @@ A skipped step is one whose `when` was false or whose join can no longer be sati
 decide the result of the run: SUCCEEDED when the `goals` condition holds, GOAL_NOT_REACHED when the
 run ended and it does not (DR-02).
 
+### 5.1 How the engine decides a step
+
+A step is decided only when all its dependencies are terminal (SUCCEEDED, FAILED, SKIPPED,
+UPSTREAM_FAILED or CANCELLED), so the result of a run never depends on timing. There is no early
+start once a quorum is reached.
+
+1. The join rule is applied. If it is not satisfied the step takes a terminal state without running:
+   UPSTREAM_FAILED when failures caused the shortfall, SKIPPED otherwise. For `all_success` and
+   `any_success` this means: UPSTREAM_FAILED if some dependency FAILED or was UPSTREAM_FAILED,
+   else SKIPPED. For `at_least: k` with s successes and f failures: UPSTREAM_FAILED when
+   f > 0 and s + f >= k (failures could have filled the quorum), else SKIPPED.
+2. `when` is evaluated. False gives SKIPPED; an evaluation error gives FAILED with the code of the
+   error.
+3. The step is READY. Ready steps start in the order of the longest chain of steps behind them
+   (the plain critical path, weights are the average durations, default 1), then in declaration
+   order, while fewer than `m` steps are RUNNING. A WAITING step does not use a slot.
+4. When the action returns, `ensures` is evaluated with the output of the step visible under its
+   own name. False gives FAILED with E-CONTRACT-001, an evaluation error gives FAILED with its code.
+   A step that broke its contract has no output.
+
+A step that FAILS with `on_failure: fail` (the default) stops the run: running steps are cancelled,
+every step that is not finished becomes CANCELLED and the run ends as FAILED. With
+`on_failure: continue` the failure only travels through the join rules of the steps downstream.
+`retry` is accepted and not yet applied; retries arrive with fault handling (C4).
+
 ## 6. Diagnostics
 
 Every diagnostic has a code, a severity, a message, a line and a column in the original text (also
@@ -193,6 +218,8 @@ for steps that came from `foreach` expansion, through the source map).
 | E-INPUT-001 to E-INPUT-005 | error | value of a run input: missing, wrong type, pattern, not in the catalogue list, unknown input | input validation |
 | E-VER-001 | error | the `version` in the text differs from the version number being published | service |
 | E-VER-002 | error | the `workflow` name in the text differs from the name it is saved under | service |
+| E-RUN-001 to E-RUN-008 | error | runtime error of an expression, see 3.1 (the step FAILS) | engine |
+| E-CONTRACT-001 | error | `ensures` is false after the action returned (the step FAILS) | engine |
 | E-TYPE-001 | error | type mismatch | phase 4 (M5) |
 | W-TYPE-002 | warning | output that may be an error is read without a guard | phase 4 (M5) |
 
