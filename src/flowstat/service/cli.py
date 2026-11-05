@@ -38,7 +38,10 @@ EXIT_OK, EXIT_NOT_DONE, EXIT_USAGE, EXIT_WAITING = 0, 1, 2, 3
 
 def open_services(db_path: str) -> tuple[WorkflowService, RunService]:
     db: sqlite3.Connection = open_database(db_path)
-    workflows = WorkflowService(db, known_actions=default_registry().names())
+    registry = default_registry()
+    workflows = WorkflowService(
+        db, known_actions=registry.names(), signatures=registry.signatures()
+    )
     return workflows, RunService(db, workflows)
 
 
@@ -82,6 +85,7 @@ def _publish(args: argparse.Namespace) -> int:
     except PublishError as error:
         _diagnostics(error.diagnostics)
         return EXIT_NOT_DONE
+    _diagnostics(saved.findings)  # warnings and notes do not stop a publication
     print(f"published {name} v{version.number}")
     return EXIT_OK
 

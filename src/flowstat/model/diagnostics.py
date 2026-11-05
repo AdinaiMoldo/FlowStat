@@ -13,6 +13,7 @@ from enum import Enum
 class Severity(Enum):
     ERROR = "error"
     WARNING = "warning"
+    INFO = "info"  # a note: the analysis could not decide, nothing is wrong
 
 
 @dataclass(frozen=True, slots=True)

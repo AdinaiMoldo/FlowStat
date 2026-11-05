@@ -161,3 +161,13 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Chose: the reference interpreter of whole workflows moves to M5, where C2 needs it as the oracle. In M4 the solver is checked against brute force on a grid, and the lowering of an expression against the evaluator of the engine.
 - Found: warnings do not exist in the pipeline. `publish` and the CLI treat any diagnostic as an error. Warnings come from the analysis, which runs after a successful compilation; publish is blocked by errors only.
 - Left out on purpose: generating text for a `pattern` (the caller gives such inputs) and a regular-expression engine of our own.
+
+## 2026-11-05 Branch analysis (US-20)
+
+- Chose: the solver does not know steps. `lower` takes a resolver that says which references are variables and with what domain; the analysis (`analysis/guards.py`) builds that resolver from the plan and from the signatures of the actions. The same solver can then serve the generator of US-24 and the dead-step check of US-23.
+- Chose: the signatures of the actions come from the registry (`Registry.signatures()`), from the types that an action already declares for its output, plus `choices` for the decision of an approval. A list output is not a variable. A field that nobody declared is opaque, so a service built without signatures says "not analysed" and never warns.
+- Found by writing the test for overlap: with two decisions, `!= 'rejected'` is the same guard as `== 'approved'`, so the analysis rightly reports two things, an overlap on `approved` and a gap on `rejected`. My first expectation (one warning) was wrong, and the second warning is a useful one: nothing handles a rejection.
+- Found: a boolean input `flag` with the guards `flag` and `flag == true` overlaps on true and leaves false uncovered. Both are reported; this is what the designer wants to know.
+- Chose: overlap is reported for every pair of clean guards even when another guard of the group is opaque (a witness for two clean guards is a proof). A gap is reported only when every guard of the group is clean, because an opaque guard may handle the case.
+- Chose: warnings and notes are not errors. `save_draft` returns them in `findings` and keeps `diagnostics` for errors, so every caller that tested "is the draft ready" keeps working. `Severity.INFO` is new for the notes.
+- Limit: `--decision` of the command line still accepts only `approved` and `rejected`. A workflow that declares `escalated` is analysed and published, and the answer arrives from the REST API (M6); checking an answer against the declared decisions belongs there.

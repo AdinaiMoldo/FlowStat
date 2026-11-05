@@ -500,5 +500,9 @@ as a difference.
 | I-TEST-001 | info | a target for which no test input exists: proved infeasible, or not found |
 
 Warnings and notes come from the analysis and do not block `publish`; only errors do. The analysis
-runs after a successful compilation, so it never sees a plan with errors.
+runs after a successful compilation, so it never sees a plan with errors. The service returns them
+apart from the errors (`SaveResult.findings`, `WorkflowService.findings`), and the command
+`publish` prints them before it says "published". What an action's output holds is declared by
+the action (`Registry.signatures()`); with no signatures every output is opaque and a group is
+reported as not analysed.
 

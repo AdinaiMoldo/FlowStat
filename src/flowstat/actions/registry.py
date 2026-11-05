@@ -16,6 +16,7 @@ from flowstat.actions.http import call as http_call
 from flowstat.actions.statguard import validate
 from flowstat.actions.stats import aggregate
 from flowstat.actions.xlsx import read_form
+from flowstat.analysis.signatures import ActionSignature, Choices, Signatures
 from flowstat.engine.runner import Error, Executor, Ok, Outcome, Pause
 from flowstat.engine.scheduler import Start
 
@@ -32,6 +33,15 @@ class Registry:
 
     def names(self) -> frozenset[str]:
         return frozenset(self._specs)
+
+    def signatures(self) -> Signatures:
+        """What the analysis of guards may assume about the outputs (analysis/signatures.py)."""
+        kinds = {int: "int", float: "real", bool: "bool", str: "str"}
+        out: dict[str, ActionSignature] = {}
+        for name, spec in self._specs.items():
+            fields = {f: kinds[t] for f, t in (spec.output or {}).items() if t in kinds}
+            out[name] = ActionSignature(fields, dict(spec.choices or {}))
+        return out
 
     def is_idempotent(self, action: str) -> bool:
         """Whether the engine may repeat a call of this action after a crash (unknown: no)."""
@@ -101,7 +111,12 @@ def default_registry() -> Registry:
                 idempotent=True,
             ),
             ActionSpec(
-                "approval.wait", {"role": str}, None, lambda args, ctx: Pause(), idempotent=True
+                "approval.wait",
+                {"role": str},
+                None,
+                lambda args, ctx: Pause(),
+                idempotent=True,
+                choices={"decision": Choices(("approved", "rejected"), "decisions")},
             ),
             ActionSpec(
                 "db.write",

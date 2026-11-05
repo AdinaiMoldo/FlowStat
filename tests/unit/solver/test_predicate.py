@@ -19,6 +19,7 @@ from flowstat.solver.predicate import (
     Pred,
     Truth,
     dnf,
+    has_opaque,
     holds,
     nnf,
     show,
@@ -50,6 +51,12 @@ def test_show_is_compact_and_readable() -> None:
 def test_variables() -> None:
     p = And((X_LT_5, Or((Diff("y", "z", "<", F(1)), Not(Truth("b")), Opaque("f(q)")))))
     assert variables(p) == {"x", "y", "z", "b"}
+
+
+def test_has_opaque() -> None:
+    assert not has_opaque(And((X_LT_5, Or((S_A, Not(B))))))
+    assert has_opaque(And((X_LT_5, Or((S_A, Not(Opaque("q")))))))
+    assert has_opaque(Opaque("q"))
 
 
 # -- negation normal form ---------------------------------------------------------------------
