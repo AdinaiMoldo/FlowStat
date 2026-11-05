@@ -89,6 +89,11 @@ def test_valid_document_has_no_diagnostics() -> None:
     assert diags == []
 
 
+def test_the_compensate_policy_is_valid() -> None:
+    diags, _ = run(step("    on_failure: compensate\n    compensate: x.undo"))
+    assert diags == []
+
+
 def test_the_example_of_the_proposal_is_valid() -> None:
     path = Path(__file__).resolve().parents[3] / "examples" / "quarterly_consolidation.yaml"
     tree, read_diags = read_yaml(path.read_text(encoding="utf8"))

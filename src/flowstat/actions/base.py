@@ -26,11 +26,13 @@ class ActionContext:
     data_dir: Path  # root of the regional forms; actions never read outside of it
     target: str | None  # path of the database the results are written to
     attempt: int = 1  # which attempt of the step this is
+    compensation: bool = False  # the call undoes the step instead of doing it
 
     @property
     def key(self) -> str:
         """Idempotency key: the same for a repeat of the same attempt, new for a new attempt."""
-        return f"{self.run_id}/{self.step}/{self.attempt}"
+        kind = "compensate/" if self.compensation else ""
+        return f"{self.run_id}/{self.step}/{kind}{self.attempt}"
 
 
 Args = Mapping[str, object]

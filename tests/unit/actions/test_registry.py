@@ -126,3 +126,16 @@ def test_the_idempotency_key_of_an_attempt_reaches_the_action(tmp_path: Path) ->
     run(Start("load[BIS]", "t.go", {"n": 1}))
     run(Start("load[BIS]", "t.go", {"n": 1}, attempt=3))
     assert keys == ["run-1/load[BIS]/1", "run-1/load[BIS]/3"]
+
+
+def test_the_key_of_a_compensation_differs_from_the_key_of_the_step(tmp_path: Path) -> None:
+    keys: list[str] = []
+
+    def note(args: object, context: ActionContext) -> dict[str, object]:
+        keys.append(context.key)
+        return {}
+
+    run = Registry([spec(note)]).executor(ctx(tmp_path))
+    run(Start("a", "t.go", {"n": 1}))
+    run(Start("a", "t.go", {"n": 1}, compensation=True))
+    assert keys == ["run-1/a/1", "run-1/a/compensate/1"]

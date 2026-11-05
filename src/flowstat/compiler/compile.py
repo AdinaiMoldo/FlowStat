@@ -119,6 +119,17 @@ class _Compiler:
             self.by_base[decl.name] = []
             if self.known_actions is not None and decl.action not in self.known_actions:
                 self.error("E-REF-008", f"unknown action '{decl.action}'", decl.action_pos)
+            if (
+                self.known_actions is not None
+                and decl.compensate is not None
+                and decl.compensate not in self.known_actions
+                and decl.compensate_pos is not None
+            ):
+                self.error(
+                    "E-REF-015",
+                    f"unknown compensation action '{decl.compensate}'",
+                    decl.compensate_pos,
+                )
             if decl.foreach is None:
                 self.add(_Instance(decl.name, decl, None))
                 continue

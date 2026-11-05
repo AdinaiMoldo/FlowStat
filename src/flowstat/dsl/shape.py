@@ -288,7 +288,7 @@ STEP_SHAPE = Map(
         "foreach": Key(
             Str(rf"{_IDENT} in catalogue\.{_IDENT}", hint="'<name> in catalogue.<list>'")
         ),
-        "on_failure": Key(Enum(("fail", "continue"))),
+        "on_failure": Key(Enum(("fail", "continue", "compensate"))),
         "retry": Key(
             Map(
                 {

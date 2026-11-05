@@ -14,10 +14,10 @@ from __future__ import annotations
 
 import heapq
 from collections import ChainMap, deque
-from collections.abc import Mapping
+from collections.abc import Callable, Collection, Mapping
 from dataclasses import dataclass
 
-from flowstat.compiler.plan import JoinSpec, Plan
+from flowstat.compiler.plan import JoinSpec, Plan, RetrySpec
 from flowstat.dsl.ast import to_source
 from flowstat.engine.evaluator import EvalContext, EvalError, evaluate_bool, render_template
 from flowstat.model.events import Event, EventKind
@@ -31,6 +31,7 @@ class Start:
     args: dict[str, object]
     attempt: int = 1  # 1 for the first call; a retry has the next number (it is part of the key)
     delay: float = 0.0  # seconds the driver waits before the call (the backoff of a retry)
+    compensation: bool = False  # the call undoes a step that succeeded (dsl-spec 5.4)
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,6 +40,13 @@ class Cancel:
 
 
 Command = Start | Cancel
+
+# Given the plan and the steps to undo, the steps that must be undone before each of them
+# (recovery.saga.compensation_blockers). The engine receives it so that it does not import C4.
+CompensationPlanner = Callable[[Plan, Collection[str]], Mapping[str, frozenset[str]]]
+
+# What an undo gets when its step declares no retry: three retries, exponential, from 1 second.
+DEFAULT_UNDO_RETRY = RetrySpec(3, "exponential", 1.0)
 
 _FAILED_LIKE = frozenset({StepState.FAILED, StepState.UPSTREAM_FAILED, StepState.CANCELLED})
 
@@ -70,11 +78,17 @@ class Scheduler:
         max_parallel: int,
         durations: Mapping[str, float] | None = None,
         policy: str = "longest_path",
+        compensation_planner: CompensationPlanner | None = None,
     ) -> None:
         if max_parallel < 1:
             raise ValueError("max_parallel must be at least 1")
         if policy not in ("longest_path", "fifo"):
             raise ValueError(f"unknown policy {policy!r}: use longest_path or fifo")
+        if compensation_planner is None and any(s.on_failure == "compensate" for s in plan.steps):
+            raise ValueError(
+                "a step uses on_failure: compensate, so a compensation planner is needed"
+            )
+        self._planner = compensation_planner
         self._fifo = policy == "fifo"
         self._arrivals = 0
         self.plan = plan
@@ -112,6 +126,13 @@ class Scheduler:
         self._started = False
         self._stopped = False
         self._cancelled = False
+        self._compensate_requested = False  # a step failed under on_failure: compensate
+        self._undoing = False  # the compensation phase has begun
+        self._undo_blockers: dict[int, set[int]] = {}  # undo of i waits for these steps' undos
+        self._undo_waiting_on: dict[int, set[int]] = {}  # undo of i unblocks these
+        self._undo_ready: list[int] = []  # heap of -index: later steps are undone first
+        self._undo_running: set[int] = set()
+        self._undo_failed = False
         self._ctx = EvalContext(self.inputs, self.outputs, self._instances)
 
     # -- what the driver may ask ---------------------------------------------------------------
@@ -121,6 +142,8 @@ class Scheduler:
             return "FINISHED"
         if not self._started:
             return "CREATED"
+        if self._undoing:
+            return "COMPENSATING"
         if self._running or self._ready or self._queue:
             return "RUNNING"
         return "WAITING" if self._waiting else "RUNNING"
@@ -136,6 +159,8 @@ class Scheduler:
 
     def step_done(self, step_id: str, output: dict[str, object], now: float) -> list[Command]:
         i = self._index.get(step_id)
+        if i is not None and self.states[step_id] is StepState.COMPENSATING:
+            return self._undo_finished(i, now)
         if i is None or self.states[step_id] is not StepState.RUNNING:
             return []
         return self._complete(i, output, now)
@@ -153,25 +178,34 @@ class Scheduler:
         """The action failed. A transient failure of a running step with a retry left gives the
         step another attempt (docs/dsl-spec.md 5.3); anything else finishes the step as FAILED."""
         i = self._index.get(step_id)
-        if i is None or self.states[step_id] not in (StepState.RUNNING, StepState.WAITING):
+        if i is None:
+            return []
+        state = self.states[step_id]
+        if state is StepState.COMPENSATING:
+            undo_retry = self.plan.steps[i].retry or DEFAULT_UNDO_RETRY
+            if transient and self._attempt[i] <= undo_retry.max:
+                return [self._retry(i, undo_retry, code, message, now)]
+            text = f"the undo failed: {code} {message}"
+            return self._undo_finished(i, now, "E-COMP-001", text)
+        if state not in (StepState.RUNNING, StepState.WAITING):
             return []
         retry = self.plan.steps[i].retry
         if (
             transient
             and retry is not None
-            and self.states[step_id] is StepState.RUNNING
+            and state is StepState.RUNNING
             and self._attempt[i] <= retry.max
         ):
-            return [self._retry(i, code, message, now)]
+            return [self._retry(i, retry, code, message, now)]
         self._finish(i, StepState.FAILED, now, code, message)
         return self._advance(now)
 
-    def _retry(self, i: int, code: str, message: str, now: float) -> Start:
+    def _retry(self, i: int, retry: RetrySpec, code: str, message: str, now: float) -> Start:
         step = self.plan.steps[i]
-        assert step.retry is not None
+        undo = self.states[step.id] is StepState.COMPENSATING
         retries_done = self._attempt[i]  # attempt 1 failed: this is retry number 1
-        factor = 2 ** (retries_done - 1) if step.retry.backoff == "exponential" else 1
-        delay = step.retry.delay * factor
+        factor = 2 ** (retries_done - 1) if retry.backoff == "exponential" else 1
+        delay = retry.delay * factor
         self._attempt[i] += 1
         self._log(
             EventKind.STEP_RETRY,
@@ -182,7 +216,8 @@ class Scheduler:
             attempt=self._attempt[i],
             delay=delay,
         )
-        return Start(step.id, step.action, dict(self._args[i]), self._attempt[i], delay)
+        action = step.compensate if undo and step.compensate is not None else step.action
+        return Start(step.id, action, dict(self._args[i]), self._attempt[i], delay, undo)
 
     def step_waiting(self, step_id: str, now: float) -> list[Command]:
         i = self._index.get(step_id)
@@ -195,7 +230,9 @@ class Scheduler:
         return self._advance(now)
 
     def cancel(self, now: float) -> list[Command]:
-        if self.outcome is not None:
+        """Stop the run. Ignored once it has finished or has begun to undo its work: an undo is
+        never interrupted halfway, or the effects would be left in a state nobody recorded."""
+        if self.outcome is not None or self._undoing:
             return []
         self._started = True
         self._cancelled = True
@@ -264,6 +301,9 @@ class Scheduler:
             if self._remaining[j] == 0:
                 self._queue.append(j)
         if state is StepState.FAILED and step.on_failure == "fail":
+            self._stop(now, keep=i)
+        elif state is StepState.FAILED and step.on_failure == "compensate":
+            self._compensate_requested = True
             self._stop(now, keep=i)
 
     def _stop(self, now: float, keep: int) -> None:
@@ -338,7 +378,10 @@ class Scheduler:
     def _maybe_finish(self, now: float) -> None:
         if self.outcome is not None or not self._started:
             return
-        if self._terminal < len(self.plan.steps):
+        if self._terminal < len(self.plan.steps) or self._undoing:
+            return
+        if self._compensate_requested and not self._cancelled:
+            self._begin_undo(now)
             return
         if self._cancelled:
             self.outcome = RunOutcome.CANCELLED
@@ -348,4 +391,73 @@ class Scheduler:
             reached = [self.states[g] is StepState.SUCCEEDED for g in self.plan.goals]
             holds = all(reached) if self.plan.goal_kind == "all_of" else any(reached)
             self.outcome = RunOutcome.SUCCEEDED if holds else RunOutcome.GOAL_NOT_REACHED
+        self._log(EventKind.RUN_FINISHED, now, outcome=self.outcome)
+
+    # -- compensation phase (docs/dsl-spec.md 5.4) ----------------------------------------------
+    def _begin_undo(self, now: float) -> None:
+        """The run has stopped: undo the steps that succeeded, later steps first."""
+        assert self._planner is not None
+        steps = self.plan.steps
+        to_undo = [
+            s.id
+            for s in steps
+            if self.states[s.id] is StepState.SUCCEEDED and s.compensate is not None
+        ]
+        blockers = self._planner(self.plan, to_undo)
+        self._undoing = True
+        self._log(EventKind.COMPENSATION_STARTED, now)
+        for step_id in to_undo:
+            i = self._index[step_id]
+            self._undo_blockers[i] = {self._index[b] for b in blockers[step_id]}
+            for b in self._undo_blockers[i]:
+                self._undo_waiting_on.setdefault(b, set()).add(i)
+        for i, waiting_for in self._undo_blockers.items():
+            if not waiting_for:
+                heapq.heappush(self._undo_ready, -i)
+        self._undo_dispatch(now)
+        self._undo_maybe_finish(now)
+
+    def _undo_dispatch(self, now: float) -> None:
+        while self._undo_ready and len(self._undo_running) < self.max_parallel:
+            i = -heapq.heappop(self._undo_ready)
+            step = self.plan.steps[i]
+            assert step.compensate is not None
+            self.states[step.id] = StepState.COMPENSATING
+            self._undo_running.add(i)
+            self._attempt[i] = 1
+            self._log(EventKind.STEP_COMPENSATING, now, step=step.id, attempt=1)
+            self._commands.append(
+                Start(step.id, step.compensate, dict(self._args[i]), 1, 0.0, compensation=True)
+            )
+
+    def _undo_finished(
+        self, i: int, now: float, code: str | None = None, message: str | None = None
+    ) -> list[Command]:
+        step = self.plan.steps[i]
+        ok = code is None
+        state = StepState.COMPENSATED if ok else StepState.COMPENSATION_FAILED
+        self.states[step.id] = state
+        self._undo_running.discard(i)
+        if not ok:
+            self._undo_failed = True
+            self.errors[step.id] = (code or "", message or "")
+        self._log(
+            EventKind.STEP_FINISHED, now, step=step.id, state=state, code=code, message=message
+        )
+        if ok:
+            for waiting in self._undo_waiting_on.get(i, ()):
+                self._undo_blockers[waiting].discard(i)
+                if not self._undo_blockers[waiting]:
+                    heapq.heappush(self._undo_ready, -waiting)
+        self._undo_dispatch(now)
+        self._undo_maybe_finish(now)
+        return self._flush()
+
+    def _undo_maybe_finish(self, now: float) -> None:
+        if self._undo_running or self._undo_ready:
+            return
+        # steps whose undo was blocked by a failed undo stay SUCCEEDED: the run says so
+        self.outcome = (
+            RunOutcome.COMPENSATION_FAILED if self._undo_failed else RunOutcome.COMPENSATED
+        )
         self._log(EventKind.RUN_FINISHED, now, outcome=self.outcome)

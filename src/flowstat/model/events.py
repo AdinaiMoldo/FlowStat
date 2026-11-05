@@ -14,6 +14,8 @@ class EventKind(Enum):
     STEP_WAITING = "STEP_WAITING"
     STEP_RETRY = "STEP_RETRY"  # a transient failure; the step gets another attempt after a delay
     STEP_FINISHED = "STEP_FINISHED"
+    COMPENSATION_STARTED = "COMPENSATION_STARTED"  # the run stopped and now undoes its work
+    STEP_COMPENSATING = "STEP_COMPENSATING"  # the undo of a step starts (attempt in `attempt`)
     RUN_FINISHED = "RUN_FINISHED"
 
 

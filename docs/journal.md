@@ -120,3 +120,14 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Tested: every combination of `max` 0 to 3, both backoffs and 0 to 4 failures (40 cases) rather than random ones; the space is small enough to be exhaustive, and an exhaustive table is a better oracle than a random one here.
 - Found: a database file made by M2 would not have the new columns of the event table (`CREATE TABLE IF NOT EXISTS` does not change an existing table). `open_database` now adds the missing columns, with a test on an old file.
 
+## 2026-11-05 Compensation (US-14)
+
+- Chose: the order of compensation is computed in `recovery/saga.py` (C4, level 2) and handed to the scheduler as a function (`CompensationPlanner`). The engine layer cannot import the recovery layer, and `architecture.md` already says the engine receives such parts as protocols. A scheduler built for a plan that has `on_failure: compensate` and no planner refuses to start, so the mistake shows at once and not at the first failure.
+- Chose: the scheduler runs the undo calls itself (same slots, same retry code, same events), because a second scheduler for the compensation would duplicate the slot accounting and the retry logic.
+- Chose: later steps are undone first among the steps that are ready (the heap holds negated plan indices), so the order is deterministic.
+- Chose: a failed undo does not stop the others; only the steps that wait for it stay as they are (SUCCEEDED, not undone). The run reports COMPENSATION_FAILED and the report shows which steps are in which state.
+- Chose: a request to cancel is ignored during compensation. Stopping an undo halfway would leave effects in a state nobody recorded.
+- Found by writing the property test: with more workers more steps have succeeded when the failure stops the run, so the final states differ between worker counts. My first assertion (equal states for 1, 3 and 100 workers) was wrong. The property that holds, and that the test now checks, is that each run undoes exactly the steps that had succeeded in it, in the right order, with at most `m` undo calls at once. Written down in `dsl-spec.md` 5.4.
+- Stated limit: a step that was cancelled while running may have had an effect that is not recorded and is not undone.
+- Also: the reference to the name of the engineering notes file in `milestones/M2.md` was reworded.
+

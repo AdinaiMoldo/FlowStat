@@ -20,4 +20,5 @@ Row per requirement: UR or DR, user story, function (A/B/C), design element, tes
 | NFR-09 (coverage of the C1-C6 packages) | US-06 to US-12 | C3 | `engine/` | `pytest --cov` gate in CI | passed, 98% at the end of M2 |
 | UR-02 (priority of ready steps) | US-06 | C3 | `engine/scheduler.py` (policy) | `benchmarks/bench_priority.py`, `docs/research/priority-rules.md` | longest path within 0.4% of the bound, FIFO up to 21.5% above |
 | UR-03 (a transient error does not lose the run) | US-13 | C4 | `engine/scheduler.py` (`step_failed`, `_retry`), `engine/runner.py`, `actions/base.py` (transient flag, key) | `tests/unit/engine/test_retry.py`, `tests/unit/actions/test_registry.py`, `tests/acceptance/test_us13.py` | passed, M3 |
+| UR-03 (a failed run leaves no half-done effects) | US-14 | C4 | `recovery/saga.py` (order, level 2), `engine/scheduler.py` (compensation phase), `actions/` (`db.delete_batch`) | `tests/unit/recovery/test_saga.py` (oracle), `tests/unit/engine/test_compensation.py` (40 random sagas), `tests/acceptance/test_us14.py` | passed, M3 |
 
