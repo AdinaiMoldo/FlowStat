@@ -179,3 +179,14 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Chose: only steps that are not instances of a `foreach` are checked, as for branch groups. The instances share one guard in the text, and nine warnings for one line would be noise; the check of the instance guards after substitution is left.
 - Limit: a step is reported when its own guard cannot hold. A step that is dead because an ancestor is dead or always skipped is the optimistic run of C2 (M5).
 - Found while writing the test for a dead step next to a branch: `small <= 50` and `big > 100` with `amount` at most 100 gives two findings, the dead step and the gap from 51 to 100. Both are right.
+
+## 2026-11-05 Generated tests (US-24)
+
+- Chose: the run condition of a step is built exactly from its guard and the join rules, so "step runs" is a formula the solver can answer, not only the guard of the step. A target whose condition is `unsat` is proved infeasible.
+- Chose: `predict` stays a second, independent judge of what a case covers: it runs the plan on concrete values with the join rules and decides guards with the predicate. It is compared with the engine on 480 random workflows, so the solver, the prediction and the engine check one another.
+- Chose: the candidates are the witnesses plus every case that differs from a witness in one variable (enumeration values, constants and their neighbours, bounds). The witness of a solver is the easiest value; the neighbours find the boundaries.
+- Found: greedy set cover is not minimal (three cases where two do). After the greedy cover an exact branch-and-bound search tries a smaller one within a budget.
+- Chose: mocked outputs have the default of their declared type, except the variables that guards read. A contract that fails on such a value is shown as a difference, which is what the story asks for.
+- Chose: the inputs are validated once, with the values the caller gave and those of the first case; a run that cannot start is reported with its E-INPUT code, not hidden.
+- Found: `I-TEST-001` was defined in the spec but nothing needs it; the lists "cannot happen" and "no input found" belong to the answer of the command, not to a draft. The code is removed from the spec.
+- Limits: instances of a `foreach` are not targets, text for a `pattern` is not generated, a guard with an opaque atom ends as "no input found".

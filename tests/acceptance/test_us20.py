@@ -47,7 +47,8 @@ def test_the_registry_describes_the_outputs_the_analysis_may_read() -> None:
     assert approval.choices["decision"].default == ("approved", "rejected")
     assert approval.choices["decision"].argument == "decisions"
     assert signatures["db.write"].fields == {"written": "int", "batch": "str"}
-    assert signatures["xlsx.read"].fields == {"count": "int"}  # a list is not a variable
+    # a list is declared (the mocked run needs it) but a guard cannot read it as a variable
+    assert signatures["xlsx.read"].fields == {"rows": "list", "count": "int"}
 
 
 def test_the_example_has_no_warning() -> None:

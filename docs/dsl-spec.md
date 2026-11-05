@@ -397,7 +397,7 @@ for steps that came from `foreach` expansion, through the source map).
 | E-INPUT-001 to E-INPUT-005 | error | value of a run input: missing, wrong type, pattern, not in the catalogue list, unknown input | input validation |
 | E-INPUT-006 to E-INPUT-008 | error | value of a run input outside `values`, below `min`, above `max` | input validation |
 | W-BRANCH-001, W-BRANCH-002, W-DEAD-001 | warning | overlapping or uncovered branches, a step that can never run | analysis (M4), see 8.4 |
-| I-BRANCH-003, I-TEST-001 | info | a group or a test target the analysis cannot decide | analysis (M4), see 8.4 |
+| I-BRANCH-003 | info | a branch group the analysis cannot decide | analysis (M4), see 8.4 |
 | E-VER-001 | error | the `version` in the text differs from the version number being published | service |
 | E-VER-002 | error | the `workflow` name in the text differs from the name it is saved under | service |
 | E-RUN-001 to E-RUN-008 | error | runtime error of an expression, see 3.1 (the step FAILS) | engine |
@@ -476,20 +476,38 @@ A target is "step `s` runs" or "step `s` is skipped", for each guarded step. A t
 - the inputs that no guard reads, given by the caller (`--input`); the solver does not generate
   text that matches a pattern.
 
-For each target the generator takes candidates from the solver: a witness of the guard together
-with the guards of its guarded ancestors, the boundaries of every comparison, and every value of an
-enumeration. What a case really covers is decided by `predict`: an optimistic run of the plan that
-applies the four join rules (5.1) to concrete values and evaluates guards with the evaluator of 3.1.
-The test set is a greedy set cover over the targets (the case that covers most still uncovered
-targets, ties broken by the order of the plan), so it is deterministic.
+For each target the solver gives a witness of its run condition. The run condition of a step is
+exact: its own guard, and the join rule of the step applied to the run conditions of the steps it
+needs (`all_success` is a conjunction, `any_success` a disjunction, `all_done` is always true,
+`at_least` a disjunction of conjunctions over the combinations; more than 64 combinations make
+the condition opaque). A target whose condition is `unsat` is proved infeasible ("cannot happen").
+The candidates are the witnesses of all targets and, for each witness, the cases that differ from
+it in one variable only: every value of an enumeration, every constant of a guard and its
+neighbour (`±1` for an integer, `±1/2` for a real), and the declared bounds; at most 600 in all.
 
-A target that no candidate covers is "infeasible" when the solver proved it (the guard, or its
-negation, is `unsat`) and "no input found" otherwise; nothing more is claimed for the latter.
+What a candidate really covers is decided by `predict` (`analysis/predict.py`), which is
+independent of the solver's run condition: an optimistic run of the plan that applies the four
+join rules (5.1) to concrete values and decides guards with the predicate of the solver. It says
+that a step runs, is skipped, or that it cannot tell (an opaque guard, or a guard that reads a
+step that did not run); only a decided answer counts as covering a target.
 
-The command `flowstat tests NAME [VERSION] --input ...` prints the cases, runs each through
-`simulate` with mocked actions and reports every step whose observed state (run or skipped)
-differs from the prediction. A contract (`ensures`) that fails on a mocked output is reported
-as a difference.
+The test set is a set cover of the targets by candidates: first greedy (the case that covers
+most still uncovered targets, ties broken by the order of the plan, so it is deterministic), then
+an exact branch-and-bound search for a smaller cover within a fixed budget. A target that no
+candidate covers and that is not proved infeasible is "no input found"; nothing more is claimed
+for it. The two lists are printed by the command; they are not diagnostics, since they come from
+a request and not from a draft.
+
+The command `flowstat tests NAME [VERSION] --db DB --input ...` prints the cases, runs each of
+them through the simulation of the engine with mocked actions (an action that waits for a person
+is answered with the decision of the case) and reports every step whose observed state (run,
+skipped, or anything else) differs from the prediction. A contract (`ensures`) that fails on a
+mocked output shows up as such a difference. The command ends with status 1 when there is a
+difference or when the inputs do not validate, and with 0 otherwise.
+
+Limits: the instances of a `foreach` step are not targets; text that must match a `pattern` is
+not generated; a guard with an opaque atom can be run but never decided, so its targets are
+reported as "no input found" unless another case happens to decide them.
 
 ### 8.4 Diagnostics of the analysis
 
@@ -499,7 +517,6 @@ as a difference.
 | W-BRANCH-002 | warning | a case that no step of a branch group handles (the witness is in the message) |
 | W-DEAD-001 | warning | the guard of a step can never be true |
 | I-BRANCH-003 | info | a branch group could not be analysed (an opaque atom, or too many clauses) |
-| I-TEST-001 | info | a target for which no test input exists: proved infeasible, or not found |
 
 Warnings and notes come from the analysis and do not block `publish`; only errors do. The analysis
 runs after a successful compilation, so it never sees a plan with errors. The service returns them

@@ -66,3 +66,4 @@ class ActionSpec:
     # of guards reads them as an enumeration. Not checked when the action returns (a person
     # answers an approval, so the answer comes from outside).
     choices: Mapping[str, Choices] | None = None
+    waits: bool = False  # the action pauses the step until a person answers (an approval)

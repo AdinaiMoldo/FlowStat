@@ -7,6 +7,7 @@ three-valued (Kleene): an opaque atom gives ``None``, and ``false and ?`` is sti
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from fractions import Fraction
 
@@ -210,7 +211,7 @@ def _join(a: Clause, b: Clause) -> Clause:
 
 
 # -- evaluation -------------------------------------------------------------------------------
-def holds(p: Pred, env: dict[str, object]) -> bool | None:
+def holds(p: Pred, env: Mapping[str, object]) -> bool | None:
     """Truth of ``p`` for the values in ``env``; ``None`` when an opaque atom decides it."""
     match p:
         case Const(value=value):
