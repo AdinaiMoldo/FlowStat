@@ -220,6 +220,8 @@ finished become CANCELLED) and then undoes the completed work.
 4. A compensation that fails transiently is retried with the `retry` of its step, or with 3 retries and exponential backoff when the step has none. When the retries are used up the compensation fails; the steps that were waiting for it stay uncompensated, the others continue.
 5. The run ends COMPENSATED when every step in the list was undone (also when the list is empty), and COMPENSATION_FAILED otherwise, with the list of steps that remain.
 
+Which steps had succeeded at the moment of the failure depends on how many steps ran at once, as with every stop (running steps are cancelled whatever their progress); the compensation is exact for the steps that had succeeded. A cancelled step that was already running may have had an effect that is not recorded; this is a stated limit. Once the compensation has begun it is not interrupted: a request to cancel the run is ignored until it ends.
+
 A step that was undone has the state COMPENSATED instead of SUCCEEDED; a step whose compensation is
 running is COMPENSATING and one whose compensation failed is COMPENSATION_FAILED. An effect that
 cannot be undone (an e-mail that was sent) is expressed by not declaring `compensate`; the step is
@@ -293,6 +295,7 @@ for steps that came from `foreach` expansion, through the source map).
 | E-REF-012 | error | unknown catalogue list | compiler |
 | E-REF-013 | error | foreach step referenced without `[var]` or `[*]` | compiler |
 | E-REF-014 | error | `ref` on an input that is not a string or a list of strings | compiler |
+| E-REF-015 | error | unknown compensation action | compiler |
 | E-GRAPH-001 | error | dependency cycle (the shortest one is reported) | compiler |
 | E-CAT-001 to E-CAT-004 | error | invalid catalogue file (shape, item, missing or duplicate code) | catalogue loader |
 | E-INPUT-001 to E-INPUT-005 | error | value of a run input: missing, wrong type, pattern, not in the catalogue list, unknown input | input validation |

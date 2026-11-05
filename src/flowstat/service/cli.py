@@ -29,6 +29,7 @@ from flowstat.model.events import Event
 from flowstat.model.history import RunReport
 from flowstat.model.states import RunOutcome
 from flowstat.model.versions import VersionStatus
+from flowstat.recovery.saga import compensation_blockers
 from flowstat.repo.db import open_database
 from flowstat.repo.runs import RunNotFoundError
 from flowstat.repo.versions import VersionNotFoundError
@@ -159,7 +160,9 @@ def _run(args: argparse.Namespace) -> int:
         return {"decision": args.decision, "by": str(command.args.get("role", ""))}
 
     def driver(plan: Plan, inputs: Mapping[str, object]) -> list[Event]:
-        scheduler = Scheduler(plan, inputs, args.workers)
+        scheduler = Scheduler(
+            plan, inputs, args.workers, compensation_planner=compensation_blockers
+        )
         run_threaded(scheduler, registry.executor(base), time.time, time.sleep, answer)
         return scheduler.events
 

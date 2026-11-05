@@ -116,3 +116,48 @@ def test_the_report_counts_the_attempts_of_a_step() -> None:
 def test_a_step_that_ran_once_has_one_attempt() -> None:
     log = [Event(0, EventKind.RUN_STARTED, 0.0), started(1, 0.0, "a")]
     assert report_from("r", "d", 1, log, STEPS).steps[0].attempts == 1
+
+
+def compensation_log() -> list[Event]:
+    return [
+        Event(0, EventKind.RUN_STARTED, 0.0),
+        started(1, 0.0, "a"),
+        fin(2, 1.0, "a", S.SUCCEEDED, output={}),
+        started(3, 1.0, "b"),
+        fin(4, 2.0, "b", S.FAILED, code="E-ACT-002", message="b broke"),
+        Event(5, EventKind.COMPENSATION_STARTED, 2.0),
+        Event(6, EventKind.STEP_COMPENSATING, 2.0, step="a"),
+    ]
+
+
+def test_a_run_that_is_undoing_its_work_is_compensating() -> None:
+    report = report_from("r", "d", 1, compensation_log(), ["a", "b"])
+    assert report.status == "COMPENSATING" and report.outcome is None
+    assert report.steps[0].state is S.COMPENSATING
+
+
+def test_an_undone_step_keeps_the_times_of_its_work_and_gets_its_own() -> None:
+    log = [
+        *compensation_log(),
+        fin(7, 5.0, "a", S.COMPENSATED),
+        Event(8, EventKind.RUN_FINISHED, 5.0, outcome=RunOutcome.COMPENSATED),
+    ]
+    report = report_from("r", "d", 1, log, ["a", "b"])
+    a = report.steps[0]
+    assert (a.state, a.started_at, a.finished_at, a.compensated_at) == (
+        S.COMPENSATED,
+        0.0,
+        1.0,
+        5.0,
+    )
+    assert (report.status, report.outcome) == ("FINISHED", RunOutcome.COMPENSATED)
+
+
+def test_a_failed_undo_shows_its_error() -> None:
+    log = [
+        *compensation_log(),
+        fin(7, 5.0, "a", S.COMPENSATION_FAILED, code="E-COMP-001", message="undo lost"),
+        Event(8, EventKind.RUN_FINISHED, 5.0, outcome=RunOutcome.COMPENSATION_FAILED),
+    ]
+    a = report_from("r", "d", 1, log, ["a", "b"]).steps[0]
+    assert a.state is S.COMPENSATION_FAILED and (a.code, a.message) == ("E-COMP-001", "undo lost")

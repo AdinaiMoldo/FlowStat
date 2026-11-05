@@ -14,8 +14,8 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
 from flowstat.compiler.plan import Plan
-from flowstat.engine.scheduler import Cancel, Command, Scheduler, Start
-from flowstat.model.states import TERMINAL_STEP_STATES
+from flowstat.engine.scheduler import Cancel, Command, CompensationPlanner, Scheduler, Start
+from flowstat.model.states import TERMINAL_STEP_STATES, StepState
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,6 +48,7 @@ class Simulation:
     started: dict[str, float]  # when the first attempt of each step started
     finished: dict[str, float]
     attempts: dict[str, list[float]]  # start time of every attempt (after its delay)
+    undone: dict[str, tuple[float, float]]  # compensated steps: (start of the undo, end of it)
 
 
 def simulate(
@@ -60,6 +61,7 @@ def simulate(
     answers: Mapping[str, tuple[float, Mapping[str, object]]] | None = None,
     priority_durations: Mapping[str, float] | None = None,
     policy: str = "longest_path",
+    compensation_planner: CompensationPlanner | None = None,
 ) -> Simulation:
     """Run the plan on a virtual clock.
 
@@ -69,7 +71,14 @@ def simulate(
     ``policy`` is ``longest_path`` or ``fifo`` (the baseline of the benchmark).
     """
     weights = priority_durations if priority_durations is not None else durations
-    scheduler = Scheduler(plan, inputs, max_parallel, durations=weights, policy=policy)
+    scheduler = Scheduler(
+        plan,
+        inputs,
+        max_parallel,
+        durations=weights,
+        policy=policy,
+        compensation_planner=compensation_planner,
+    )
     rng = random.Random(seed)
     run_time = durations or {}
 
@@ -84,6 +93,8 @@ def simulate(
     started: dict[str, float] = {}
     finished: dict[str, float] = {}
     attempts: dict[str, list[float]] = {}
+    undo_started: dict[str, float] = {}
+    undone: dict[str, tuple[float, float]] = {}
 
     def push(at: float, kind: str, step: str) -> None:
         nonlocal serial
@@ -96,8 +107,11 @@ def simulate(
                 cancelled.add(command.step)
                 continue
             begin = now + command.delay  # a retry waits for its backoff first
-            started.setdefault(command.step, begin)
-            attempts.setdefault(command.step, []).append(begin)
+            if command.compensation:
+                undo_started.setdefault(command.step, begin)
+            else:
+                started.setdefault(command.step, begin)
+                attempts.setdefault(command.step, []).append(begin)
             result = act(command)
             pending[command.step] = result
             kind = "wait" if isinstance(result, Wait) else "end"
@@ -118,16 +132,17 @@ def simulate(
         elif kind == "answer":
             assert answers is not None
             commands = scheduler.signal(step, dict(answers[step][1]), now)
-            finished[step] = now
         elif isinstance(result, Fail):
             commands = scheduler.step_failed(
                 step, result.code, result.message, now, transient=result.transient
             )
-            if scheduler.states[step] in TERMINAL_STEP_STATES:
-                finished[step] = now
         else:
             assert isinstance(result, Done)
             commands = scheduler.step_done(step, dict(result.output or {}), now)
-            finished[step] = now
+        state = scheduler.states[step]
+        if state in (StepState.COMPENSATED, StepState.COMPENSATION_FAILED):
+            undone[step] = (undo_started[step], now)
+        elif kind != "wait" and state in TERMINAL_STEP_STATES:
+            finished.setdefault(step, now)
         schedule(commands, now)
-    return Simulation(scheduler, now, started, finished, attempts)
+    return Simulation(scheduler, now, started, finished, attempts, undone)

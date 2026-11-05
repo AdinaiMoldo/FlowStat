@@ -205,6 +205,16 @@ def test_unknown_action_is_reported_with_a_registry() -> None:
     assert [(d.code, d.line, d.column) for d in result.diagnostics] == [("E-REF-008", *expected[0])]
 
 
+def test_unknown_compensation_action_is_reported_at_its_value() -> None:
+    text = doc("  a:\n    action: x.y\n    compensate: " + MARK + "x.undo\n")
+    clean, expected = split_markers(text)
+    result = compile_workflow(clean, catalogue(), frozenset({"x.y"}))
+    assert [(d.code, d.line, d.column) for d in result.diagnostics] == [("E-REF-015", *expected[0])]
+    assert "x.undo" in result.diagnostics[0].message
+    ok = compile_workflow(clean, catalogue(), frozenset({"x.y", "x.undo"}))
+    assert ok.diagnostics == []
+
+
 def test_cycle_message_names_the_whole_cycle() -> None:
     text = doc(
         "  a:\n    action: x.y\n    needs: [c]\n  b:\n    action: x.y\n    needs: [a]\n  c:\n    action: x.y\n    needs: [b]\n"

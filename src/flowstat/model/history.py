@@ -23,6 +23,7 @@ class StepRecord:
     message: str | None = None
     output: dict[str, object] | None = None
     attempts: int = 0  # 0: never ran; 1: ran once; more: retried after transient failures
+    compensated_at: float | None = None  # when the undo of the step finished
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,6 +47,8 @@ def report_from(
     attempts: dict[str, int] = {}
     finished: dict[str, float] = {}
     record: dict[str, Event] = {}
+    undo: dict[str, Event] = {}  # the final event of an undo (COMPENSATED or its failure)
+    compensating = False
     run_started: float | None = None
     run_finished: float | None = None
     outcome: RunOutcome | None = None
@@ -53,6 +56,8 @@ def report_from(
         step = event.step
         if event.kind is EventKind.RUN_STARTED:
             run_started = event.at
+        elif event.kind is EventKind.COMPENSATION_STARTED:
+            compensating = True
         elif event.kind is EventKind.RUN_FINISHED:
             run_finished, outcome = event.at, event.outcome
         elif step is None or step not in state:
@@ -63,8 +68,13 @@ def report_from(
             attempts[step] = max(attempts.get(step, 0), 1)
         elif event.kind is EventKind.STEP_RETRY and event.attempt is not None:
             attempts[step] = max(attempts.get(step, 0), event.attempt)
+        elif event.kind is EventKind.STEP_COMPENSATING:
+            state[step] = StepState.COMPENSATING
         elif event.kind is EventKind.STEP_WAITING:
             state[step] = StepState.WAITING
+        elif event.kind is EventKind.STEP_FINISHED and event.state in _UNDO_STATES:
+            state[step] = event.state
+            undo[step] = event
         elif event.kind is EventKind.STEP_FINISHED and event.state is not None:
             state[step] = event.state
             finished[step] = event.at
@@ -75,10 +85,11 @@ def report_from(
             state[s],
             started.get(s),
             finished.get(s),
-            record[s].code if s in record else None,
-            record[s].message if s in record else None,
+            _error(s, record, undo)[0],
+            _error(s, record, undo)[1],
             record[s].output if s in record else None,
             attempts.get(s, 0),
+            undo[s].at if s in undo else None,
         )
         for s in step_ids
     ]
@@ -86,7 +97,7 @@ def report_from(
         run_id,
         workflow,
         version,
-        _status(run_started, outcome, state),
+        _status(run_started, outcome, state, compensating),
         outcome,
         run_started,
         run_finished,
@@ -94,13 +105,32 @@ def report_from(
     )
 
 
+_UNDO_STATES = frozenset({StepState.COMPENSATED, StepState.COMPENSATION_FAILED})
+
+
+def _error(
+    step: str, record: dict[str, Event], undo: dict[str, Event]
+) -> tuple[str | None, str | None]:
+    """The error to show: that of a failed undo, otherwise that of the step itself."""
+    if step in undo and undo[step].code is not None:
+        return undo[step].code, undo[step].message
+    if step in record:
+        return record[step].code, record[step].message
+    return None, None
+
+
 def _status(
-    run_started: float | None, outcome: RunOutcome | None, state: dict[str, StepState]
+    run_started: float | None,
+    outcome: RunOutcome | None,
+    state: dict[str, StepState],
+    compensating: bool,
 ) -> str:
     if outcome is not None:
         return "FINISHED"
     if run_started is None:
         return "CREATED"
+    if compensating:
+        return "COMPENSATING"
     values = list(state.values())
     if StepState.WAITING in values and StepState.RUNNING not in values:
         return "WAITING"

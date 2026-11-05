@@ -56,6 +56,7 @@ class StepDecl:
     on_failure: str
     retry: tuple[int, str, float] | None
     compensate: str | None
+    compensate_pos: Pos | None = None
 
 
 @dataclass(frozen=True)
@@ -195,6 +196,11 @@ def _build_step(name: Scalar, body: Mapping, diags: list[Diagnostic]) -> StepDec
         on_failure=_text(body.get("on_failure")) or "fail",
         retry=retry,
         compensate=_text(body.get("compensate")) or None,
+        compensate_pos=(
+            content_pos(compensate_node)
+            if (compensate_node := _scalar(body.get("compensate")))
+            else None
+        ),
     )
 
 

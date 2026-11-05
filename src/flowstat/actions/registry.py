@@ -50,7 +50,13 @@ class Registry:
                     )
             try:
                 result = spec.handler(
-                    command.args, replace(base, step=command.step, attempt=command.attempt)
+                    command.args,
+                    replace(
+                        base,
+                        step=command.step,
+                        attempt=command.attempt,
+                        compensation=command.compensation,
+                    ),
                 )
             except ActionError as error:
                 return Error(error.code, error.message, error.transient)
