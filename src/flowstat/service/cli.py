@@ -13,27 +13,24 @@ import sqlite3
 import sys
 import time
 import uuid
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
 from flowstat.actions.base import ActionContext
 from flowstat.actions.registry import default_registry
 from flowstat.compiler.catalogue import load_catalogue
-from flowstat.compiler.plan import Plan
 from flowstat.dsl.reader import read_yaml
 from flowstat.engine.runner import run_threaded
-from flowstat.engine.scheduler import Scheduler, Start
+from flowstat.engine.scheduler import Command, Start
 from flowstat.model.diagnostics import Diagnostic
-from flowstat.model.events import Event
 from flowstat.model.history import RunReport
-from flowstat.model.states import RunOutcome
+from flowstat.model.states import RunOutcome, StepState
 from flowstat.model.versions import VersionStatus
-from flowstat.recovery.saga import compensation_blockers
 from flowstat.repo.db import open_database
 from flowstat.repo.runs import RunNotFoundError
 from flowstat.repo.versions import VersionNotFoundError
-from flowstat.service.runs import InvalidInputsError, NotPublishedError, RunService
+from flowstat.service.runs import InvalidInputsError, Launch, NotPublishedError, RunService
 from flowstat.service.workflows import PublishError, WorkflowService
 
 EXIT_OK, EXIT_NOT_DONE, EXIT_USAGE, EXIT_WAITING = 0, 1, 2, 3
@@ -145,37 +142,110 @@ def _latest_published(workflows: WorkflowService, name: str) -> int | None:
     return found[-1] if found else None
 
 
+def _answerer(decision: str | None) -> Callable[[Start], Mapping[str, object] | None]:
+    def answer(command: Start) -> Mapping[str, object] | None:
+        if decision is None:
+            return None
+        return {"decision": decision, "by": str(command.args.get("role", ""))}
+
+    return answer
+
+
+def _drive(
+    args: argparse.Namespace,
+    runs: RunService,
+    run_id: str,
+    launch: Launch,
+    commands: list[Command] | None,
+) -> int:
+    """Run the scheduler on the thread pool; its events are stored before its commands run."""
+    base = ActionContext(run_id, "", Path(args.data), args.target)
+
+    def journal() -> None:
+        launch.log.commit(launch.scheduler.events)
+
+    run_threaded(
+        launch.scheduler,
+        default_registry().executor(base),
+        time.time,
+        time.sleep,
+        _answerer(args.decision),
+        journal=journal,
+        commands=commands,
+    )
+    report = runs.report(run_id)
+    print(_format_report(report))
+    return _exit_code(report)
+
+
 def _run(args: argparse.Namespace) -> int:
     workflows, runs = open_services(args.db)
     number = args.version if args.version is not None else _latest_published(workflows, args.name)
     if number is None:
         return _err(f"{args.name} has no published version; publish it first")
     run_id = args.run_id or uuid.uuid4().hex[:12]
-    registry = default_registry()
-    base = ActionContext(run_id, "", Path(args.data), args.target)
-
-    def answer(command: Start) -> Mapping[str, object] | None:
-        if args.decision is None:
-            return None
-        return {"decision": args.decision, "by": str(command.args.get("role", ""))}
-
-    def driver(plan: Plan, inputs: Mapping[str, object]) -> list[Event]:
-        scheduler = Scheduler(
-            plan, inputs, args.workers, compensation_planner=compensation_blockers
-        )
-        run_threaded(scheduler, registry.executor(base), time.time, time.sleep, answer)
-        return scheduler.events
-
     try:
-        report = runs.execute(run_id, args.name, number, _parse_inputs(args.input), _now(), driver)
+        runs.start(run_id, args.name, number, _parse_inputs(args.input), _now())
     except VersionNotFoundError:
         return _err(f"there is no workflow {args.name} v{number}")
     except NotPublishedError as error:
         return _err(str(error))
     except InvalidInputsError as error:
         return _err("; ".join(f"{e.code} {e.message}" for e in error.errors))
-    print(_format_report(report))
-    return _exit_code(report)
+    return _drive(args, runs, run_id, runs.launch(run_id, args.workers), None)
+
+
+# -- resume and resolve -------------------------------------------------------------------------
+def _resume(args: argparse.Namespace) -> int:
+    """Take up a run after the engine stopped: finished steps stay, running ones are repeated."""
+    _, runs = open_services(args.db)
+    try:
+        launch = runs.recover(
+            args.run_id, args.workers, time.time(), default_registry().is_idempotent
+        )
+    except RunNotFoundError:
+        return _err(f"there is no run {args.run_id}")
+    commands = list(launch.commands)
+    if args.decision is not None:  # the answer an approval was waiting for has arrived
+        for step in launch.scheduler.waiting_steps():
+            role = launch.scheduler.arguments(step).get("role", "")
+            reply = {"decision": args.decision, "by": str(role)}
+            commands += launch.scheduler.signal(step, reply, time.time())
+    return _drive(args, runs, args.run_id, launch, commands)
+
+
+def _resolve(args: argparse.Namespace) -> int:
+    """Decide about a step whose outcome is unknown: it is done, or it is to be tried again."""
+    output: dict[str, object] = {}
+    if args.output is not None:
+        try:
+            parsed = json.loads(args.output)
+        except ValueError:
+            return _err("--output must be a JSON object")
+        if not isinstance(parsed, dict):
+            return _err("--output must be a JSON object")
+        output = parsed
+    _, runs = open_services(args.db)
+    try:
+        launch = runs.recover(
+            args.run_id, args.workers, time.time(), default_registry().is_idempotent
+        )
+    except RunNotFoundError:
+        return _err(f"there is no run {args.run_id}")
+    scheduler = launch.scheduler
+    if any(isinstance(c, Start) for c in launch.commands):
+        return _err(
+            "the run has steps that were running when the engine stopped; "
+            f"run 'flowstat resume {args.run_id}' first"
+        )
+    state = scheduler.states.get(args.step)
+    if state is None:
+        return _err(f"there is no step {args.step} in run {args.run_id}")
+    if state is not StepState.UNCERTAIN:
+        return _err(f"{args.step} is not uncertain (it is {state.value})")
+    decision = "done" if args.done else "retry"
+    commands = scheduler.resolve(args.step, decision, time.time(), output)
+    return _drive(args, runs, args.run_id, launch, commands)
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -199,6 +269,32 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--decision", choices=["approved", "rejected"], help="answer for approvals")
     run.add_argument("--run-id", help="the run identifier (default: a new random one)")
     run.set_defaults(handler=_run)
+
+    resume = commands.add_parser("resume", help="take up a run after the engine stopped")
+    resume.add_argument("run_id")
+    resume.add_argument("--db", required=True, help="the FlowStat database file")
+    resume.add_argument("--data", required=True, help="the directory with the regional forms")
+    resume.add_argument("--target", required=True, help="the database the results are written to")
+    resume.add_argument("--workers", type=int, default=4, help="steps that may run at once")
+    resume.add_argument(
+        "--decision", choices=["approved", "rejected"], help="the answer a waiting approval awaits"
+    )
+    resume.set_defaults(handler=_resume)
+
+    resolve = commands.add_parser("resolve", help="decide about a step whose outcome is unknown")
+    resolve.add_argument("run_id")
+    resolve.add_argument("step", help="the uncertain step")
+    choice = resolve.add_mutually_exclusive_group(required=True)
+    choice.add_argument("--done", action="store_true", help="its effect exists")
+    choice.add_argument("--retry", action="store_true", help="run it again (a new attempt)")
+    resolve.add_argument(
+        "--output", help="with --done: the output the step would have given (JSON)"
+    )
+    resolve.add_argument("--db", required=True, help="the FlowStat database file")
+    resolve.add_argument("--data", required=True, help="the directory with the regional forms")
+    resolve.add_argument("--target", required=True, help="the database the results are written to")
+    resolve.add_argument("--workers", type=int, default=4, help="steps that may run at once")
+    resolve.set_defaults(handler=_resolve, decision=None)
 
     report = commands.add_parser("report", help="show the history of a run")
     report.add_argument("run_id")

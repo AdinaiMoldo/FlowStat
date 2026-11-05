@@ -10,12 +10,16 @@ from __future__ import annotations
 
 import sqlite3
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 
 from flowstat.compiler.inputs import InputError
 from flowstat.compiler.plan import Plan
+from flowstat.engine.scheduler import Command, Scheduler
 from flowstat.model.events import Event
 from flowstat.model.history import RunReport, report_from
 from flowstat.model.versions import VersionStatus
+from flowstat.recovery.saga import compensation_blockers
+from flowstat.recovery.wal import WriteAheadLog
 from flowstat.repo.runs import RunStore, StoredRun
 from flowstat.service.workflows import WorkflowService
 
@@ -30,6 +34,15 @@ class InvalidInputsError(ValueError):
     def __init__(self, errors: list[InputError]) -> None:
         super().__init__("; ".join(f"{e.code} {e.message}" for e in errors))
         self.errors = errors
+
+
+@dataclass(frozen=True, slots=True)
+class Launch:
+    """A scheduler for a stored run and the log that keeps its history (write-ahead)."""
+
+    scheduler: Scheduler
+    log: WriteAheadLog
+    commands: list[Command]  # what to dispatch first: empty for a new run (the driver starts it)
 
 
 class RunService:
@@ -62,6 +75,28 @@ class RunService:
         plan = self.start(run_id, name, number, inputs, now)
         self.store.append(run_id, driver(plan, self.store.get(run_id).inputs))
         return self.report(run_id)
+
+    def launch(self, run_id: str, workers: int) -> Launch:
+        """A scheduler for a run that has no history yet."""
+        run = self.store.get(run_id)
+        plan = self.workflows.get_plan(run.workflow, run.version)
+        scheduler = Scheduler(plan, run.inputs, workers, compensation_planner=compensation_blockers)
+        return Launch(scheduler, WriteAheadLog(self.store, run_id), [])
+
+    def recover(
+        self, run_id: str, workers: int, now: float, idempotent: Callable[[str], bool]
+    ) -> Launch:
+        """Rebuild a run from its stored history after a crash (docs/dsl-spec.md 5.5).
+
+        Nothing is stored here: the events of the recovery (RUN_RESUMED, steps that became
+        UNCERTAIN) are committed by the driver before the first command is dispatched.
+        """
+        run = self.store.get(run_id)
+        plan = self.workflows.get_plan(run.workflow, run.version)
+        events = self.store.events(run_id)
+        scheduler = Scheduler(plan, run.inputs, workers, compensation_planner=compensation_blockers)
+        commands = scheduler.restore(events, now, idempotent)
+        return Launch(scheduler, WriteAheadLog(self.store, run_id, stored=len(events)), commands)
 
     def report(self, run_id: str) -> RunReport:
         run = self.store.get(run_id)

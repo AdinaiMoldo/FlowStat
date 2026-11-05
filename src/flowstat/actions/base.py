@@ -47,3 +47,6 @@ class ActionSpec:
     params: Mapping[str, type]  # required arguments and their types
     output: Mapping[str, type] | None  # declared fields of the output; None: not checked
     handler: Handler
+    # A repeated call with the same key has no further effect (docs/dsl-spec.md 5.5). The safe
+    # default is False: after a crash such a call is not repeated by the engine, a person decides.
+    idempotent: bool = False

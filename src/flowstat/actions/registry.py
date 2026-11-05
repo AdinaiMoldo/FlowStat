@@ -32,6 +32,11 @@ class Registry:
     def names(self) -> frozenset[str]:
         return frozenset(self._specs)
 
+    def is_idempotent(self, action: str) -> bool:
+        """Whether the engine may repeat a call of this action after a crash (unknown: no)."""
+        spec = self._specs.get(action)
+        return spec is not None and spec.idempotent
+
     def executor(self, base: ActionContext) -> Executor:
         """An executor for the thread-pool driver; ``base`` gives the run, the step is added."""
 
@@ -77,16 +82,35 @@ class Registry:
 def default_registry() -> Registry:
     return Registry(
         [
-            ActionSpec("xlsx.read", {"path": str}, {"rows": list, "count": int}, read_form),
             ActionSpec(
-                "statguard.validate", {"rows": list}, {"rows": list, "checked": int}, validate
+                "xlsx.read", {"path": str}, {"rows": list, "count": int}, read_form, idempotent=True
             ),
             ActionSpec(
-                "stats.aggregate", {"parts": list}, {"rows": list, "regions": int}, aggregate
+                "statguard.validate",
+                {"rows": list},
+                {"rows": list, "checked": int},
+                validate,
+                idempotent=True,
             ),
-            ActionSpec("approval.wait", {"role": str}, None, lambda args, ctx: Pause()),
-            ActionSpec("db.write", {"rows": list}, {"written": int, "batch": str}, write_rows),
-            ActionSpec("db.delete_batch", {}, {"deleted": int}, delete_batch),
-            ActionSpec("email.send", {}, {"queued": int}, send_email),
+            ActionSpec(
+                "stats.aggregate",
+                {"parts": list},
+                {"rows": list, "regions": int},
+                aggregate,
+                idempotent=True,
+            ),
+            ActionSpec(
+                "approval.wait", {"role": str}, None, lambda args, ctx: Pause(), idempotent=True
+            ),
+            ActionSpec(
+                "db.write",
+                {"rows": list},
+                {"written": int, "batch": str},
+                write_rows,
+                idempotent=True,
+            ),
+            ActionSpec("db.delete_batch", {}, {"deleted": int}, delete_batch, idempotent=True),
+            # the outbox keeps one row per key, but a real mail server would send twice
+            ActionSpec("email.send", {}, {"queued": int}, send_email, idempotent=False),
         ]
     )

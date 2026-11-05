@@ -254,6 +254,32 @@ Whether an action is idempotent is part of its declared interface (the registry,
 `xlsx.read`, `statguard.validate`, `stats.aggregate`, `db.write`, `db.delete_batch` and `http.call`
 (which sends the key) are idempotent; `email.send` is not.
 
+How it is done, and what follows from it:
+
+- The events of every call into the scheduler are committed in one transaction before the commands
+  of that call are dispatched (`recovery/wal.py`, `synchronous = FULL`). A crash therefore leaves a
+  history that ends at a scheduler step; a history cut in the middle of one (a prefix of the events)
+  is also restored correctly, and the crash tests cut after every single event.
+- The restore adds the event RUN_RESUMED. A stop that had been recorded only in part (a failure
+  stored, the cancellations not) is completed. A restored run that already has its outcome is left
+  as it is.
+- A step that becomes UNCERTAIN gets the event STEP_UNCERTAIN (code E-REC-001, the attempt whose
+  result is unknown, and the state it was in: RUNNING, or COMPENSATING for an undo); the decision is
+  the event STEP_RESOLVED with `decision` `done` or `retry`. `done` finishes the step through the
+  ordinary path, so its `ensures` is checked against the output the operator gave. A `retry` is
+  started at once, even if all slots are busy: it is a person's decision, and it exceeds the limit
+  of parallel steps by at most one call per decision.
+- A request to cancel the run cancels an UNCERTAIN step (it is not running); a failure elsewhere
+  that stops the run does the same. A run is not finished while a step is UNCERTAIN.
+- The report shows an UNCERTAIN step with its code and message, and the run as WAITING when nothing
+  else is running (exit code 3 of the command line).
+- Command line: `flowstat resume RUN` takes up a run (all of the above; `--decision` gives the answer
+  a waiting approval awaits) and `flowstat resolve RUN STEP --done [--output JSON]` or `--retry`
+  decides about an uncertain step. `resolve` refuses while steps are still to be repeated: `resume`
+  comes first. The run ends with the same exit codes as `run`.
+- An action that is not registered counts as not idempotent, and so does a registered one that does
+  not say it is: the safe default is to ask a person.
+
 Limits, stated: exactly-once delivery is impossible without the cooperation of the receiving system,
 so for an action that ignores the key the guarantee is "at most once automatically, otherwise
 UNCERTAIN"; a clock jump is not part of the fault model; one process owns a run at a time (the owner
