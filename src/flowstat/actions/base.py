@@ -34,6 +34,17 @@ class ActionContext:
         kind = "compensate/" if self.compensation else ""
         return f"{self.run_id}/{self.step}/{kind}{self.attempt}"
 
+    @property
+    def operation_key(self) -> str:
+        """The key of the operation: the same for every attempt of the step (or of its undo).
+
+        For a receiver outside the engine. A retry after a lost answer must be recognised as the
+        same operation, or the effect that the lost answer was about would be made twice; so this
+        key has no attempt number. The attempt key above is what the engine records.
+        """
+        kind = "/compensate" if self.compensation else ""
+        return f"{self.run_id}/{self.step}{kind}"
+
 
 Args = Mapping[str, object]
 Handler = Callable[[Args, ActionContext], Mapping[str, object] | Pause]

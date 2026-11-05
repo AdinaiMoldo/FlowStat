@@ -12,6 +12,7 @@ from dataclasses import replace
 from flowstat.actions.base import ActionContext, ActionError, ActionSpec
 from flowstat.actions.database import delete_batch, write_rows
 from flowstat.actions.email import send_email
+from flowstat.actions.http import call as http_call
 from flowstat.actions.statguard import validate
 from flowstat.actions.stats import aggregate
 from flowstat.actions.xlsx import read_form
@@ -110,6 +111,7 @@ def default_registry() -> Registry:
                 idempotent=True,
             ),
             ActionSpec("db.delete_batch", {}, {"deleted": int}, delete_batch, idempotent=True),
+            ActionSpec("http.call", {"url": str}, {"status": int}, http_call, idempotent=True),
             # the outbox keeps one row per key, but a real mail server would send twice
             ActionSpec("email.send", {}, {"queued": int}, send_email, idempotent=False),
         ]
