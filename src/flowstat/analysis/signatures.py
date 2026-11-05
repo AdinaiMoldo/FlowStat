@@ -22,8 +22,9 @@ class Choices:
 
 @dataclass(frozen=True, slots=True)
 class ActionSignature:
-    fields: Mapping[str, str]  # output field -> int, real, bool or str
+    fields: Mapping[str, str]  # output field -> int, real, bool, str or list
     choices: Mapping[str, Choices] = field(default_factory=dict)
+    waits: bool = False  # the step waits for an answer from a person (an approval)
 
 
 Signatures = Mapping[str, ActionSignature]

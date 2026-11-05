@@ -19,6 +19,8 @@ from pathlib import Path
 
 from flowstat.actions.base import ActionContext
 from flowstat.actions.registry import default_registry
+from flowstat.analysis.generate import CaseSet, generate
+from flowstat.analysis.wording import describe
 from flowstat.compiler.catalogue import load_catalogue
 from flowstat.dsl.reader import read_yaml
 from flowstat.engine.runner import run_threaded
@@ -30,6 +32,7 @@ from flowstat.model.versions import VersionStatus
 from flowstat.repo.db import open_database
 from flowstat.repo.runs import RunNotFoundError
 from flowstat.repo.versions import VersionNotFoundError
+from flowstat.service.cases import CaseRun, run_cases
 from flowstat.service.runs import InvalidInputsError, Launch, NotPublishedError, RunService
 from flowstat.service.workflows import PublishError, WorkflowService
 
@@ -88,6 +91,52 @@ def _publish(args: argparse.Namespace) -> int:
     _diagnostics(saved.findings)  # warnings and notes do not stop a publication
     print(f"published {name} v{version.number}")
     return EXIT_OK
+
+
+# -- tests --------------------------------------------------------------------------------------
+def _tests(args: argparse.Namespace) -> int:
+    """Generate cases that run and skip every guarded step, run them with mocked actions."""
+    workflows, _ = open_services(args.db)
+    number = args.version if args.version is not None else _latest_published(workflows, args.name)
+    if number is None:
+        return _err(f"{args.name} has no published version; publish it first")
+    try:
+        plan = workflows.get_plan(args.name, number)
+    except VersionNotFoundError:
+        return _err(f"there is no workflow {args.name} v{number}")
+    cases = generate(plan, workflows.signatures)
+    given = _parse_inputs(args.input)
+    generated = cases.cases[0].inputs if cases.cases else {}
+    resolved, errors = workflows.validate_inputs(args.name, number, {**given, **generated})
+    if errors:
+        for e in errors:
+            print(f"error {e.code}: {e.message}")
+        return EXIT_NOT_DONE
+    runs = run_cases(plan, cases, resolved, workflows.signatures)
+    print(_format_cases(cases, runs))
+    return EXIT_NOT_DONE if any(r.differences for r in runs) else EXIT_OK
+
+
+def _format_cases(cases: CaseSet, runs: list[CaseRun]) -> str:
+    reached = len(cases.targets) - len(cases.infeasible) - len(cases.missed)
+    if not cases.targets:
+        return "the workflow has no guarded steps; there is nothing to generate"
+    lines = [f"generated {len(runs)} cases covering {reached} of {len(cases.targets)} targets"]
+    for run in runs:
+        values = describe(run.case.values()) or "no value is read by a guard"
+        lines.append(f"case {run.index}: {values}")
+        lines.append("  " + "; ".join(t.label for t in run.case.covers))
+    lines += [f"cannot happen: {t.label}" for t in cases.infeasible]
+    lines += [f"no input found: {t.label}" for t in cases.missed]
+    differences = [d for r in runs for d in r.differences]
+    for d in differences:
+        lines.append(
+            f"difference in case {d.case}: {d.step} was predicted to {d.predicted}, "
+            f"the engine got {d.observed}"
+        )
+    if not differences:
+        lines.append(f"predicted and observed agree for {len(runs)} cases")
+    return "\n".join(lines)
 
 
 # -- report -------------------------------------------------------------------------------------
@@ -261,6 +310,20 @@ def _parser() -> argparse.ArgumentParser:
     publish.add_argument("--db", required=True, help="the FlowStat database file")
     publish.add_argument("--catalogue", help="a catalogue file to load before compiling")
     publish.set_defaults(handler=_publish)
+
+    tests = commands.add_parser(
+        "tests", help="generate test inputs for the guards and run them with mocked actions"
+    )
+    tests.add_argument("name", help="the workflow name")
+    tests.add_argument(
+        "version", nargs="?", type=int, help="the version (default: latest published)"
+    )
+    tests.add_argument("--db", required=True, help="the FlowStat database file")
+    tests.add_argument(
+        "--input", action="append", default=[], metavar="NAME=VALUE",
+        help="a value for an input that no guard reads",
+    )  # fmt: skip
+    tests.set_defaults(handler=_tests)
 
     run = commands.add_parser("run", help="run a published workflow")
     run.add_argument("name", help="the workflow name")

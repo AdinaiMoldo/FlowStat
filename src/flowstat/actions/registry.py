@@ -36,11 +36,11 @@ class Registry:
 
     def signatures(self) -> Signatures:
         """What the analysis of guards may assume about the outputs (analysis/signatures.py)."""
-        kinds = {int: "int", float: "real", bool: "bool", str: "str"}
+        kinds = {int: "int", float: "real", bool: "bool", str: "str", list: "list"}
         out: dict[str, ActionSignature] = {}
         for name, spec in self._specs.items():
             fields = {f: kinds[t] for f, t in (spec.output or {}).items() if t in kinds}
-            out[name] = ActionSignature(fields, dict(spec.choices or {}))
+            out[name] = ActionSignature(fields, dict(spec.choices or {}), spec.waits)
         return out
 
     def is_idempotent(self, action: str) -> bool:
@@ -117,6 +117,7 @@ def default_registry() -> Registry:
                 lambda args, ctx: Pause(),
                 idempotent=True,
                 choices={"decision": Choices(("approved", "rejected"), "decisions")},
+                waits=True,
             ),
             ActionSpec(
                 "db.write",
