@@ -59,7 +59,8 @@ def test_the_example_has_no_warning() -> None:
 def test_a_third_decision_is_reported_as_uncovered() -> None:
     saved = service().save_draft(NAME, WIDER, "t1")
     assert saved.diagnostics == []  # a draft with warnings is a good draft
-    assert [f.code for f in saved.findings] == ["W-BRANCH-002"]
+    # the goals are open too (US-22), with the same value; here the branches are the subject
+    assert [f.code for f in saved.findings] == ["W-BRANCH-002", "W-GOAL-001"]
     finding = saved.findings[0]
     assert finding.severity is Severity.WARNING
     assert "escalated" in finding.message
@@ -68,7 +69,7 @@ def test_a_third_decision_is_reported_as_uncovered() -> None:
 
 def test_overlapping_guards_are_reported() -> None:
     saved = service().save_draft(NAME, OVERLAPPING, "t1")
-    assert [f.code for f in saved.findings] == ["W-BRANCH-001", "W-BRANCH-002"]
+    assert [f.code for f in saved.findings] == ["W-BRANCH-001", "W-BRANCH-002", "W-GOAL-001"]
     assert "approved" in saved.findings[0].message
     assert "rejected" in saved.findings[1].message
 
@@ -78,7 +79,7 @@ def test_warnings_do_not_stop_a_publication() -> None:
     svc.save_draft(NAME, WIDER, "t1")
     version = svc.publish(NAME, 1, "t2")
     assert version.status is VersionStatus.PUBLISHED
-    assert [f.code for f in svc.findings(NAME, 1)] == ["W-BRANCH-002"]
+    assert [f.code for f in svc.findings(NAME, 1)] == ["W-BRANCH-002", "W-GOAL-001"]
 
 
 def test_the_command_line_prints_the_warning_and_publishes(
@@ -119,8 +120,8 @@ def test_without_signatures_the_outputs_are_unknown_and_nothing_is_claimed() -> 
     svc = WorkflowService(open_database(":memory:"))
     svc.set_catalogue_list("regions", [{"code": c, "name": c.title()} for c in REGIONS])
     saved = svc.save_draft(NAME, WIDER, "t1")
-    assert [f.code for f in saved.findings] == ["I-BRANCH-003"]
-    assert saved.findings[0].severity is Severity.INFO
+    assert [f.code for f in saved.findings] == ["I-BRANCH-003", "I-AVAIL-003"]
+    assert all(f.severity is Severity.INFO for f in saved.findings)
 
 
 def test_a_run_with_a_declared_third_decision_goes_through(

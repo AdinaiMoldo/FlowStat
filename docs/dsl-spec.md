@@ -440,6 +440,7 @@ for steps that came from `foreach` expansion, through the source map).
 | W-AVAIL-001 | warning | a reference may read an output that does not exist (the step can be skipped or can have failed) | availability (M5), see 10 |
 | W-AVAIL-002 | warning | a reference needs more elements of a group than the join guarantees | availability (M5) |
 | W-GOAL-001 | warning | a goal may be skipped, or the goals do not cover every case | availability (M5) |
+| I-AVAIL-003 | info | the analysis could not decide a reference, a group or a goal (a condition is outside what it reads); nothing is claimed | availability (M5), see 10.2 |
 | W-COMP-001 | warning | a step with side effects has no `compensate` in a workflow that undoes failed runs | availability (M5), see 5.4 |
 
 The parser does not stop at the first error: it inserts an error node and continues at the next
@@ -614,10 +615,16 @@ never necessary: where the analysis cannot tell it says less, not more. For the 
 - `all_success`: `Av(Y, X) = G_1(X) or ... or G_n(X)`. `Y` starts only when all of them
   succeeded, so one of them is enough.
 - `any_success` and `at_least`: `Av(Y, X) = and over i of (S_i or G_i(X))`, where `S_i` is
-  `not ran(P_i)` when `P_i` cannot fail, and `false` when `P_i` has `on_failure: continue`. A
-  predecessor that did not run cannot be the one that succeeded; one that may have failed can be
-  neither assumed to have run nor to have been absent.
-- `all_done`: nothing is guaranteed; `Av(Y, X)` is false.
+  `not ran(P_i)`: a predecessor that does not run cannot be the one that succeeded, and one that
+  runs may or may not have, so it must pass the fact on. (`ran` is used and not the guard of
+  `P_i` alone, so that a predecessor behind a skipped step counts as absent too.)
+- `all_done`: the join says nothing about the dependencies; `Av(Y, X)` comes only from the next
+  paragraph.
+
+A step `X` with no `on_failure: continue` at or above it has SUCCEEDED exactly when it ran (a
+failure of another step stops the run before `Y` is decided, 5.1). For such an `X`, `ran(X)` is a
+fact of every descendant. This is what makes "the guard of `c` implies the guard of `approve`" a
+reason for no warning (US-21) even when the join of `c` says nothing.
 
 A predecessor with `on_failure: fail` that fails stops the run before `Y` is decided (5.1), so
 it does not weaken the conditions. Past the clause cap of the solver, or on an opaque guard, a
@@ -629,7 +636,8 @@ For every reference in `with`, `when` or `ensures` of `Y` to the output of `X` (
 
 - in `with` and `ensures`, the reference is valid when `when(Y)` entails `Av(Y, X)` (an entailment
   query to the solver); otherwise W-AVAIL-001 with a value that shows it ("`approve` is skipped
-  when `decision == 'rejected'`"), or a message that the solver could not decide;
+  when `decision == 'rejected'`"). When the solver cannot decide (a condition outside what it
+  reads), the analysis claims nothing and gives the note I-AVAIL-003 instead;
 - in `when`, `when(Y)` is not an assumption (it is what is being computed), so the reference must
   be valid with the assumption `true`, except that a conjunct `exists(reference)` on the left of
   an `and` proves the reference to the right of it.
@@ -650,7 +658,8 @@ For `goals: any_of`, W-GOAL-001 when the conditions `ran(g)` of the goals do not
 (the solver's exhaustiveness query, with an input that shows it); for `all_of`, once per goal that
 is not guaranteed to run. A goal whose `ran` is unsatisfiable is dead (8.2), and so is every step
 whose `ran` is unsatisfiable (an ancestor is dead or always skipped): W-DEAD-001 names the first
-dead ancestor. The optimistic run ignores failures; a goal that fails is a failure of the run
+dead ancestor. A step that is dead because of its own guard is reported by 8.2, so the message
+here appears only for the steps behind it, and for a quorum that cannot be reached. The optimistic run ignores failures; a goal that fails is a failure of the run
 and not a skipped goal.
 
 ### 10.5 Side effects without an undo

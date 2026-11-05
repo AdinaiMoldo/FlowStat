@@ -41,8 +41,8 @@ Recount of 5 November: the baseline of 203 SP stays the zero point of the burndo
 | US-18 | As a designer, I see type errors in parameters and conditions | C1 | 8 | Must | M5 | done |
 | US-19 | As a designer, I get correct types for fan-in references | C1 | 5 | Should | M5 | done |
 | US-20 | As a designer, I am told when branches overlap or do not cover every case | C6 | 8 | Must | M4 | done |
-| US-21 | As a designer, I am warned about outputs that may not exist | C2 | 8 | Must | M5 | not started |
-| US-22 | As a designer, I am warned when a goal or a quorum is not guaranteed | C2 | 5 | Should | M5 | not started |
+| US-21 | As a designer, I am warned about outputs that may not exist | C2 | 8 | Must | M5 | done |
+| US-22 | As a designer, I am warned when a goal or a quorum is not guaranteed | C2 | 5 | Should | M5 | done |
 | US-23 | As a designer, I learn about steps that can never run | C6 | 3 | Should | M4 | done |
 | US-24 | As a designer, I get a generated minimal test set | C6 | 8 | Should | M4 | done |
 | US-25 | As an external system, I start a run over REST | B4 | 5 | Must | M6 | not started |

@@ -435,6 +435,7 @@ def compile_workflow(
                 )
                 for i in wf.inputs
             ),
+            tuple((pos.line, pos.column) for _, pos in wf.goals),
         )
     final = _report_unique(comp.diags)
     return CompileResult(plan if not final else None, final)

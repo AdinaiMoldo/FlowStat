@@ -69,6 +69,7 @@ class Plan:
         int, ...
     ]  # bit j of entry i is set when steps[j] is an ancestor of steps[i]
     inputs: tuple[InputSpec, ...] = ()
+    goal_positions: tuple[tuple[int, int], ...] = ()  # (line, column) of each goal in the text
     _index: dict[str, int] = field(init=False, repr=False, compare=False, default_factory=dict)
 
     def __post_init__(self) -> None:
