@@ -10,6 +10,7 @@ from collections.abc import Sequence
 import pytest
 
 from flowstat.engine.scheduler import Cancel, Scheduler, Start
+from flowstat.engine.simulation import Done, Fail, Result, simulate
 from flowstat.model.events import EventKind
 from flowstat.model.states import RunOutcome, StepState
 from tests.unit.engine.helpers import REGIONS, doc, example_plan, plan_of
@@ -523,3 +524,52 @@ def test_a_long_failure_cascade_does_not_recurse() -> None:
     sch.step_failed("s0", "E", "boom", 1.0)
     assert sch.states[f"s{n - 1}"] is S.UPSTREAM_FAILED
     assert sch.outcome is RunOutcome.GOAL_NOT_REACHED
+
+
+# -- queue policy: plain longest path against FIFO (benchmark baseline) --------------------------
+LONG_TAIL = (
+    "  p:\n    action: x.y\n  q:\n    action: x.y\n  r:\n    action: x.y\n"
+    "  t:\n    action: x.y\n    needs: [r]\n"
+)
+LONG_TAIL_TIMES = {"p": 1.0, "q": 1.0, "r": 1.0, "t": 10.0}
+
+
+def test_longest_path_beats_fifo_when_a_short_step_opens_a_long_tail() -> None:
+    plan = plan_of(doc(LONG_TAIL, "goals: {all_of: [t, p, q]}\n"))
+    best = simulate(plan, {}, 2, durations=LONG_TAIL_TIMES)
+    fifo = simulate(plan, {}, 2, durations=LONG_TAIL_TIMES, policy="fifo")
+    assert best.makespan == 11.0  # r starts at once, so t ends at 1 + 10
+    assert fifo.makespan == 12.0  # r waits behind p and q, so t ends at 2 + 10
+    assert best.started["r"] == 0.0 and fifo.started["r"] == 1.0
+
+
+def test_fifo_starts_steps_in_the_order_they_became_ready() -> None:
+    steps = (
+        "  a:\n    action: x.y\n  b:\n    action: x.y\n"
+        "  late:\n    action: x.y\n    needs: [a]\n  early:\n    action: x.y\n"
+    )
+    plan = plan_of(doc(steps, "goals: {all_of: [late, early, b]}\n"))
+    sim = simulate(plan, {}, 1, policy="fifo")
+    order = [e.step for e in sim.scheduler.events if e.kind is EventKind.STEP_STARTED]
+    assert order == ["a", "b", "early", "late"]
+
+
+def test_the_policy_changes_the_order_but_never_the_result() -> None:
+    inputs = {"quarter": "2025Q1"}
+
+    def act(command: Start) -> Result:
+        if command.step == "load[BIS]":
+            return Fail(1.0, "E-ACT-002", "cannot read BIS/2025Q1.xlsx")
+        return Done(1.0, {"rows": [1, 2], "written": 2, "decision": "approved"})
+
+    one = simulate(example_plan(), inputs, 3, act)
+    two = simulate(example_plan(), inputs, 3, act, policy="fifo")
+    assert one.scheduler.states == two.scheduler.states
+    assert one.scheduler.outcome == two.scheduler.outcome
+
+
+def test_an_unknown_policy_is_refused() -> None:
+    with pytest.raises(ValueError, match="policy"):
+        Scheduler(
+            plan_of(doc("  a:\n    action: x.y\n", "goals: {any_of: [a]}\n")), {}, 1, policy="lifo"
+        )

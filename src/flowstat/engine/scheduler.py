@@ -6,7 +6,8 @@ with the time of the event. This is what makes deterministic mode and exact test
 
 A step is decided only when all its predecessors are terminal, so the result of a run does not
 depend on timing. Ready steps start in the order of the longest chain behind them (the plain
-critical path; the feasible path replaces this priority in M5), then in declaration order.
+critical path; the feasible path replaces this priority in M5), then in declaration order. The
+policy ``fifo`` (in the order of becoming ready) exists as the baseline of the benchmark.
 """
 
 from __future__ import annotations
@@ -66,9 +67,14 @@ class Scheduler:
         inputs: Mapping[str, object],
         max_parallel: int,
         durations: Mapping[str, float] | None = None,
+        policy: str = "longest_path",
     ) -> None:
         if max_parallel < 1:
             raise ValueError("max_parallel must be at least 1")
+        if policy not in ("longest_path", "fifo"):
+            raise ValueError(f"unknown policy {policy!r}: use longest_path or fifo")
+        self._fifo = policy == "fifo"
+        self._arrivals = 0
         self.plan = plan
         self.inputs = dict(inputs)
         self.max_parallel = max_parallel
@@ -264,7 +270,11 @@ class Scheduler:
                 self._finish(i, StepState.SKIPPED, now)
                 return
         self.states[step.id] = StepState.READY
-        heapq.heappush(self._ready, (-self._priority[i], i))
+        if self._fifo:
+            self._arrivals += 1
+            heapq.heappush(self._ready, (float(self._arrivals), i))
+        else:
+            heapq.heappush(self._ready, (-self._priority[i], i))
 
     def _dispatch_one(self, now: float) -> None:
         _, i = heapq.heappop(self._ready)
