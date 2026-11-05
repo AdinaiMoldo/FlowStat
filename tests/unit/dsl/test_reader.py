@@ -79,6 +79,12 @@ def test_syntax_error_has_a_position_and_no_tree() -> None:
     assert diags[0].line >= 1 and diags[0].column >= 1
 
 
+def test_missing_colon_is_reported_where_the_key_starts() -> None:
+    node, diags = read_yaml("a:\n  b: 1\n  needs [a]\nc: 2\n")
+    assert node is None
+    assert [(d.code, d.line, d.column) for d in diags] == [("E-YAML-001", 3, 3)]
+
+
 def test_tab_indentation_is_an_error() -> None:
     node, diags = read_yaml("a:\n\tb: 1\n")
     assert node is None

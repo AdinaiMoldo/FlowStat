@@ -5,7 +5,7 @@ The full backlog (34 user stories, 203 SP baseline) is in the Project Proposal. 
 | Milestone | SP | Stories | Goal | Status |
 | --- | --- | --- | --- | --- |
 | M0. Preparation | - | - | Project Proposal, Engineering Playbook, repository skeleton, architecture tests, CI | done |
-| M1 (I1). Language core | 26 | US-01 to US-05 | Version store, catalogue, YAML reading, expression parser and shape validator, C1 phases 0-3 | next |
+| M1 (I1). Language core | 26 | US-01 to US-05 | Version store, catalogue, YAML reading, expression parser and shape validator, C1 phases 0-3 | done (5 Nov) |
 | M2 (I2). Engine | 38 | US-06 to US-12 | C3 with plain longest path, history, step actions, CLI | not started |
 | M3 (I3). Fault tolerance | 28 | US-13 to US-17 | C4: write-ahead log, replay, saga | not started |
 | M4 (I4a). Solver | 19 | US-20, US-23, US-24 | C6 solver and test generator, reference interpreter | not started |
@@ -21,11 +21,11 @@ Not yet estimated: parser and shape validator (about +6 SP net, counted at the s
 
 | Story | Title | Function | SP | Priority | Milestone | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| US-01 | As a designer, I save a workflow as a new version so that published versions never change | A1 | 5 | Must | M1 | not started |
-| US-02 | As a designer, I pick regions and forms from a catalogue | A4 | 3 | Must | M1 | not started |
-| US-03 | As a designer, I get a precise error when my text is not a valid workflow document | B1 | 5 | Must | M1 | not started |
-| US-04 | As a designer, I see unknown references and cycles with line numbers | C1 | 5 | Must | M1 | not started |
-| US-05 | As a designer, I fan a step out over all regions | C1 | 8 | Must | M1 | not started |
+| US-01 | As a designer, I save a workflow as a new version so that published versions never change | A1 | 5 | Must | M1 | done |
+| US-02 | As a designer, I pick regions and forms from a catalogue | A4 | 3 | Must | M1 | done |
+| US-03 | As a designer, I get a precise error when my text is not a valid workflow document | B1 | 5 | Must | M1 | done |
+| US-04 | As a designer, I see unknown references and cycles with line numbers | C1 | 5 | Must | M1 | done |
+| US-05 | As a designer, I fan a step out over all regions | C1 | 8 | Must | M1 | done |
 | US-06 | As an operator, I run a workflow and independent steps run in parallel | C3 | 8 | Must | M2 | not started |
 | US-07 | As an operator, I get correct skips, failures and quorum behaviour | C3 | 8 | Must | M2 | not started |
 | US-08 | As an operator, I approve or reject a run that waits for me | C3 | 5 | Must | M2 | not started |
