@@ -193,10 +193,10 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 
 ## 2026-11-05 Readiness audit of M5
 
-- Found: seventeen gaps, listed in `milestones/M5.md`. The ones that change the design: the signatures of the actions need element types (`list<row>`), the type check cannot be in the compiler because it needs those signatures (the analysis layer does it), and the formula of the Proposal for `any_success` ignores a predecessor that failed.
+- Found: seventeen gaps, listed in `milestones/M5.md`. The ones that change the design: the signatures of the actions need element types (`list<row>`), the type check cannot be in the compiler because it needs those signatures (the analysis layer does it), and the formula of the Proposal for `any_success` guards on the guard and not on the run condition.
 - Chose: phase 4 is a part of the analysis, not of the compiler. This departs from the Proposal (C1 phase 4) and is the price of the layer rule; the check still runs on every save and its errors still block the publication. Written as a deviation in the milestone and to be repeated in the report.
 - Chose: no `T | error` type and no W-TYPE-002. Whether a read of the output of a step that may have failed is safe depends on the join rule, which is what the availability analysis computes. The type of a field stays `T`.
-- Chose: `Av` uses `not ran(P_i)` and treats a predecessor with `on_failure: continue` as one that may have failed. The oracle (the reference interpreter, written first) is the check that this is sound.
+- Chose: `Av` uses `not ran(P_i)` in place of `not guard(P_i)`, and a step with no `on_failure: continue` at or above it passes `ran(X)` on as a fact. The oracle (the reference interpreter, written first) is the check that this is sound. (The first draft of this entry said a failed predecessor made the Proposal's formula unsound; re-deriving it for the implementation showed it does not, and the audit text was corrected.)
 - Chose: the priority of the feasible critical path is computed for the inputs of the run when they are known. The Proposal computes it over all inputs; fixing the inputs is sharper and costs nothing, but it is a departure and the benchmark reports both.
 - Added: the story US-35 (5 SP) for the feasible critical path, which had SP in the recount and no story.
 - Left out on purpose: nullable types, `round` and `coalesce` (not in the DSL), the completion scope beyond a function for M7, the cache of unchanged prefixes.
@@ -217,4 +217,13 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Went wrong: `analysis/types.py` was written before its tests, against the rule that C1 is tested first. The tests that followed were written from the specification and not from the code (the table of operators, the example of the story, a comparison of 600 random expressions with the reference evaluator), and seven deliberate faults each failed them, so the check is a real one, but the order was wrong and the retrospective of M5 says so.
 - Found by the tests: positions in a diagnostic refer to the whole document, so a test that looks at the line of the error needs the lines of the head that the helper adds; and a foreach step cannot be a goal (E-REF-009), so the test of nine instances ends in another step.
 - Limit: an argument given as a YAML literal has no position of its own, so its error is reported at the step.
+
+## 2026-11-05 Availability (US-21, US-22)
+
+- Chose: the facts are computed from the run conditions, not from the guards. `ran(Y)` is exact for a run where nothing fails; `Av(Y, X)` is a sufficient condition for "if Y starts, X succeeded". An opaque atom is read as false when a fact is built and as true when a run condition is negated, so what the analysis cannot read costs it a fact, never a false warning.
+- Chose: an undecided case gives the note I-AVAIL-003 and no claim. The specification said "a message in W-AVAIL-001"; it now says what the code does.
+- Chose: a step that is dead by its own guard stays with the guard analysis (8.2). The availability analysis names only the steps behind it, and a quorum that cannot be reached.
+- Found by the tests: a goal behind a step whose guard the solver cannot read is undecided, so a small test about a reference must look at the codes of its own family and not at the whole list. And a text `"...${check[*].rows}[7]"` in `with` is a type error (a list in a text); an index is read in a condition, so the tests use `ensures`.
+- Found by the tests: two acceptance tests passed vacuously at first because a `replace` in the test did not match the text (`decision}` has a brace); they were caught because the finding they expected was absent, and the check now shows the changed guard.
+- The example workflow gives no finding, and the expectations of the US-20 acceptance tests (test_us20) changed only where W-GOAL-001 and I-AVAIL-003 are new.
 

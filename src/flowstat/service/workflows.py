@@ -7,7 +7,7 @@ import re
 import sqlite3
 from dataclasses import dataclass, field
 
-from flowstat.analysis.guards import analyse
+from flowstat.analysis import availability, guards
 from flowstat.analysis.signatures import Signatures
 from flowstat.analysis.types import check_types
 from flowstat.compiler.catalogue import Catalogue
@@ -89,7 +89,8 @@ class WorkflowService:
     def _findings(self, plan: Plan) -> list[Diagnostic]:
         """Warnings and notes: the types, then the guards."""
         found = [d for d in check_types(plan, self.signatures) if d.severity is not Severity.ERROR]
-        found += analyse(plan, self.signatures)
+        found += guards.analyse(plan, self.signatures)
+        found += availability.analyse(plan, self.signatures)
         return sorted(found, key=lambda d: (d.line, d.column, d.code))
 
     # -- versions ------------------------------------------------------------------------------

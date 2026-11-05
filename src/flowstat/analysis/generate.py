@@ -12,26 +12,22 @@ small set. Everything is deterministic: the same plan gives the same cases.
 
 from __future__ import annotations
 
-import itertools
-import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from fractions import Fraction
 
 from flowstat.analysis.predict import RUN, SKIP, predict
+from flowstat.analysis.runs import run_conditions
 from flowstat.analysis.signatures import Signatures
 from flowstat.analysis.variables import lower_guards
-from flowstat.compiler.plan import JoinSpec, Plan
+from flowstat.compiler.plan import Plan
 from flowstat.solver.domains import BoolSet, Domain, NumberSet, StringSet
 from flowstat.solver.predicate import (
-    FALSE,
-    TRUE,
     And,
     Cmp,
     Diff,
     Member,
     Not,
-    Opaque,
     Or,
     Pred,
 )
@@ -39,7 +35,6 @@ from flowstat.solver.solve import Status, check
 
 MAX_CANDIDATES = 600  # variations of the base cases that are tried
 SEARCH_BUDGET = 40_000  # nodes of the search for a cover smaller than the greedy one
-QUORUM_CAP = 64  # combinations of dependencies that an ``at_least`` may expand to
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,7 +74,7 @@ class CaseSet:
 def generate(plan: Plan, signatures: Signatures) -> CaseSet:
     lowered = lower_guards(plan, signatures)
     domains = lowered.domains
-    runs = _conditions(plan, lowered.preds)
+    runs = run_conditions(plan, lowered.preds)
     targets = tuple(
         Target(step.id, runs_)
         for step in plan.steps
@@ -167,57 +162,6 @@ def _smaller_cover(
         if found is not None:
             return [index[s] for s in found]
     return None
-
-
-# -- the condition under which a step runs ----------------------------------------------------
-def _conditions(plan: Plan, preds: Mapping[str, Pred]) -> dict[str, Pred]:
-    runs: dict[str, Pred] = {}
-    for step in plan.steps:
-        gate = _gate(step.join, [runs[d] for d in step.needs])
-        guard = preds.get(step.id)
-        runs[step.id] = gate if guard is None else _and([gate, guard])
-    return runs
-
-
-def _gate(join: JoinSpec, deps: list[Pred]) -> Pred:
-    if not deps or join.kind == "all_done":
-        return TRUE
-    if join.kind == "all_success":
-        return _and(deps)
-    if join.kind == "any_success":
-        return _or(deps)
-    return _quorum(deps, join.k)
-
-
-def _quorum(deps: list[Pred], k: int) -> Pred:
-    sure = sum(1 for d in deps if d == TRUE)
-    open_ = [d for d in deps if d not in (TRUE, FALSE)]
-    need = k - sure
-    if need <= 0:
-        return TRUE
-    if need > len(open_):
-        return FALSE
-    if math.comb(len(open_), need) > QUORUM_CAP:
-        return Opaque("a quorum over many guarded steps")
-    return _or([_and(list(c)) for c in itertools.combinations(open_, need)])
-
-
-def _and(items: list[Pred]) -> Pred:
-    if FALSE in items:
-        return FALSE
-    kept = [i for i in items if i != TRUE]
-    if not kept:
-        return TRUE
-    return kept[0] if len(kept) == 1 else And(tuple(kept))
-
-
-def _or(items: list[Pred]) -> Pred:
-    if TRUE in items:
-        return TRUE
-    kept = [i for i in items if i != FALSE]
-    if not kept:
-        return FALSE
-    return kept[0] if len(kept) == 1 else Or(tuple(kept))
 
 
 # -- candidates -------------------------------------------------------------------------------
