@@ -10,8 +10,8 @@ from __future__ import annotations
 import random
 
 import pytest
-from flowstat.analysis.predict import RUN, SKIP, UNKNOWN, predict
 
+from flowstat.analysis.predict import RUN, SKIP, UNKNOWN, predict
 from flowstat.analysis.variables import lower_guards
 from flowstat.engine.simulation import simulate
 from flowstat.model.states import StepState
