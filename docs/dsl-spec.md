@@ -208,6 +208,7 @@ defaults to 1.
 - During the delay the step stays RUNNING and keeps its slot; each retry is an event (`STEP_RETRY`) with the attempt number, the delay and the error that caused it.
 - When the retries are used up the step FAILS with the code and message of the last error, and its `on_failure` policy applies.
 - Every attempt carries the idempotency key `run id / step id / attempt number` (attempts start at 1). An action that honours the key makes a repeated attempt harmless. After a crash the lost attempt is run again with the same key (section 5.5).
+- A receiver outside the engine gets a different key, the key of the *operation*: `run id / step id` (and `run id / step id / compensate` for an undo), the same for every attempt. After a lost answer a retry has a new attempt number; if the receiver saw that number as a new key it would make the effect a second time. The attempt key is what the engine records, the operation key is what `http.call` sends in the header `Idempotency-Key`.
 
 ### 5.4 Compensation (saga)
 
@@ -279,6 +280,8 @@ How it is done, and what follows from it:
   comes first. The run ends with the same exit codes as `run`.
 - An action that is not registered counts as not idempotent, and so does a registered one that does
   not say it is: the safe default is to ask a person.
+
+`http.call` (`url`, optional `method` default POST, `body`, `timeout` in seconds default 5; http and https only) classifies the answer for the retry policy: a transport failure, a timeout and a 5xx answer are transient (E-ACT-008), a 4xx answer is permanent (E-ACT-010); a bad argument is E-ACT-009. It is registered as idempotent on the promise that the receiver honours the key: the engine can send the key, it cannot make the receiver keep it. The tests use a receiver that does and one that does not (the effect then exists twice after a lost answer). There is no list of allowed hosts yet; it comes with the deployment (M8).
 
 Limits, stated: exactly-once delivery is impossible without the cooperation of the receiving system,
 so for an action that ignores the key the guarantee is "at most once automatically, otherwise
