@@ -77,7 +77,9 @@ def random_guard(rng: random.Random) -> str:
     )
 
 
-def random_workflow(rng: random.Random, guard_chance: float = 0.5) -> Plan:
+def random_workflow(
+    rng: random.Random, guard_chance: float = 0.5, continue_chance: float = 0.0
+) -> Plan:
     """A random acyclic workflow with every join rule and guards on the declared inputs."""
     n = rng.randint(2, 7)
     names = [f"s{i}" for i in range(n)]
@@ -89,5 +91,6 @@ def random_workflow(rng: random.Random, guard_chance: float = 0.5) -> Plan:
             kind = rng.choice(["all_success", "any_success", "all_done", "at_least"])
             join = f"{{at_least: {rng.randint(1, len(needs))}}}" if kind == "at_least" else kind
         when = random_guard(rng) if rng.random() < guard_chance else None
-        steps += step(name, when, needs, join)
+        extra = "    on_failure: continue\n" if rng.random() < continue_chance else ""
+        steps += step(name, when, needs, join, extra=extra)
     return compile_plan(steps, names[-1])
