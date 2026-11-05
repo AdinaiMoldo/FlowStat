@@ -46,3 +46,15 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Found by: the acceptance test of US-03 (criterion: missing colon on line 14 gives an error on line 14). The YAML library notices the problem one line later.
 - Chose: for this error the reader uses the position of the start of the key. Other YAML errors keep the position given by the library.
 
+## 2026-11-05 Recount of story points
+
+- Chose: keep 203 SP as the zero point of the burndown and show the added scope separately: parser and shape validator +6 SP (M1, delivered), feasible critical path +5 SP (M5, estimated). Planned total 214 SP.
+- Rejected: changing the baseline (the burndown would then hide that the plan grew).
+- Where recorded: `backlog.md`, section 3 of the Playbook and the planning paragraph of the Project Proposal.
+
+## 2026-11-05 Process wording and documents brought in line
+
+- The sentence in section 7 of the Project Proposal said ceremonies make no sense for one person, while section 11.5 keeps a minimal review and retrospective. Section 7 now refers to section 11.5.
+- The Playbook names the nine regional offices (seven oblasts plus Bishkek and Osh) at its first mention; the catalogue keeps calling them regions.
+- The copies of both documents in `docs/` are refreshed from the current text; the document properties carry only the author and the title.
+
