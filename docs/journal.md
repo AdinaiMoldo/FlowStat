@@ -150,3 +150,14 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Chose: only `http` and `https` addresses, five methods, and a timeout that must be a positive number. `file:` and `ftp:` are refused because `urllib` would open them. There is no list of allowed hosts yet (a workflow author could point the call at an internal address); it belongs with the deployment (M8) and is written in the spec.
 - Checked: all faults produce the error class the retry policy needs (a closed socket arrives from `urllib` as an `OSError` or an `http.client` error, a timeout as `TimeoutError`, a 5xx as `HTTPError`), one test each.
 
+
+## 2026-11-05 Readiness audit of M4
+
+- Found by reading the stories against the code: US-20 speaks of "the decision enum", but the DSL has no enums and `approval.wait` only says "the answer". Chose: a variable is a reference with a known domain; an input has its declared type and may narrow it with `values`, `min`, `max`; the `decision` of `approval.wait` is an enumeration given by a new optional argument `decisions` (default `approved`, `rejected`). Anything else is opaque. Checking an answer against `decisions` at run time waits for the REST API (M6).
+- Found: the Proposal's atom `x in {c1, c2}` has no counterpart in the grammar. Chose: a list literal as a primary. This closes the open point left by M1.
+- Chose: three-valued answers (`sat` with a witness, `unsat`, `unknown`). A solver that answers "no" when it does not know makes false warnings, and one that answers "yes" makes false proofs; the opaque rule and the cap of 64 clauses give `unknown`, and no warning rests on it.
+- Chose: a branch group is steps with the same `needs` and guards over the same variables. A comparison of every pair of guards would warn about independent choices. It is a heuristic and the limit is in the spec (8.1).
+- Chose: the test generator decides what a case covers with its own prediction (an optimistic run with the join rules), then the engine's run is compared with it. Solving the guard of a step alone is not enough: a skipped ancestor skips the step.
+- Chose: the reference interpreter of whole workflows moves to M5, where C2 needs it as the oracle. In M4 the solver is checked against brute force on a grid, and the lowering of an expression against the evaluator of the engine.
+- Found: warnings do not exist in the pipeline. `publish` and the CLI treat any diagnostic as an error. Warnings come from the analysis, which runs after a successful compilation; publish is blocked by errors only.
+- Left out on purpose: generating text for a `pattern` (the caller gives such inputs) and a regular-expression engine of our own.
