@@ -53,6 +53,9 @@ class InputSpec:
     required: bool  # a value must be given (false when there is a default or required: false)
     line: int
     column: int
+    values: tuple[object, ...] | None = None  # the allowed constants (a closed list)
+    minimum: float | None = None  # inclusive bounds of a number
+    maximum: float | None = None
 
 
 @dataclass(frozen=True)

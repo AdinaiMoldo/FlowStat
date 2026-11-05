@@ -17,7 +17,7 @@ from flowstat.compiler.plan import InputSpec, Plan
 
 @dataclass(frozen=True)
 class InputError:
-    code: str  # E-INPUT-001 .. E-INPUT-005
+    code: str  # E-INPUT-001 .. E-INPUT-008
     input: str
     message: str
 
@@ -85,6 +85,29 @@ def _check(spec: InputSpec, value: object, catalogue: Catalogue) -> InputError |
                     f"'{spec.name}': '{text}' is not in the catalogue list '{spec.ref}' "
                     f"(allowed: {', '.join(allowed)})",
                 )
+    return _check_constraints(spec, value)
+
+
+def _check_constraints(spec: InputSpec, value: object) -> InputError | None:
+    """``values``, ``min`` and ``max`` of the declaration (dsl-spec 8.2)."""
+    if spec.values is not None and value not in spec.values:
+        listed = ", ".join(repr(v) for v in spec.values)
+        return InputError(
+            "E-INPUT-006", spec.name, f"'{spec.name}': {value!r} is not one of {listed}"
+        )
+    if isinstance(value, int | float) and not isinstance(value, bool):
+        if spec.minimum is not None and value < spec.minimum:
+            return InputError(
+                "E-INPUT-007",
+                spec.name,
+                f"'{spec.name}': {value} is below the minimum {spec.minimum}",
+            )
+        if spec.maximum is not None and value > spec.maximum:
+            return InputError(
+                "E-INPUT-008",
+                spec.name,
+                f"'{spec.name}': {value} is above the maximum {spec.maximum}",
+            )
     return None
 
 

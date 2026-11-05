@@ -171,3 +171,11 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Chose: overlap is reported for every pair of clean guards even when another guard of the group is opaque (a witness for two clean guards is a proof). A gap is reported only when every guard of the group is clean, because an opaque guard may handle the case.
 - Chose: warnings and notes are not errors. `save_draft` returns them in `findings` and keeps `diagnostics` for errors, so every caller that tested "is the draft ready" keeps working. `Severity.INFO` is new for the notes.
 - Limit: `--decision` of the command line still accepts only `approved` and `rejected`. A workflow that declares `escalated` is analysed and published, and the answer arrives from the REST API (M6); checking an answer against the declared decisions belongs there.
+
+## 2026-11-05 Dead steps (US-23)
+
+- Chose: `values`, `min` and `max` are checked twice. At compile time they must fit the type (a `min` on a string, a value of the wrong type, `min` above `max`, a listed value outside the bounds are E-SHAPE-004 at the position of the offending item), because a declaration that contradicts itself would make every guard on that input look dead or alive for the wrong reason. When a run starts the value is checked against them (E-INPUT-006 to 008), after the type, the pattern and the catalogue; a default is checked in the same way.
+- Chose: a dead step is reported when the solver proves the guard unsatisfiable, also when the guard has an opaque part (an unsatisfiable rest stays unsatisfiable). A guard that is only possibly false is never reported.
+- Chose: only steps that are not instances of a `foreach` are checked, as for branch groups. The instances share one guard in the text, and nine warnings for one line would be noise; the check of the instance guards after substitution is left.
+- Limit: a step is reported when its own guard cannot hold. A step that is dead because an ancestor is dead or always skipped is the optimistic run of C2 (M5).
+- Found while writing the test for a dead step next to a branch: `small <= 50` and `big > 100` with `amount` at most 100 gives two findings, the dead step and the gap from 51 to 100. Both are right.

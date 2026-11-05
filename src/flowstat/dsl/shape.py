@@ -36,6 +36,11 @@ class Positive:
 
 
 @dataclass(frozen=True)
+class Number:
+    """Any number, integer or decimal, of either sign."""
+
+
+@dataclass(frozen=True)
 class Bool:
     pass
 
@@ -80,7 +85,7 @@ class ByKind:
     sequence: Shape | None = None
 
 
-Shape = Str | Int | Positive | Bool | Enum | AnyValue | Seq | Map | ByKind
+Shape = Str | Int | Positive | Number | Bool | Enum | AnyValue | Seq | Map | ByKind
 
 # -- the interpreter ---------------------------------------------------------------------------
 
@@ -156,12 +161,13 @@ class _Checker:
         else:
             self.check(node, chosen)
 
-    def _scalar(self, node: YNode, shape: Str | Int | Positive | Bool | Enum) -> None:
+    def _scalar(self, node: YNode, shape: Str | Int | Positive | Number | Bool | Enum) -> None:
         if not isinstance(node, Scalar):
             expected = {
                 Str: "a string",
                 Int: "an integer",
                 Positive: "a number",
+                Number: "a number",
                 Bool: "a boolean",
                 Enum: "a string",
             }
@@ -171,6 +177,9 @@ class _Checker:
         if isinstance(shape, Bool):
             if not isinstance(value, bool):
                 self.wrong_kind(node, "a boolean")
+        elif isinstance(shape, Number):
+            if isinstance(value, bool) or not isinstance(value, int | float):
+                self.wrong_kind(node, "a number")
         elif isinstance(shape, Positive):
             if isinstance(value, bool) or not isinstance(value, int | float):
                 self.wrong_kind(node, "a number")
@@ -269,6 +278,9 @@ INPUT_SHAPE = Map(
         "ref": Key(Str(_IDENT, hint="the name of a catalogue list")),
         "default": Key(AnyValue()),
         "required": Key(Bool()),
+        "values": Key(Seq(AnyValue(), min_items=1)),
+        "min": Key(Number()),
+        "max": Key(Number()),
     }
 )
 

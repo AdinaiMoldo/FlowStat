@@ -72,6 +72,9 @@ class InputDecl:
     has_default: bool
     default: object
     required: bool
+    values: tuple[object, ...] | None = None  # the allowed constants
+    minimum: float | None = None  # inclusive bounds of a number
+    maximum: float | None = None
 
 
 @dataclass(frozen=True)
@@ -227,6 +230,8 @@ def _build_input(name: Scalar, body: Mapping, diags: list[Diagnostic]) -> InputD
             )
             pattern_text = None
     has_default = default is not None
+    type_name = _text(type_node)
+    values, minimum, maximum = _constraints(body, type_name, diags)
     return InputDecl(
         name=str(name.value),
         pos=Pos(name.line, name.column),
@@ -239,7 +244,56 @@ def _build_input(name: Scalar, body: Mapping, diags: list[Diagnostic]) -> InputD
         has_default=has_default,
         default=_plain(default) if default is not None else None,
         required=not has_default and not (required is not None and required.value is False),
+        values=values,
+        minimum=minimum,
+        maximum=maximum,
     )
+
+
+_VALUE_TYPES = {"string": (str,), "int": (int,), "float": (int, float), "bool": (bool,)}
+
+
+def _constraints(
+    body: Mapping, type_name: str, diags: list[Diagnostic]
+) -> tuple[tuple[object, ...] | None, float | None, float | None]:
+    """``values``, ``min`` and ``max`` of an input, checked against its type (dsl-spec 8.2)."""
+
+    def refuse(node: YNode, message: str) -> None:
+        diags.append(Diagnostic("E-SHAPE-004", Severity.ERROR, message, node.line, node.column))
+
+    numbers: dict[str, float | None] = {"min": None, "max": None}
+    for key in numbers:
+        node = _scalar(body.get(key))
+        if node is None:
+            continue
+        if type_name not in ("int", "float"):
+            refuse(node, f"'{key}' applies to an input of type int or float, not {type_name}")
+        elif isinstance(node.value, int | float) and not isinstance(node.value, bool):
+            numbers[key] = node.value
+    low, high = numbers["min"], numbers["max"]
+    if low is not None and high is not None and low > high:
+        refuse(body.get("max") or body, f"'max' ({high}) is below 'min' ({low})")
+        low = high = None
+    values: list[object] = []
+    values_node = body.get("values")
+    if isinstance(values_node, Sequence):
+        allowed = _VALUE_TYPES.get(type_name)
+        if allowed is None:
+            refuse(values_node, f"'values' applies to string, int, float and bool, not {type_name}")
+            return None, low, high
+        for item in values_node.items:
+            value = item.value if isinstance(item, Scalar) else None
+            fits = isinstance(value, allowed) and (
+                type_name == "bool" or not isinstance(value, bool)
+            )
+            if not fits:
+                refuse(item, f"the value {value!r} is not of type {type_name}")
+            elif (low is not None and value < low) or (high is not None and value > high):  # type: ignore[operator]
+                refuse(item, f"the value {value!r} is outside 'min' and 'max'")
+            else:
+                values.append(value)
+        return tuple(values), low, high
+    return None, low, high
 
 
 def build_workflow(root: Mapping) -> tuple[Workflow, list[Diagnostic]]:

@@ -18,7 +18,9 @@ steps        : map  name -> step            (at least one)
 goals        : { any_of | all_of : list of step names }   (at least one step)
 
 input        : { type: type, pattern?: string, ref?: catalogue list, default?: literal,
-                 required?: bool }                (required by default unless there is a default)
+                 required?: bool,                 (required by default unless there is a default)
+                 values?: list of literals,       the allowed constants (string, int, float, bool)
+                 min?: number, max?: number }     inclusive bounds (int, float); see 8.2
 
 step         : {
   action      : string                         "package.name", must exist in the action registry
