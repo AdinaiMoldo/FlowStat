@@ -79,6 +79,7 @@ class Scheduler:
         durations: Mapping[str, float] | None = None,
         policy: str = "longest_path",
         compensation_planner: CompensationPlanner | None = None,
+        priorities: Mapping[str, float] | None = None,
     ) -> None:
         if max_parallel < 1:
             raise ValueError("max_parallel must be at least 1")
@@ -107,6 +108,9 @@ class Scheduler:
         for i in reversed(range(n)):  # plan.steps is topological
             tail = max((self._priority[j] for j in self._succs[i]), default=0.0)
             self._priority[i] = weight.get(steps[i].id, 1.0) + tail
+        for step_id, value in (priorities or {}).items():  # the feasible path (dsl-spec 11)
+            if step_id in index:
+                self._priority[index[step_id]] = value
         self._index = index
         self._instances = {s.base: plan.instances_of(s.base) for s in steps if s.loop is not None}
         self.states: dict[str, StepState] = {s.id: StepState.PENDING for s in steps}

@@ -107,3 +107,47 @@ def test_a_report_of_an_unknown_run_is_refused() -> None:
     _, runs = build()
     with pytest.raises(RunNotFoundError):
         runs.report("nope")
+
+
+# -- the order of ready steps follows the feasible critical path (US-35) ----------------------
+GUARDED = """\
+workflow: guarded
+version: 1
+inputs:
+  amount: {type: int, min: 0, max: 100}
+steps:
+  p:
+    action: x.y
+  p2:
+    action: x.y
+    needs: [p]
+    when: "${inputs.amount} > 50"
+  p3:
+    action: x.y
+    needs: [p2]
+  q:
+    action: x.y
+  q2:
+    action: x.y
+    needs: [q]
+goals: {all_of: [p3, q2]}
+"""
+
+
+def first_started(amount: int) -> str:
+    db = open_database(":memory:")
+    workflows = WorkflowService(db)
+    saved = workflows.save_draft("guarded", GUARDED, T)
+    assert saved.diagnostics == []
+    workflows.publish("guarded", saved.version.number, T)
+    runs = RunService(db, workflows)
+    runs.start("r1", "guarded", 1, {"amount": amount}, T)
+    [first] = runs.launch("r1", 1).scheduler.start(0.0)
+    assert isinstance(first, Start)
+    return first.step
+
+
+def test_a_run_starts_first_the_step_with_the_longest_chain_that_can_run() -> None:
+    # the chain behind p is three long, the one behind q two; but p2 runs only for amount > 50
+    assert first_started(80) == "p"
+    assert first_started(10) == "q"

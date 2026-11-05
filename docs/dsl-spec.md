@@ -247,8 +247,8 @@ start once a quorum is reached.
 2. `when` is evaluated. False gives SKIPPED; an evaluation error gives FAILED with the code of the
    error.
 3. The step is READY. Ready steps start in the order of the longest chain of steps behind them
-   (weights are the average durations, default 1; the plain critical path until M5, the feasible
-   one of section 11 after it), then in declaration
+   (weights are the average durations, default 1; the feasible chain of section 11 with the
+   inputs of the run, the plain critical path when no priorities are given), then in declaration
    order, while fewer than `m` steps are RUNNING. A WAITING step does not use a slot.
 4. When the action returns, `ensures` is evaluated with the output of the step visible under its
    own name. False gives FAILED with E-CONTRACT-001, an evaluation error gives FAILED with its code.
@@ -676,5 +676,8 @@ skipped step costs nothing, so a chain may pass over it. The chain is feasible w
 finds the conjunction of the `ran` conditions of its steps satisfiable. Durations are the
 averages as before. When the inputs of the run are known they are fixed in the conditions
 (a guard on an input is then decided), so the priority is that of this run. The number of
-alternative chains kept at a step is capped; a cut gives a lower bound and the plain longest
-path is the upper bound. An opaque atom counts as true, which keeps the result an upper bound.
+alternative chains kept at a step is capped (16). When more are left, the longest one that is
+dropped stays under the weaker condition of its first step, so a cut makes a priority longer,
+never shorter. An opaque atom counts as true, and so does a condition too large to keep
+(more than 300 nodes). Every priority is therefore an upper bound of the chain that really runs
+in any execution, and the plain longest path is an upper bound of the priority.

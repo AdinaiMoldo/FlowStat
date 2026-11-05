@@ -69,6 +69,30 @@ def test_ready_steps_with_the_longest_chain_behind_them_start_first() -> None:
     assert starts(sch.start(0.0)) == ["q"]  # q leads a chain of four, p a chain of two
 
 
+def test_given_priorities_replace_the_longest_path() -> None:
+    steps = (
+        "  p:\n    action: x.y\n  q:\n    action: x.y\n  z:\n    action: x.y\n    needs: [p, q]\n"
+    )
+    plan = plan_of(doc(steps, "goals: {any_of: [z]}\n"))
+
+    def first(priorities: dict[str, float]) -> list[str]:
+        return starts(Scheduler(plan, {}, 1, priorities=priorities).start(0.0))
+
+    assert first({"p": 1.0, "q": 5.0, "z": 1.0}) == ["q"]
+    assert first({"p": 5.0, "q": 1.0, "z": 1.0}) == ["p"]
+    # a step that is not named keeps its longest path (2: itself and z), so p ties and goes first
+    assert first({"p": 2.0}) == ["p"]
+    assert first({"p": 1.0}) == ["q"]
+
+
+def test_a_simulation_takes_the_priorities_too() -> None:
+    plan = plan_of(doc(LONG_TAIL, "goals: {all_of: [t, p, q]}\n"))
+    # r opens the long tail: a priority that ranks it last gives the makespan of FIFO
+    low = simulate(plan, {}, 2, durations=LONG_TAIL_TIMES, priorities={"r": 0.0, "t": 10.0})
+    assert low.makespan == 12.0
+    assert simulate(plan, {}, 2, durations=LONG_TAIL_TIMES).makespan == 11.0
+
+
 def test_priority_uses_the_given_durations() -> None:
     steps = (
         "  p:\n    action: x.y\n  q:\n    action: x.y\n  z:\n    action: x.y\n    needs: [p, q]\n"
