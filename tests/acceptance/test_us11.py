@@ -27,9 +27,7 @@ def prepare(path: str) -> RunService:
     for name, items in catalogue.lists.items():
         workflows.set_catalogue_list(name, [dict(i) for i in items])
     text = (ROOT / "examples" / "quarterly_consolidation.yaml").read_text(encoding="utf8")
-    saved = workflows.save_draft(
-        "quarterly_consolidation", text.replace("version: 4", "version: 1"), T
-    )
+    saved = workflows.save_draft("quarterly_consolidation", text, T)
     workflows.publish("quarterly_consolidation", saved.version.number, T)
     return RunService(db, workflows)
 

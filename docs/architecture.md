@@ -27,7 +27,9 @@ layer 0   model                          shared data types
 ```
 
 The engine knows nothing about the IDE, the API, the repository or the actions: it receives them as
-protocols (`engine/ports.py`) and the higher layers implement them. An import from below upwards is an
+protocols and the higher layers implement them. The thread-pool driver (`engine/runner.py`) takes an
+executor function; the registry of `actions` builds that function, and the command line
+(`service/cli.py`) joins the two. An import from below upwards is an
 architecture bug, not a style issue.
 
 ## Third-party libraries

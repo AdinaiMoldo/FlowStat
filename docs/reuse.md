@@ -24,7 +24,6 @@ Versions are those read for the Project Proposal (section 11.4); exact versions 
 | Jinja2 | Template of the generated service (B5) | BSD | 3.1.6 | B |
 | Docker SDK for Python | Build and start containers (B5) | Apache-2.0 | 7.2.0 | B |
 | openpyxl | Read and write xlsx files (B6) | MIT | 3.1.5 | B |
-| pandas | Aggregation inside step actions (B6) | BSD-3-Clause | 3.1.0 | B |
 | httpx | The action http.call (B6) | BSD-3-Clause | 0.28.1 | B |
 | Monaco Editor | Code editor in the IDE (B2) | MIT | 0.57.0 | B |
 | Cytoscape.js | Graph preview (B3) | MIT | 3.34.4 | B |
@@ -34,3 +33,5 @@ Versions are those read for the Project Proposal (section 11.4); exact versions 
 | StatGuard | The action statguard.validate (B6) | own earlier module | no version | reused, not counted |
 
 Not used on purpose: Lark, jsonschema, Z3, sympy, python-constraint, networkx, Airflow, Celery, Temporal.
+
+Note (5 Nov 2026): pandas was planned for aggregation in B6 and is not used. `stats.aggregate` is a sum by code over a few thousand rows, which the standard library does in a dozen lines, so the dependency (and its install time on the Windows and Linux CI runs) is dropped. openpyxl is also a test dependency, because the tests build synthetic regional forms with it.

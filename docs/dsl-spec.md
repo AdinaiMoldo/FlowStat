@@ -177,6 +177,23 @@ every step that is not finished becomes CANCELLED and the run ends as FAILED. Wi
 `on_failure: continue` the failure only travels through the join rules of the steps downstream.
 `retry` is accepted and not yet applied; retries arrive with fault handling (C4).
 
+### 5.2 Actions
+
+An action is a registered function with a declared interface: the names and types of its
+arguments and of the fields of its output. The registry checks both on every call, so a step whose
+action returns a different shape fails with E-ACT-004 instead of passing a wrong value on. The
+workflow text does not repeat these schemas.
+
+| Action | Arguments | Output | Notes |
+| --- | --- | --- | --- |
+| `xlsx.read` | `path: string` | `rows: list`, `count: int` | first sheet; header `code, name, value`; empty rows ignored; path is relative to the data directory |
+| `statguard.validate` | `rows: list` | `rows: list`, `checked: int` | codes non-empty and unique, values numbers and not negative, at least one row |
+| `stats.aggregate` | `parts: list` | `rows: list`, `regions: int` | sum of `value` by `code`, in code order |
+| `approval.wait` | `role: string` | the answer (`decision`, `by`) | pauses the step; the driver supplies the answer |
+| `db.write` | `rows: list` | `written: int`, `batch: string` | batch is the run id; writing again replaces (idempotent) |
+| `db.delete_batch` | none | `deleted: int` | removes the batch of the run (compensation, used from M3) |
+| `email.send` | none | `queued: int` | puts a message in the outbox table; nothing is sent |
+
 ## 6. Diagnostics
 
 Every diagnostic has a code, a severity, a message, a line and a column in the original text (also
@@ -220,6 +237,15 @@ for steps that came from `foreach` expansion, through the source map).
 | E-VER-002 | error | the `workflow` name in the text differs from the name it is saved under | service |
 | E-RUN-001 to E-RUN-008 | error | runtime error of an expression, see 3.1 (the step FAILS) | engine |
 | E-CONTRACT-001 | error | `ensures` is false after the action returned (the step FAILS) | engine |
+| E-ACT-001 | error | the action is not registered (the step FAILS) | actions |
+| E-ACT-002 | error | a file cannot be read; the message has the path as written in `with` | actions |
+| E-ACT-003 | error | the file is not a valid form (not an xlsx file, or the first row is not `code, name, value`) | actions |
+| E-ACT-004 | error | the output of an action does not have its declared schema | actions |
+| E-ACT-005 | error | `statguard.validate`: rows break a rule; the message names the first rows | actions |
+| E-ACT-006 | error | the target database cannot be opened, or the rows cannot be written | actions |
+| E-ACT-007 | error | a path leads outside the data directory | actions |
+| E-ACT-009 | error | an argument of the action is missing or has the wrong type | actions |
+| E-ACT-999 | error | an action raised an exception it did not expect (the step FAILS, the run goes on) | engine |
 | E-TYPE-001 | error | type mismatch | phase 4 (M5) |
 | W-TYPE-002 | warning | output that may be an error is read without a guard | phase 4 (M5) |
 

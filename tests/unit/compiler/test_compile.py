@@ -45,7 +45,7 @@ def test_catalogue_has_nine_regions() -> None:
 def test_the_example_expands_to_22_steps() -> None:
     plan = compiled()
     assert len(plan.steps) == 22
-    assert plan.name == "quarterly_consolidation" and plan.version == 4
+    assert plan.name == "quarterly_consolidation" and plan.version == 1
 
 
 def test_instances_follow_catalogue_order() -> None:

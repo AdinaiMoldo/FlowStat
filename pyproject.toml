@@ -17,9 +17,12 @@ dependencies = [
 [project.optional-dependencies]
 # Category B components. They live outside the C1-C6 packages (see tests/architecture).
 api = ["fastapi", "pydantic", "uvicorn"]
-actions = ["openpyxl", "pandas", "httpx"]
+actions = ["openpyxl", "httpx"]
 deploy = ["jinja2", "docker"]
-dev = ["pytest", "pytest-cov", "hypothesis", "mypy", "ruff", "pre-commit"]
+dev = ["pytest", "pytest-cov", "hypothesis", "mypy", "ruff", "pre-commit", "openpyxl"]
+
+[project.scripts]
+flowstat = "flowstat.service.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -66,3 +69,8 @@ python_version = "3.12"
 mypy_path = "src"
 strict = true
 files = ["src/flowstat", "tests"]
+
+[[tool.mypy.overrides]]
+# openpyxl ships no type information (action xlsx.read, category B).
+module = ["openpyxl", "openpyxl.*"]
+ignore_missing_imports = true
