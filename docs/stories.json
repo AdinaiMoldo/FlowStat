@@ -304,5 +304,14 @@
     "sp": 3,
     "priority": "Could",
     "milestone": "M8"
+  },
+  {
+    "id": "US-35",
+    "story": "As an operator, steps on the longest chain that can really run start first",
+    "criteria": "Given a chain of two steps whose guards exclude each other, and a shorter chain that can run, when one worker is free, then the step that opens the shorter chain starts first. The plain longest path would start the other",
+    "function": "C3",
+    "sp": 5,
+    "priority": "Should",
+    "milestone": "M5"
   }
 ]
