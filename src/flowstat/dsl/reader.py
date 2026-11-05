@@ -75,6 +75,9 @@ def read_yaml(text: str) -> tuple[YNode | None, list[Diagnostic]]:
         data = yaml.load(text)
     except YAMLError as exc:
         mark = getattr(exc, "problem_mark", None) or getattr(exc, "context_mark", None)
+        if getattr(exc, "problem", None) == "could not find expected ':'":
+            # the library notices a missing colon on the next line; the key starts earlier
+            mark = getattr(exc, "context_mark", None) or mark
         line = mark.line + 1 if mark is not None else 1
         column = mark.column + 1 if mark is not None else 1
         if type(exc).__name__ == "DuplicateKeyError":

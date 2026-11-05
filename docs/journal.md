@@ -28,3 +28,21 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 ## 2026-11-03 Working practice follows FleetSync
 
 - Chose: the plan of the Project Proposal stays as it is; the way of working (goal, readiness audit, journal, research notes, review and retrospective per milestone, verification pass against the code) follows the FleetSync project. See `process.md`.
+
+## 2026-11-05 Published versions are protected by the database
+
+- Chose: SQLite triggers refuse UPDATE and DELETE on a published row; the store also refuses to publish twice. A published version keeps the catalogue snapshot it was compiled against, and its plan is always rebuilt from that snapshot.
+- Rejected: protection only in code (a bug above the store could then change a published version without anyone noticing).
+- Checked with: a test that runs raw SQL UPDATE and DELETE against a published row.
+
+## 2026-11-05 The version number is part of the document
+
+- Chose: publishing fails (E-VER-001) when the `version` in the text differs from the version number; the same for the workflow name (E-VER-002).
+- Rejected: the service rewriting the designer's text. The text the designer wrote must be the text that is stored.
+- Cost: after a publication the designer edits the `version` line of the next draft.
+
+## 2026-11-05 A missing colon is reported where the key starts
+
+- Found by: the acceptance test of US-03 (criterion: missing colon on line 14 gives an error on line 14). The YAML library notices the problem one line later.
+- Chose: for this error the reader uses the position of the start of the key. Other YAML errors keep the position given by the library.
+
