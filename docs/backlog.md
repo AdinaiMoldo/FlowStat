@@ -7,7 +7,7 @@ The full backlog (34 user stories, 203 SP baseline, 214 SP planned after the rec
 | M0. Preparation | - | - | Project Proposal, Engineering Playbook, repository skeleton, architecture tests, CI | done |
 | M1 (I1). Language core | 26 + 6 | US-01 to US-05 | Version store, catalogue, YAML reading, expression parser and shape validator, C1 phases 0-3 | done (5 Nov) |
 | M2 (I2). Engine | 38 | US-06 to US-12 | C3 with plain longest path, history, step actions, CLI | done (5 Nov) |
-| M3 (I3). Fault tolerance | 28 | US-13 to US-17 | C4: write-ahead log, replay, saga | in progress |
+| M3 (I3). Fault tolerance | 28 | US-13 to US-17 | C4: write-ahead log, replay, saga | done (5 Nov) |
 | M4 (I4a). Solver | 19 | US-20, US-23, US-24 | C6 solver and test generator, reference interpreter | not started |
 | M5 (I4b). Analysis | 26 + 5 | US-18, US-19, US-21, US-22 | C1 phase 4 (types), C2, feasible critical path | not started |
 | M6 (I5a). API, roles and deployment | 21 | US-25, US-29, US-30 | REST API, roles, packaging a workflow as a service | not started |
