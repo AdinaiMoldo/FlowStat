@@ -201,3 +201,10 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Added: the story US-35 (5 SP) for the feasible critical path, which had SP in the recount and no story.
 - Left out on purpose: nullable types, `round` and `coalesce` (not in the DSL), the completion scope beyond a function for M7, the cache of unchanged prefixes.
 
+## 2026-11-05 Reference interpreter (oracle of C2 and C3)
+
+- Chose: the interpreter takes the compiled plan as data and nothing else from the code base: it has its own join table, its own evaluator of guards and its own search for the longest chain. It does not import the engine, the scheduler, the evaluator or the analysis.
+- Chose: only steps with `on_failure: continue` may fail in the enumeration. A failing step with the default policy stops the run, and what is running at that moment depends on timing (spec 5.4); the checks are about executions where the run goes on.
+- Found: the first reading of the table was settled by the specification (`at_least`: "UPSTREAM_FAILED when f > 0 and s + f >= k", with failures counting FAILED and UPSTREAM_FAILED), and the engine agrees on all 1,920 compared states, so there was no difference to resolve.
+- Limit: the evaluator of the interpreter covers literals, lists, references to inputs and to outputs, `not`, minus, `and`, `or`, arithmetic and comparison; calls are not modelled, and the random workflows do not use them.
+
