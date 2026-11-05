@@ -17,8 +17,8 @@ NAME = "quarterly_consolidation"
 
 
 def text_for(version: int) -> str:
-    assert "version: 4\n" in EXAMPLE
-    return EXAMPLE.replace("version: 4\n", f"version: {version}\n")
+    assert "version: 1\n" in EXAMPLE
+    return EXAMPLE.replace("version: 1\n", f"version: {version}\n")
 
 
 def service() -> WorkflowService:

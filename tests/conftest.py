@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import sqlite3
 from collections.abc import Iterator
 
@@ -22,4 +23,6 @@ def close_databases(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     monkeypatch.setattr(sqlite3, "connect", connect)
     yield
     for connection in opened:
-        connection.close()
+        # opened in a worker thread of a run: the action that opened it closed it
+        with contextlib.suppress(sqlite3.ProgrammingError):
+            connection.close()

@@ -19,7 +19,6 @@ from tests.unit.engine.helpers import ROOT
 T = "2026-11-05T10:00:00Z"
 CATALOGUE = (ROOT / "examples" / "catalogue.yaml").read_text(encoding="utf8")
 TEXT = (ROOT / "examples" / "quarterly_consolidation.yaml").read_text(encoding="utf8")
-TEXT = TEXT.replace("version: 4", "version: 1", 1)  # saved here as the first version
 
 
 def build(publish: bool = True) -> tuple[WorkflowService, RunService]:

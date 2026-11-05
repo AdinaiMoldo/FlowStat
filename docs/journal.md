@@ -82,3 +82,15 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Chose: the run service does not know how steps are executed. It receives a driver (plan and inputs in, events out). The simulated driver is used in tests; US-12 adds the thread-pool driver with real actions.
 - Rejected: storing the status of each step in a table next to the events (two sources of truth).
 
+## 2026-11-05 Actions and the command line (B6)
+
+- Chose: threads exist in one place only. Worker threads run the action of a step and put the outcome in a queue; the calling thread feeds outcomes to the scheduler one by one. The scheduler therefore needs no lock, and a run decided by threads is decided as in the simulation. Time comes from a `clock` argument.
+- Chose: a cancelled step whose thread is still running is not interrupted; its late result is ignored. Killing a thread is unsafe in Python, and M3 handles side effects of an interrupted step through idempotence and compensation, not through interruption.
+- Chose: the registry checks the arguments and the declared output schema of every call (E-ACT-009, E-ACT-004). The workflow text does not repeat the schemas (audit point 4 of M2).
+- Chose: `db.write` stores rows under the id of the run and replaces on repetition, so a repeated call after a crash does not duplicate. Each call opens its own short connection to the target database, because several steps may write from several threads.
+- Chose: `email.send` writes to an outbox table and sends nothing. Real mail is out of scope and a test must never contact anyone.
+- Chose: paths in `xlsx.read` are relative to a data directory and may not leave it (E-ACT-007).
+- Dropped: pandas. Summing by code over a few thousand rows is a dozen lines of standard library; the dependency would only add install time on both CI systems (`reuse.md` has the note).
+- Chose: example workflow is version 1, so that `flowstat publish` works on an empty database.
+- Left for M3: `retry` and its backoff, a timeout for a waiting step, resuming a run that was waiting when the process ended.
+
