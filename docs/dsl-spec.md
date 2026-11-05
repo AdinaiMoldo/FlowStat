@@ -88,6 +88,45 @@ list `regions`. The values are checked when a run starts, against the catalogue 
 the published version, so a later change of the live catalogue does not change a published version.
 An invalid regular expression in `pattern` is E-SHAPE-004. Only the whole text must match a pattern.
 
+### 3.1 Evaluation (runtime meaning)
+
+Values are `null`, `bool`, `int`, `float`, `string`, `list` and `record`. The engine evaluates
+an expression with the inputs of the run and the outputs of the steps that SUCCEEDED.
+
+- `${inputs.x}` reads an input. `${step.field}` reads a field of the output of a step; for an
+  instance of a foreach step the name is the instance (`load[BIS]`). `${check[*].rows}` is the list
+  of `rows` of the instances of `check` that SUCCEEDED, in declaration order; failed, skipped and
+  cancelled instances are left out.
+- Arithmetic follows Python for numbers: `+ - * %` keep integers, `/` gives a float, and `int`
+  and `float` compare by value. `+` also joins two strings. Other mixes are a type error.
+- `==` and `!=` accept any two values; `true` is not equal to `1`. `< <= > >=` accept two numbers or
+  two strings. `x in y` accepts a list (membership), a string (substring, `x` a string) or a
+  record (key).
+- `and`, `or` and `not` need boolean operands and stop as soon as the answer is known. `when` and
+  `ensures` must give a boolean.
+- Built-in functions: `len(list | string | record)`, `sum(list of numbers)`, `min` and `max` (a
+  non-empty list of numbers, or of strings), `count(list)` (the items that are not null) and
+  `exists(reference)`. `exists` is true when the reference can be read and is not null, and false
+  when the step has no output, the field or the index is not there, or the value is null; other
+  errors in its argument are still errors. It is the guard for outputs of steps that may have failed.
+- A template value (`with`) that is exactly one reference keeps the type of the value; otherwise
+  the parts are joined as text (a boolean is `true` or `false`; `null`, lists and records are an
+  error).
+
+Runtime errors do not stop the engine: the step that evaluates the expression FAILS with the code
+and the position of the expression.
+
+| Code | Meaning |
+| --- | --- |
+| E-RUN-001 | unknown name or function |
+| E-RUN-002 | the step has no output (it did not succeed), or the input does not exist |
+| E-RUN-003 | the field does not exist, or the value is `null` |
+| E-RUN-004 | division or remainder by zero |
+| E-RUN-005 | type error (operands do not fit the operator) |
+| E-RUN-006 | index out of range or of the wrong kind |
+| E-RUN-007 | wrong number of arguments of a function, or an invalid argument |
+| E-RUN-008 | `when` or `ensures` did not give a boolean |
+
 ## 4. Types
 
 ```text
