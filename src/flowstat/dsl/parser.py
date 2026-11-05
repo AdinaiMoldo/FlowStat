@@ -16,6 +16,7 @@ from flowstat.dsl.ast import (
     ErrorNode,
     Expr,
     Index,
+    ListLit,
     Literal,
     Name,
     PathPart,
@@ -192,6 +193,8 @@ class _Parser:
             return Name(tok.line, tok.column, str(tok.value))
         if kind is K.REF_OPEN:
             return self.parse_ref()
+        if kind is K.LBRACKET:
+            return self.parse_list()
         if kind is K.LPAREN:
             self.advance()
             inner = self.parse_binary(1)
@@ -203,6 +206,17 @@ class _Parser:
         self.error("E-EXPR-001", f"expected an expression, found {_describe(tok)}", tok)
         self.skip_to_sync()
         return self.error_node("expected an expression", tok)
+
+    def parse_list(self) -> Expr:
+        open_tok = self.advance()  # [
+        items: list[Expr] = []
+        if self.tok.kind is not K.RBRACKET:
+            items.append(self.parse_binary(1))
+            while self.tok.kind is K.COMMA:
+                self.advance()
+                items.append(self.parse_binary(1))
+        self.expect(K.RBRACKET, "']'")
+        return ListLit(open_tok.line, open_tok.column, tuple(items))
 
     def parse_ref(self) -> Expr:
         open_tok = self.advance()  # ${

@@ -78,11 +78,16 @@ class Index(Node):
 
 
 @dataclass(frozen=True, slots=True)
+class ListLit(Node):
+    items: tuple[Expr, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class ErrorNode(Node):
     message: str
 
 
-Expr = Literal | Name | Ref | Unary | Binary | Compare | Call | Attr | Index | ErrorNode
+Expr = Literal | Name | Ref | Unary | Binary | Compare | Call | Attr | Index | ListLit | ErrorNode
 
 
 def _ref_text(ref: Ref) -> str:
@@ -138,6 +143,8 @@ def to_source(expr: Expr) -> str:
             return f"{to_source(obj)}.{name}"
         case Index(obj=obj, index=index):
             return f"{to_source(obj)}[{to_source(index)}]"
+        case ListLit(items=items):
+            return f"[{', '.join(to_source(i) for i in items)}]"
         case ErrorNode():
             return "<error>"
 
@@ -161,5 +168,7 @@ def dump(expr: Expr) -> str:
             return f"(. {dump(obj)} {name})"
         case Index(obj=obj, index=index):
             return f"(idx {dump(obj)} {dump(index)})"
+        case ListLit(items=items):
+            return "(list" + "".join(" " + dump(i) for i in items) + ")"
         case ErrorNode():
             return "(error)"

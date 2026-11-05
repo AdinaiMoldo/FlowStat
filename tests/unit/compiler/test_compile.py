@@ -111,6 +111,19 @@ def test_conditions_are_parsed_expressions() -> None:
     assert step.compensate == "db.delete_batch"
 
 
+def test_references_inside_a_list_literal_are_rewritten() -> None:
+    text = EXAMPLE.replace(
+        "when: \"${approve.decision} == 'approved'\"",
+        "when: \"${approve.decision} in ['approved', ${inputs.quarter}]\"",
+    )
+    assert text != EXAMPLE
+    plan = compile_workflow(text, catalogue()).plan
+    assert plan is not None
+    when = plan.step("publish").when
+    assert when is not None
+    assert dump(when) == "(in ${approve.decision} (list 'approved' ${inputs.quarter}))"
+
+
 def test_goals() -> None:
     plan = compiled()
     assert (plan.goal_kind, plan.goals) == ("any_of", ("publish", "return_to_regions"))
@@ -164,6 +177,8 @@ CASES: list[tuple[str, str, list[str]]] = [
     ("referenced step is not a dependency", doc(A + "  c:\n    action: x.y\n  b:\n    action: x.y\n    needs: [a]\n    when: \"" + MARK + "${c.x} == 1\"\n"), ["E-REF-007"]),
     ("cycle of two", doc("  " + MARK + "a:\n    action: x.y\n    needs: [b]\n  b:\n    action: x.y\n    needs: [a]\n"), ["E-GRAPH-001"]),
     ("self dependency", doc("  " + MARK + "a:\n    action: x.y\n    needs: [a]\n"), ["E-GRAPH-001"]),
+    ("unknown step inside a list literal", doc(A + "  b:\n    action: x.y\n    needs: [a]\n    when: \"${a.x} in [1, " + MARK + "${nostep.x}]\"\n"), ["E-REF-001"]),
+    ("step that is not a dependency inside a list literal", doc(A + "  c:\n    action: x.y\n  b:\n    action: x.y\n    needs: [a]\n    when: \"${a.x} in [" + MARK + "${c.x}]\"\n"), ["E-REF-007"]),
     ("syntax error in a condition", doc("  a:\n    action: x.y\n    when: \"1 +" + MARK + "\"\n"), ["E-EXPR-001"]),
     ("unterminated reference in a value", doc("  a:\n    action: x.y\n    with: {p: \"x " + MARK + "${y\"}\n"), ["E-EXPR-002"]),
     ("shape error stops the compilation", "workflow: demo\nversion: " + MARK + "0\nsteps:\n" + A + GOALS, ["E-SHAPE-004"]),

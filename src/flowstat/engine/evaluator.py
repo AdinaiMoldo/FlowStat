@@ -18,6 +18,7 @@ from flowstat.dsl.ast import (
     ErrorNode,
     Expr,
     Index,
+    ListLit,
     Literal,
     Name,
     Node,
@@ -284,6 +285,8 @@ def evaluate(expr: Expr, ctx: EvalContext) -> object:
             if op == "in":
                 return _contains(a, b, expr)
             return _order(op, a, b, expr)
+        case ListLit(items=items):
+            return [evaluate(i, ctx) for i in items]
         case Call(func=Name(name="exists")):
             return _exists(expr, ctx)
         case Call(func=Name(name=name), args=args):

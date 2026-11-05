@@ -30,6 +30,7 @@ from flowstat.dsl.ast import (
     Compare,
     Expr,
     Index,
+    ListLit,
     Literal,
     PathPart,
     Ref,
@@ -64,6 +65,8 @@ def rewrite_refs(expr: Expr, fn: Callable[[Ref], Expr]) -> Expr:
             return Attr(ln, col, rewrite_refs(obj, fn), name)
         case Index(line=ln, column=col, obj=obj, index=index):
             return Index(ln, col, rewrite_refs(obj, fn), rewrite_refs(index, fn))
+        case ListLit(line=ln, column=col, items=items):
+            return ListLit(ln, col, tuple(rewrite_refs(i, fn) for i in items))
         case _:
             return expr
 

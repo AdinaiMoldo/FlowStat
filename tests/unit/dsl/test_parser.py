@@ -40,6 +40,8 @@ def walk(expr: Expr) -> list[Expr]:
         child = getattr(expr, field, None)
         if child is not None:
             out.extend(walk(child))
+    for item in getattr(expr, "items", ()):
+        out.extend(walk(item))
     for arg in getattr(expr, "args", ()):
         out.extend(walk(arg))
     return out
@@ -230,6 +232,8 @@ ROUND_TRIP_SAMPLES = [
     "len(${consolidate.rows}) >= 7 or x in y",
     "f(g(1, 'it\\'s'), -2.50)[0].name",
     "- - 1 + (2 - 3) * -4",
+    "${approve.decision} in ['approved', 'escalated']",
+    "x in [] or [1, [2, 3]][1][0] == 2",
 ]
 
 
@@ -344,3 +348,41 @@ def test_reference_with_unexpected_token_inside() -> None:
     expr, diags = parse_expression("${a b} + 1")
     assert codes(diags) == ["E-EXPR-001"]
     assert dump(expr) == "(+ (error) 1)"
+
+
+# -- list literal (dsl-spec 3, closes the open point of M1) -----------------------------------
+def test_a_list_literal_is_a_primary() -> None:
+    assert dump(parse_ok("[1, 'a', true]")) == "(list 1 'a' true)"
+    assert dump(parse_ok("[]")) == "(list)"
+    assert dump(parse_ok("x in ['a', 'b']")) == "(in x (list 'a' 'b'))"
+
+
+def test_a_list_literal_can_be_indexed_and_nested() -> None:
+    assert dump(parse_ok("[1, 2][0]")) == "(idx (list 1 2) 0)"
+    assert dump(parse_ok("[[1], [2, 3]]")) == "(list (list 1) (list 2 3))"
+
+
+def test_a_bracket_after_a_primary_is_still_an_index() -> None:
+    assert dump(parse_ok("x[0]")) == "(idx x 0)"
+    assert dump(parse_ok("${a.b}[1]")) == "(idx ${a.b} 1)"
+
+
+def test_list_elements_are_full_expressions() -> None:
+    assert dump(parse_ok("[1 + 2, not a]")) == "(list (+ 1 2) (not a))"
+
+
+def test_a_trailing_comma_and_a_missing_bracket_are_errors() -> None:
+    _, diags = parse_expression("[1, 2,]")
+    assert codes(diags) == ["E-EXPR-001"]
+    _, diags = parse_expression("[1, 2")
+    assert codes(diags) == ["E-EXPR-001"]
+
+
+def test_recovery_inside_a_list_reports_every_error() -> None:
+    _, diags = parse_expression("[1 +, 2 *]")
+    assert codes(diags) == ["E-EXPR-001", "E-EXPR-001"]
+
+
+def test_list_nesting_depth_is_bounded() -> None:
+    _, diags = parse_expression("[" * 200 + "]" * 200)
+    assert "E-EXPR-006" in codes(diags)
