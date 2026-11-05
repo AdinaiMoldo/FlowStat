@@ -295,3 +295,12 @@ def test_catalogue_errors() -> None:
     assert _catalogue_errors("regions: [{name: x}]\n") == ["E-CAT-003"]
     assert _catalogue_errors("regions: [{code: a}, {code: a}]\n") == ["E-CAT-004"]
     assert _catalogue_errors("regions: [{code: a}, {code: b}]\n") == []
+
+
+def test_retry_delay_is_one_second_unless_given() -> None:
+    assert compiled().step("publish").retry.delay == 1.0  # type: ignore[union-attr]
+    text = EXAMPLE.replace("retry: {max: 3, backoff: exponential}", "retry: {max: 2, delay: 0.25}")
+    plan = compile_workflow(text, catalogue()).plan
+    assert plan is not None
+    retry = plan.step("publish").retry
+    assert retry is not None and (retry.max, retry.backoff, retry.delay) == (2, "fixed", 0.25)

@@ -135,3 +135,43 @@ def test_the_history_survives_closing_and_reopening_the_database(tmp_path: Path)
     again = RunStore(open_database(path))
     assert again.events("r1") == events()
     assert again.get("r1").inputs == {"q": 1}
+
+
+def test_retry_events_keep_their_attempt_and_delay() -> None:
+    s = store()
+    s.create("r1", "demo", 1, {}, T)
+    log = [
+        Event(0, EventKind.RUN_STARTED, 0.0),
+        Event(1, EventKind.STEP_STARTED, 0.0, step="a"),
+        Event(
+            2,
+            EventKind.STEP_RETRY,
+            1.0,
+            step="a",
+            attempt=2,
+            delay=1.5,
+            code="E-ACT-008",
+            message="lost",
+        ),
+    ]
+    s.append("r1", log)
+    assert s.events("r1") == log
+
+
+def test_a_database_made_before_retries_is_upgraded(tmp_path: Path) -> None:
+    path = str(tmp_path / "old.db")
+    old = sqlite3.connect(path)
+    old.executescript(
+        "CREATE TABLE runs (run_id TEXT PRIMARY KEY, workflow TEXT NOT NULL,"
+        " version INTEGER NOT NULL, inputs TEXT NOT NULL, created_at TEXT NOT NULL);"
+        "CREATE TABLE run_events (run_id TEXT NOT NULL, seq INTEGER NOT NULL, kind TEXT NOT NULL,"
+        " at REAL NOT NULL, step TEXT, state TEXT, outcome TEXT, code TEXT, message TEXT,"
+        " output TEXT, PRIMARY KEY (run_id, seq));"
+        "INSERT INTO runs VALUES ('r1', 'demo', 1, '{}', 'T');"
+        "INSERT INTO run_events (run_id, seq, kind, at) VALUES ('r1', 0, 'RUN_STARTED', 0.0);"
+    )
+    old.close()
+    upgraded = RunStore(open_database(path))
+    assert upgraded.events("r1") == [Event(0, EventKind.RUN_STARTED, 0.0)]
+    upgraded.append("r1", [Event(1, EventKind.STEP_RETRY, 1.0, step="a", attempt=2, delay=1.0)])
+    assert upgraded.events("r1")[1].attempt == 2

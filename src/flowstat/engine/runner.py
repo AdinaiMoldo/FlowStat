@@ -5,7 +5,9 @@ exist. Worker threads only run the action of a step and put the outcome in a que
 that called ``run_threaded`` feeds the outcomes to the scheduler one by one. So the scheduler needs
 no lock, and a run decided here is decided exactly as in the simulated driver.
 
-Time comes from the ``clock`` argument (deterministic mode): the driver never reads a clock.
+Time comes from the ``clock`` argument and waiting from the ``sleep`` argument (deterministic mode):
+the driver never reads a clock and never sleeps by itself. The delay before a retry is slept in the
+worker thread, so the step keeps its slot and the scheduler thread stays free.
 """
 
 from __future__ import annotations
@@ -27,6 +29,7 @@ class Ok:
 class Error:
     code: str
     message: str
+    transient: bool = False  # a retry may help; set by the action, never guessed here
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,6 +46,7 @@ def run_threaded(
     scheduler: Scheduler,
     execute: Executor,
     clock: Callable[[], float],
+    sleep: Callable[[float], None],
     answer: Answerer | None = None,
 ) -> None:
     """Run the scheduler to the end, or until only waiting steps are left.
@@ -56,6 +60,8 @@ def run_threaded(
     in_flight = 0
 
     def work(command: Start) -> None:
+        if command.delay > 0:
+            sleep(command.delay)
         try:
             outcome = execute(command)
         except Exception as exc:  # an action may fail in any way; the step fails, the run goes on
@@ -83,7 +89,9 @@ def run_threaded(
             if isinstance(outcome, Ok):
                 commands = scheduler.step_done(step, dict(outcome.output), clock())
             elif isinstance(outcome, Error):
-                commands = scheduler.step_failed(step, outcome.code, outcome.message, clock())
+                commands = scheduler.step_failed(
+                    step, outcome.code, outcome.message, clock(), outcome.transient
+                )
             else:
                 commands = scheduler.step_waiting(step, clock())
                 reply = answer(command) if answer is not None else None

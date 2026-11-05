@@ -153,3 +153,17 @@ def test_a_draft_cannot_be_run(env: Env, capsys: pytest.CaptureFixture[str]) -> 
     workflows.save_draft(NAME, Path(WORKFLOW).read_text("utf8"), "2026-11-05T10:00:00Z")
     assert env.run() == 2
     assert "publish" in capsys.readouterr().err
+
+
+def test_the_report_shows_how_many_attempts_a_step_needed(
+    env: Env, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write_all_forms(env.data, "2025Q1")
+    env.publish()
+    capsys.readouterr()
+    env.run("--decision", "approved")
+    lines = capsys.readouterr().out.splitlines()
+    header = next(line for line in lines if line.startswith("step"))
+    assert "tries" in header
+    row = next(line for line in lines if line.startswith("load[BIS]"))
+    assert row.split()[-1] == "1"  # ran once, no retry needed

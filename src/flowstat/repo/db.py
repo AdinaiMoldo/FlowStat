@@ -56,6 +56,8 @@ CREATE TABLE IF NOT EXISTS run_events (
     code    TEXT,
     message TEXT,
     output  TEXT,
+    attempt INTEGER,
+    delay   REAL,
     PRIMARY KEY (run_id, seq)
 );
 
@@ -73,4 +75,17 @@ def open_database(path: str) -> sqlite3.Connection:
     """Open (and create if needed) the database. ``":memory:"`` gives a private test database."""
     db = sqlite3.connect(path, isolation_level=None)  # autocommit; transactions are explicit
     db.executescript(SCHEMA)
+    _add_missing_columns(db)
     return db
+
+
+# Columns added after the first release of the schema: (table, column, type).
+_LATER_COLUMNS = [("run_events", "attempt", "INTEGER"), ("run_events", "delay", "REAL")]
+
+
+def _add_missing_columns(db: sqlite3.Connection) -> None:
+    """A database file of an earlier version gets the columns it lacks; nothing else changes."""
+    for table, column, type_ in _LATER_COLUMNS:
+        have = {row[1] for row in db.execute(f"PRAGMA table_info({table})")}
+        if column not in have:
+            db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {type_}")

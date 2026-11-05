@@ -98,11 +98,15 @@ def _format_report(report: RunReport) -> str:
     outcome = report.outcome.value if report.outcome is not None else "-"
     lines = [
         f"run {report.run_id}  {report.workflow} v{report.version}  {report.status}  {outcome}",
-        f"{'step':<22}{'state':<17}{'start':>8}{'end':>8}  error",
+        f"{'step':<22}{'state':<17}{'start':>8}{'end':>8}{'tries':>7}  error",
     ]
     for s in report.steps:
         error = f"{s.code} {s.message}" if s.code else ""
-        row = f"{s.step:<22}{s.state.value:<17}{at(s.started_at):>8}{at(s.finished_at):>8}  {error}"
+        tries = str(s.attempts) if s.attempts else "-"
+        row = (
+            f"{s.step:<22}{s.state.value:<17}{at(s.started_at):>8}{at(s.finished_at):>8}"
+            f"{tries:>7}  {error}"
+        )
         lines.append(row.rstrip())
     return "\n".join(lines)
 
@@ -156,7 +160,7 @@ def _run(args: argparse.Namespace) -> int:
 
     def driver(plan: Plan, inputs: Mapping[str, object]) -> list[Event]:
         scheduler = Scheduler(plan, inputs, args.workers)
-        run_threaded(scheduler, registry.executor(base), time.time, answer)
+        run_threaded(scheduler, registry.executor(base), time.time, time.sleep, answer)
         return scheduler.events
 
     try:

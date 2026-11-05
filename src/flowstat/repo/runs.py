@@ -28,11 +28,11 @@ class StoredRun:
     created_at: str
 
 
-_EVENT_COLUMNS = "seq, kind, at, step, state, outcome, code, message, output"
+_EVENT_COLUMNS = "seq, kind, at, step, state, outcome, code, message, output, attempt, delay"
 
 
 def _event(row: tuple[object, ...]) -> Event:
-    seq, kind, at, step, state, outcome, code, message, output = row
+    seq, kind, at, step, state, outcome, code, message, output, attempt, delay = row
     return Event(
         int(seq),  # type: ignore[call-overload]
         EventKind(kind),
@@ -43,6 +43,8 @@ def _event(row: tuple[object, ...]) -> Event:
         code,  # type: ignore[arg-type]
         message,  # type: ignore[arg-type]
         json.loads(output) if output is not None else None,  # type: ignore[arg-type]
+        attempt,  # type: ignore[arg-type]
+        delay,  # type: ignore[arg-type]
     )
 
 
@@ -58,6 +60,8 @@ def _values(run_id: str, e: Event) -> tuple[object, ...]:
         e.code,
         e.message,
         json.dumps(e.output, sort_keys=True) if e.output is not None else None,
+        e.attempt,
+        e.delay,
     )
 
 
@@ -134,7 +138,7 @@ class RunStore:
                     )
                 self.db.execute(
                     f"INSERT INTO run_events (run_id, {_EVENT_COLUMNS}) "
-                    "VALUES (?,?,?,?,?,?,?,?,?,?)",
+                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
                     _values(run_id, event),
                 )
                 last = event.seq

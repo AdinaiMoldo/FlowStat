@@ -92,3 +92,27 @@ def test_a_running_step_next_to_a_waiting_one_keeps_the_run_running() -> None:
         Event(3, EventKind.STEP_WAITING, 1.0, step="a"),
     ]
     assert report_from("r", "d", 1, log, STEPS).status == "RUNNING"
+
+
+def test_the_report_counts_the_attempts_of_a_step() -> None:
+
+    def retry(seq: int, at: float, attempt: int) -> Event:
+        return Event(
+            seq, EventKind.STEP_RETRY, at, step="a", attempt=attempt, delay=1.0, code="E-ACT-008"
+        )
+
+    log = [
+        Event(0, EventKind.RUN_STARTED, 0.0),
+        started(1, 0.0, "a"),
+        retry(2, 1.0, 2),
+        retry(3, 3.0, 3),
+        fin(4, 6.0, "a", S.SUCCEEDED, output={}),
+    ]
+    a, b, _ = report_from("r", "d", 1, log, STEPS).steps
+    assert (a.attempts, a.state, a.started_at, a.finished_at) == (3, S.SUCCEEDED, 0.0, 6.0)
+    assert b.attempts == 0  # never ran
+
+
+def test_a_step_that_ran_once_has_one_attempt() -> None:
+    log = [Event(0, EventKind.RUN_STARTED, 0.0), started(1, 0.0, "a")]
+    assert report_from("r", "d", 1, log, STEPS).steps[0].attempts == 1

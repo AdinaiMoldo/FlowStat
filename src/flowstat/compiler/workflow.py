@@ -54,7 +54,7 @@ class StepDecl:
     foreach: Foreach | None
     with_: tuple[tuple[str, tuple[object, ...]], ...]
     on_failure: str
-    retry: tuple[int, str] | None
+    retry: tuple[int, str, float] | None
     compensate: str | None
 
 
@@ -167,12 +167,16 @@ def _build_step(name: Scalar, body: Mapping, diags: list[Diagnostic]) -> StepDec
             else:
                 with_.append((str(entry.key.value), (_plain(value),)))
 
-    retry: tuple[int, str] | None = None
+    retry: tuple[int, str, float] | None = None
     retry_node = body.get("retry")
     if isinstance(retry_node, Mapping):
         max_node = _scalar(retry_node.get("max"))
         if max_node is not None and isinstance(max_node.value, int):
-            retry = (max_node.value, _text(retry_node.get("backoff")) or "fixed")
+            delay_node = _scalar(retry_node.get("delay"))
+            delay = 1.0
+            if delay_node is not None and isinstance(delay_node.value, int | float):
+                delay = float(delay_node.value)
+            retry = (max_node.value, _text(retry_node.get("backoff")) or "fixed", delay)
 
     assert action is not None
     return StepDecl(

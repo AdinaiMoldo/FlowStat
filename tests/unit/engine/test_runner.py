@@ -18,6 +18,10 @@ TWO_THEN_ONE = (
 )
 
 
+def no_sleep(seconds: float) -> None:
+    """The tests of the driver need no real waiting."""
+
+
 def counter() -> Callable[[], float]:
     ticks = itertools.count()
     return lambda: float(next(ticks))
@@ -36,7 +40,7 @@ def test_independent_steps_really_run_at_the_same_time() -> None:
         return Ok({})
 
     s = scheduler(TWO_THEN_ONE, "goals: {any_of: [c]}\n")
-    run_threaded(s, execute, counter())
+    run_threaded(s, execute, counter(), no_sleep)
     assert s.outcome is RunOutcome.SUCCEEDED
     assert all(state is S.SUCCEEDED for state in s.states.values())
 
@@ -57,7 +61,7 @@ def test_never_more_steps_run_than_workers() -> None:
 
     steps = "".join(f"  s{i}:\n    action: x.y\n" for i in range(8))
     s = scheduler(steps, "goals: {any_of: [s0]}\n", workers=2)
-    run_threaded(s, execute, counter())
+    run_threaded(s, execute, counter(), no_sleep)
     assert peak <= 2 and s.outcome is RunOutcome.SUCCEEDED
 
 
@@ -67,7 +71,7 @@ def test_a_failed_step_is_reported_with_code_and_message() -> None:
 
     steps = "  a:\n    action: x.y\n    on_failure: continue\n  b:\n    action: x.y\n"
     s = scheduler(steps, "goals: {any_of: [b]}\n")
-    run_threaded(s, execute, counter())
+    run_threaded(s, execute, counter(), no_sleep)
     assert s.errors["a"] == ("E-ACT-002", "cannot read x")
     assert s.outcome is RunOutcome.SUCCEEDED
 
@@ -80,7 +84,7 @@ def test_an_exception_inside_an_action_fails_only_that_step() -> None:
 
     steps = "  a:\n    action: x.y\n    on_failure: continue\n  b:\n    action: x.y\n"
     s = scheduler(steps, "goals: {any_of: [b]}\n")
-    run_threaded(s, execute, counter())
+    run_threaded(s, execute, counter(), no_sleep)
     assert s.states["a"] is S.FAILED
     assert s.errors["a"] == ("E-ACT-999", "RuntimeError: boom")
     assert s.states["b"] is S.SUCCEEDED
@@ -101,7 +105,7 @@ def test_a_failure_that_stops_the_run_cancels_the_rest() -> None:
         "  after:\n    action: x.y\n    needs: [bad]\n"
     )
     s = scheduler(steps, "goals: {any_of: [after]}\n")
-    run_threaded(s, execute, counter())
+    run_threaded(s, execute, counter(), no_sleep)
     assert s.outcome is RunOutcome.FAILED
     assert (s.states["bad"], s.states["after"]) == (S.FAILED, S.CANCELLED)
     assert s.states["slow"] is S.CANCELLED  # its late result is ignored
@@ -123,7 +127,7 @@ def test_a_waiting_step_is_answered_and_the_run_finishes() -> None:
         return {"decision": "approved"}
 
     s = waiting_workflow()
-    run_threaded(s, execute, counter(), answer)
+    run_threaded(s, execute, counter(), no_sleep, answer)
     assert s.outcome is RunOutcome.SUCCEEDED
     kinds = [e.kind for e in s.events if e.step == "ask"]
     assert kinds == [EventKind.STEP_STARTED, EventKind.STEP_WAITING, EventKind.STEP_FINISHED]
@@ -134,20 +138,20 @@ def test_a_rejection_ends_without_reaching_the_goal() -> None:
         return Pause() if command.step == "ask" else Ok({})
 
     s = waiting_workflow()
-    run_threaded(s, execute, counter(), lambda c: {"decision": "rejected"})
+    run_threaded(s, execute, counter(), no_sleep, lambda c: {"decision": "rejected"})
     assert s.outcome is RunOutcome.GOAL_NOT_REACHED and s.states["go"] is S.SKIPPED
 
 
 def test_without_an_answer_the_run_stays_waiting() -> None:
     s = waiting_workflow()
-    run_threaded(s, lambda c: Pause() if c.step == "ask" else Ok({}), counter())
+    run_threaded(s, lambda c: Pause() if c.step == "ask" else Ok({}), counter(), no_sleep)
     assert s.outcome is None and s.status == "WAITING"
     assert s.states["ask"] is S.WAITING
 
 
 def test_times_come_from_the_given_clock() -> None:
     s = scheduler(TWO_THEN_ONE, "goals: {any_of: [c]}\n", workers=1)
-    run_threaded(s, lambda c: Ok({}), counter())
+    run_threaded(s, lambda c: Ok({}), counter(), no_sleep)
     times = [e.at for e in s.events]
     assert times == sorted(times) and len(set(times)) > 1
     assert all(float(t).is_integer() for t in times)

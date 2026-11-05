@@ -12,10 +12,11 @@ from flowstat.engine.runner import Pause
 class ActionError(Exception):
     """The step fails. ``code`` is an E-ACT code of docs/dsl-spec.md, ``message`` is for people."""
 
-    def __init__(self, code: str, message: str) -> None:
+    def __init__(self, code: str, message: str, transient: bool = False) -> None:
         super().__init__(f"{code} {message}")
         self.code = code
         self.message = message
+        self.transient = transient  # a retry may help (a lost connection), not a bad input
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,6 +25,12 @@ class ActionContext:
     step: str
     data_dir: Path  # root of the regional forms; actions never read outside of it
     target: str | None  # path of the database the results are written to
+    attempt: int = 1  # which attempt of the step this is
+
+    @property
+    def key(self) -> str:
+        """Idempotency key: the same for a repeat of the same attempt, new for a new attempt."""
+        return f"{self.run_id}/{self.step}/{self.attempt}"
 
 
 Args = Mapping[str, object]

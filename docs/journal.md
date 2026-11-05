@@ -111,3 +111,12 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Dropped: a timeout for a waiting step from M3 (no story, no criterion); written to M9. A warning for missing `compensate` moves to M5.
 - Rejected: `httpx` for the HTTP action; the standard library is enough and one dependency fewer has to be installed on both CI systems.
 
+## 2026-11-05 Retries (US-13)
+
+- Chose: the scheduler returns the retry as a `Start` command with the next attempt number and the delay; the driver waits. Nothing in the scheduler sleeps or reads a clock, and the simulated driver turns the delay into virtual time.
+- Chose: the delay is slept in the worker thread. The step keeps its slot during the delay (it is still RUNNING), which is what `dsl-spec.md` 5.3 says; the scheduler thread stays free for other events.
+- Chose: `run_threaded` takes `sleep` as a required argument, not a default of `time.sleep`. A default would hide the one place where an engine reads real time; the command line passes `time.sleep`.
+- Chose: the failed attempt is reported once, as `STEP_RETRY`, with the error that caused it; the step has no FAILED event until the last attempt fails. The report shows the number of attempts.
+- Tested: every combination of `max` 0 to 3, both backoffs and 0 to 4 failures (40 cases) rather than random ones; the space is small enough to be exhaustive, and an exhaustive table is a better oracle than a random one here.
+- Found: a database file made by M2 would not have the new columns of the event table (`CREATE TABLE IF NOT EXISTS` does not change an existing table). `open_database` now adds the missing columns, with a test on an old file.
+

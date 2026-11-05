@@ -48,6 +48,7 @@ def test_us12_the_example_workflow_runs_end_to_end_with_real_files(tmp_path: Pat
         scheduler,
         default_registry().executor(context(tmp_path)),
         lambda: 0.0,
+        lambda seconds: None,
         lambda command: {"decision": "approved"},
     )
 

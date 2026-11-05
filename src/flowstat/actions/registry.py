@@ -49,9 +49,11 @@ class Registry:
                         f"not {type(command.args[name]).__name__}",
                     )
             try:
-                result = spec.handler(command.args, replace(base, step=command.step))
+                result = spec.handler(
+                    command.args, replace(base, step=command.step, attempt=command.attempt)
+                )
             except ActionError as error:
-                return Error(error.code, error.message)
+                return Error(error.code, error.message, error.transient)
             if isinstance(result, Pause):
                 return result
             if spec.output is not None:
