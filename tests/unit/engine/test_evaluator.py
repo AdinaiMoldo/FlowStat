@@ -426,3 +426,27 @@ def test_remaining_corners() -> None:
     with pytest.raises(EvalError) as error:
         evaluate(ErrorNode(1, 1, "boom"), CTX)
     assert error.value.code == "E-RUN-001"
+
+
+# -- list literal (dsl-spec 3) ---------------------------------------------------------------
+def test_a_list_literal_evaluates_to_a_list() -> None:
+    assert evaluate(parse("[1, 'a', 2 + 3]"), CTX) == [1, "a", 5]
+    assert evaluate(parse("[]"), CTX) == []
+
+
+def test_membership_in_a_list_literal() -> None:
+    assert evaluate(parse("${approve.decision} in ['approved', 'escalated']"), CTX) is True
+    assert evaluate(parse("${approve.decision} in ['rejected']"), CTX) is False
+    assert evaluate(parse("1 in [true]"), CTX) is False  # true is not 1
+
+
+def test_elements_are_evaluated_and_their_errors_surface() -> None:
+    with pytest.raises(EvalError) as info:
+        evaluate(parse("[1, ${nothing.x}]"), CTX)
+    assert info.value.code == "E-RUN-002"
+
+
+def test_a_list_literal_can_be_indexed_and_measured() -> None:
+    assert evaluate(parse("[10, 20][1]"), CTX) == 20
+    assert evaluate(parse("len([1, 2, 3])"), CTX) == 3
+    assert evaluate(parse("sum([1, 2, 3])"), CTX) == 6
