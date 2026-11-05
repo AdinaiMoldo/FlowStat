@@ -10,3 +10,9 @@ Row per requirement: UR or DR, user story, function (A/B/C), design element, tes
 | UR-01 | US-04 | C1 | `compiler/compile.py`, `compiler/graph.py` | `tests/unit/compiler/`, `tests/acceptance/test_us03_us05.py` | passed, M1 |
 | UR-01, DR-03 (the graph is static) | US-05 | C1 | `compiler/compile.py` phase 0 | `tests/unit/compiler/test_compile.py`, `tests/acceptance/test_us03_us05.py` | passed, M1 |
 | NFR-01 (compile 200 steps in at most 1 s) | US-04, US-05 | C1 | `compiler/` | `benchmarks/bench_compile.py`, `tests/unit/compiler/test_performance.py` | passed, 68 ms for 200 steps |
+| UR-02 (independent steps run in parallel) | US-06 | C3 | `engine/scheduler.py`, `engine/simulation.py` | `tests/unit/engine/test_scheduler.py`, `tests/unit/engine/test_properties.py`, `tests/acceptance/test_us06_us10.py` | passed, M2 |
+| UR-02 (skips, failures and quorum) | US-07 | C3 | `engine/scheduler.py` (join rules, failure policy) | `tests/unit/engine/test_scheduler.py`, `tests/unit/engine/test_properties.py` (oracle), `tests/acceptance/test_us06_us10.py` | passed, M2 |
+| UR-02, DR-04 (the chief statistician approves) | US-08 | C3 | `engine/scheduler.py` (WAITING, `signal`) | `tests/unit/engine/test_scheduler.py`, `tests/acceptance/test_us06_us10.py` | passed, M2 |
+| UR-02, DR-02 (rejection is data, no false success) | US-09 | C3 | `engine/scheduler.py` (outcome), `model/states.py` | `tests/unit/engine/test_scheduler.py`, `tests/acceptance/test_us06_us10.py` | passed, M2 |
+| UR-02 (a broken contract is a failure) | US-10 | C3, C1 | `engine/scheduler.py` (`ensures`), `engine/evaluator.py` | `tests/unit/engine/test_evaluator.py`, `tests/acceptance/test_us06_us10.py` | passed, M2 |
+| UR-02 (an explicit result for every run) | US-11 | A2 | `repo/runs.py`, `model/history.py`, `service/runs.py` | `tests/unit/repo/test_runs.py`, `tests/unit/model/test_history.py`, `tests/unit/service/test_runs.py`, `tests/acceptance/test_us11.py` | passed, M2 |

@@ -73,3 +73,12 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Rejected: a recursive finish/decide cascade (a failure in a chain of 3,000 steps would exceed the recursion limit); the scheduler uses a queue.
 - Checked with: 250 random workflows against an independent oracle (final states and outcome for 1, 2, 3 and 100 workers), runs of the same workflow under five different seeds and worker counts (identical states, outputs and errors), the invariants of the Proposal (no step starts before its dependencies are terminal, every step is terminal at the end, at most m running), and 4 acceptance tests of the stories.
 
+## 2026-11-05 History of a run (A2)
+
+- Chose: the history is the list of events and nothing else. The report of a run (state, start, end and error of each step) is a fold over the events (`model/history.py`), so no second copy of the state can disagree with the history.
+- Chose: the table of events is append-only (triggers refuse UPDATE and DELETE), as published versions are immutable. A crash-recovery module (C4, M3) can replay it without doubting what was written.
+- Chose: delivery is at least once. An event that is already stored, identical, is ignored; a different event with a used sequence number, or a gap in the numbers, refuses the whole batch and stores nothing (one transaction). This is the rule the outbox of the deployed service needs in M8, so it is cheaper to have it from the start.
+- Chose: a run belongs to a published version; a draft cannot run (it may still change), and wrong inputs are refused before anything is stored.
+- Chose: the run service does not know how steps are executed. It receives a driver (plan and inputs in, events out). The simulated driver is used in tests; US-12 adds the thread-pool driver with real actions.
+- Rejected: storing the status of each step in a table next to the events (two sources of truth).
+
