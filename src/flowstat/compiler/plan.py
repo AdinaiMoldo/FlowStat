@@ -41,6 +41,19 @@ class PlanStep:
     column: int
 
 
+@dataclass(frozen=True, slots=True)
+class InputSpec:
+    name: str
+    type: str  # string, int, float, bool, date or list<...>
+    pattern: str | None
+    ref: str | None  # catalogue list the value must come from
+    has_default: bool
+    default: object
+    required: bool  # a value must be given (false when there is a default or required: false)
+    line: int
+    column: int
+
+
 @dataclass(frozen=True)
 class Plan:
     name: str
@@ -51,6 +64,7 @@ class Plan:
     ancestor_bits: tuple[
         int, ...
     ]  # bit j of entry i is set when steps[j] is an ancestor of steps[i]
+    inputs: tuple[InputSpec, ...] = ()
     _index: dict[str, int] = field(init=False, repr=False, compare=False, default_factory=dict)
 
     def __post_init__(self) -> None:

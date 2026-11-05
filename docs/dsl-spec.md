@@ -17,7 +17,8 @@ inputs       : map  name -> input
 steps        : map  name -> step            (at least one)
 goals        : { any_of | all_of : list of step names }   (at least one step)
 
-input        : { type: type, pattern?: string, default?: literal, required?: bool }
+input        : { type: type, pattern?: string, ref?: catalogue list, default?: literal,
+                 required?: bool }                (required by default unless there is a default)
 
 step         : {
   action      : string                         "package.name", must exist in the action registry
@@ -80,6 +81,13 @@ An expression outside the analysable fragment (a function call that is not built
 expression, arithmetic on two variables with a multiplication) is still valid. The static analysis
 treats it as "unknown", never as "proved" (invariants in `architecture.md`).
 
+### Inputs and the catalogue
+
+`ref: regions` limits an input of type `string` (or `list<string>`) to the codes of the catalogue
+list `regions`. The values are checked when a run starts, against the catalogue snapshot stored with
+the published version, so a later change of the live catalogue does not change a published version.
+An invalid regular expression in `pattern` is E-SHAPE-004. Only the whole text must match a pattern.
+
 ## 4. Types
 
 ```text
@@ -140,8 +148,12 @@ for steps that came from `foreach` expansion, through the source map).
 | E-REF-011 | error | indexing a step by number is not supported | compiler |
 | E-REF-012 | error | unknown catalogue list | compiler |
 | E-REF-013 | error | foreach step referenced without `[var]` or `[*]` | compiler |
+| E-REF-014 | error | `ref` on an input that is not a string or a list of strings | compiler |
 | E-GRAPH-001 | error | dependency cycle (the shortest one is reported) | compiler |
 | E-CAT-001 to E-CAT-004 | error | invalid catalogue file (shape, item, missing or duplicate code) | catalogue loader |
+| E-INPUT-001 to E-INPUT-005 | error | value of a run input: missing, wrong type, pattern, not in the catalogue list, unknown input | input validation |
+| E-VER-001 | error | the `version` in the text differs from the version number being published | service |
+| E-VER-002 | error | the `workflow` name in the text differs from the name it is saved under | service |
 | E-TYPE-001 | error | type mismatch | phase 4 (M5) |
 | W-TYPE-002 | warning | output that may be an error is read without a guard | phase 4 (M5) |
 

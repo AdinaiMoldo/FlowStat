@@ -21,7 +21,7 @@ from flowstat.compiler.graph import (
     strongly_connected_components,
     topological_order,
 )
-from flowstat.compiler.plan import JoinSpec, Plan, PlanStep, RetrySpec
+from flowstat.compiler.plan import InputSpec, JoinSpec, Plan, PlanStep, RetrySpec
 from flowstat.compiler.workflow import NeedRef, Pos, StepDecl, Workflow, build_workflow
 from flowstat.dsl.ast import (
     Attr,
@@ -100,6 +100,19 @@ class _Compiler:
     def error(self, code: str, message: str, pos: Pos) -> None:
         self.diags.append(Diagnostic(code, Severity.ERROR, message, pos.line, pos.column))
 
+    def check_inputs(self) -> None:
+        for decl in self.wf.inputs:
+            if decl.ref is None or decl.ref_pos is None:
+                continue
+            if decl.type not in ("string", "list<string>"):
+                self.error(
+                    "E-REF-014",
+                    f"'ref' needs an input of type string or list<string>, not '{decl.type}'",
+                    decl.ref_pos,
+                )
+            elif decl.ref not in self.catalogue.lists:
+                self.error("E-REF-012", f"unknown catalogue list '{decl.ref}'", decl.ref_pos)
+
     # -- phase 0 and 1: expansion and symbols ----------------------------------------------------
     def expand(self) -> None:
         for decl in self.wf.steps:
@@ -130,6 +143,7 @@ class _Compiler:
                 for item in items:
                     inst = _Instance(f"{decl.name}[{item['code']}]", decl, (decl.foreach.var, item))
                     self.add(inst)
+        self.check_inputs()
         names = {d.name for d in self.wf.steps}
         for goal, pos in self.wf.goals:
             if goal not in names:
@@ -300,7 +314,13 @@ def compile_workflow(
             comp.resolve_with(inst),
         )
         decl = inst.decl
-        if decl.join_kind == "at_least" and decl.join_k_pos and decl.join_k > len(ids):
+        broken = any(n.step in comp.failed_bases for n in decl.needs)  # already reported
+        if (
+            decl.join_kind == "at_least"
+            and decl.join_k_pos
+            and decl.join_k > len(ids)
+            and not broken
+        ):
             comp.error(
                 "E-REF-010",
                 f"at_least {decl.join_k} but '{decl.name}' has only {len(ids)} dependencies",
@@ -384,6 +404,20 @@ def compile_workflow(
             wf.goal_kind,
             tuple(g for g, _ in wf.goals),
             tuple(ancestors),
+            tuple(
+                InputSpec(
+                    i.name,
+                    i.type,
+                    i.pattern,
+                    i.ref,
+                    i.has_default,
+                    i.default,
+                    i.required,
+                    i.pos.line,
+                    i.pos.column,
+                )
+                for i in wf.inputs
+            ),
         )
     final = _report_unique(comp.diags)
     return CompileResult(plan if not final else None, final)
