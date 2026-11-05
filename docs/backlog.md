@@ -9,13 +9,13 @@ The full backlog (34 user stories, 203 SP baseline, 214 SP planned after the rec
 | M2 (I2). Engine | 38 | US-06 to US-12 | C3 with plain longest path, history, step actions, CLI | done (5 Nov) |
 | M3 (I3). Fault tolerance | 28 | US-13 to US-17 | C4: write-ahead log, replay, saga | done (5 Nov) |
 | M4 (I4a). Solver | 19 | US-20, US-23, US-24 | C6 solver and test generator | done (5 Nov) |
-| M5 (I4b). Analysis | 26 + 5 | US-18, US-19, US-21, US-22 | C1 phase 4 (types), C2, feasible critical path | not started |
+| M5 (I4b). Analysis | 26 + 5 | US-18, US-19, US-21, US-22, US-35 | C1 phase 4 (types), C2, feasible critical path | in progress (5 Nov) |
 | M6 (I5a). API, roles and deployment | 21 | US-25, US-29, US-30 | REST API, roles, packaging a workflow as a service | not started |
 | M7 (I5b). IDE and service view | 21 | US-26, US-27, US-28, US-31 | Monaco editor, graph preview, completion, runs of deployed services in the core | not started |
 | M8 (I6). Evolution | 24 | US-32 to US-34 | C5 (conformance first, handover second) and statistics | not started |
 | M9. Hardening | not estimated | - | Coverage gate, final diagrams, traceability matrix, report assembly | not started |
 
-The split of I4 and I5 into two milestones each follows the size of the FleetSync sprints (8 to 29 SP). The SP of M4 and M5 exclude the feasible critical path, which is counted when M5 starts. The reference interpreter (the oracle of C2) moved from M4 to M5 in the readiness audit of M4 and is counted with it. M9 is not in the 203 SP baseline.
+The split of I4 and I5 into two milestones each follows the size of the FleetSync sprints (8 to 29 SP). The SP of M4 and M5 exclude the feasible critical path, which became the story US-35 (5 SP) when M5 started. The reference interpreter (the oracle of C2) moved from M4 to M5 in the readiness audit of M4 and is counted with it. M9 is not in the 203 SP baseline.
 
 Recount of 5 November: the baseline of 203 SP stays the zero point of the burndown. Added scope: parser and shape validator +6 SP (M1, done), feasible critical path +5 SP (M5, estimate). Planned total 214 SP. Not yet estimated: the optional additions in the Playbook (section 3).
 
@@ -55,5 +55,6 @@ Recount of 5 November: the baseline of 203 SP stays the zero point of the burndo
 | US-32 | As a designer, I learn which running instances can move to a new version | C5 | 13 | Should | M8 | not started |
 | US-33 | As an operator, I move a migratable run to the new version | C5 | 8 | Should | M8 | not started |
 | US-34 | As an admin, I see failure rate and average duration per workflow | A5 | 3 | Could | M8 | not started |
+| US-35 | As an operator, steps on the longest chain that can really run start first | C3 | 5 | Should | M5 | not started |
 
 Acceptance criteria: `stories.md`. The same stories are GitHub issues, grouped by milestone.

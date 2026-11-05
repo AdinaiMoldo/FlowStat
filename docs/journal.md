@@ -190,3 +190,14 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Chose: the inputs are validated once, with the values the caller gave and those of the first case; a run that cannot start is reported with its E-INPUT code, not hidden.
 - Found: `I-TEST-001` was defined in the spec but nothing needs it; the lists "cannot happen" and "no input found" belong to the answer of the command, not to a draft. The code is removed from the spec.
 - Limits: instances of a `foreach` are not targets, text for a `pattern` is not generated, a guard with an opaque atom ends as "no input found".
+
+## 2026-11-05 Readiness audit of M5
+
+- Found: seventeen gaps, listed in `milestones/M5.md`. The ones that change the design: the signatures of the actions need element types (`list<row>`), the type check cannot be in the compiler because it needs those signatures (the analysis layer does it), and the formula of the Proposal for `any_success` ignores a predecessor that failed.
+- Chose: phase 4 is a part of the analysis, not of the compiler. This departs from the Proposal (C1 phase 4) and is the price of the layer rule; the check still runs on every save and its errors still block the publication. Written as a deviation in the milestone and to be repeated in the report.
+- Chose: no `T | error` type and no W-TYPE-002. Whether a read of the output of a step that may have failed is safe depends on the join rule, which is what the availability analysis computes. The type of a field stays `T`.
+- Chose: `Av` uses `not ran(P_i)` and treats a predecessor with `on_failure: continue` as one that may have failed. The oracle (the reference interpreter, written first) is the check that this is sound.
+- Chose: the priority of the feasible critical path is computed for the inputs of the run when they are known. The Proposal computes it over all inputs; fixing the inputs is sharper and costs nothing, but it is a departure and the benchmark reports both.
+- Added: the story US-35 (5 SP) for the feasible critical path, which had SP in the recount and no story.
+- Left out on purpose: nullable types, `round` and `coalesce` (not in the DSL), the completion scope beyond a function for M7, the cache of unchanged prefixes.
+

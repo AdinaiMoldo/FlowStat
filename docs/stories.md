@@ -241,3 +241,12 @@ Function C5 · 8 SP · Should
 Given 10 runs with 2 failures, when I open statistics, then the failure rate shows 20%
 
 Function A5 · 3 SP · Could
+
+
+## M5
+
+### US-35: As an operator, steps on the longest chain that can really run start first
+
+Given a chain of two steps whose guards exclude each other, and a shorter chain that can run, when one worker is free, then the step that opens the shorter chain starts first. The plain longest path would start the other
+
+Function C3 · 5 SP · Should

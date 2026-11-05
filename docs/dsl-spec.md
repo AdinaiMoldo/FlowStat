@@ -199,14 +199,26 @@ is the uncovered case.
 ## 4. Types
 
 ```text
-type  : string | int | float | bool | date | list<type> | record{ name: type, ... } | error
+type  : string | int | float | bool | date | null | list<type> | record{ name: type, ... } | any
 ```
 
 - Structural subtyping: a record with more fields is a subtype of a record with fewer fields;
-  `int` is a subtype of `float`.
+  `int` is a subtype of `float`; `list<S>` is a subtype of `list<T>` when `S` is a subtype of `T`.
+- `any` is the type of what the checker cannot know (an output field that the action does not
+  declare, an empty list literal). It fits every type and every operator and never causes an
+  error, so one mistake gives one message and no follow-up.
 - Fan-in: the type of `check[*].rows` is `list<T>` where `T` is the type of one `check[r].rows`.
-- A step that is allowed to fail (`on_failure: continue`) has the output type `T | error` for its
-  consumers; reading it without a guard is a type error (phase 4, M5).
+  The list holds the instances that SUCCEEDED (3.1), so its length is not fixed (section 10).
+- `date` is not a literal of the language: it is passed from an input to an argument, and two
+  dates compare with each other.
+- `null` is the type of the literal; it is compared with `==` and `!=` only.
+- A step that is allowed to fail (`on_failure: continue`) has no output when it failed. Reading
+  it where the join lets the consumer start after the failure is a question of availability, not
+  of types (section 10); there is no `T | error` type.
+
+The names `string`, `int`, `float`, `bool` and `date` are those of the `type` of an input (an
+input of type `list<string>` has that type). The shape of a row of a regional form is the named
+type `row`, an abbreviation for `record{code: string, name: string, value: float}`.
 
 ## 5. Join rules
 
@@ -235,7 +247,8 @@ start once a quorum is reached.
 2. `when` is evaluated. False gives SKIPPED; an evaluation error gives FAILED with the code of the
    error.
 3. The step is READY. Ready steps start in the order of the longest chain of steps behind them
-   (the plain critical path, weights are the average durations, default 1), then in declaration
+   (weights are the average durations, default 1; the plain critical path until M5, the feasible
+   one of section 11 after it), then in declaration
    order, while fewer than `m` steps are RUNNING. A WAITING step does not use a slot.
 4. When the action returns, `ensures` is evaluated with the output of the step visible under its
    own name. False gives FAILED with E-CONTRACT-001, an evaluation error gives FAILED with its code.
@@ -415,8 +428,15 @@ for steps that came from `foreach` expansion, through the source map).
 | E-ACT-008 | error | an HTTP call failed in transport, timed out or got a 5xx answer (transient) | actions |
 | E-ACT-010 | error | an HTTP call got a 4xx answer (permanent) | actions |
 | E-ACT-999 | error | an action raised an exception it did not expect (the step FAILS, the run goes on) | engine |
-| E-TYPE-001 | error | type mismatch | phase 4 (M5) |
-| W-TYPE-002 | warning | output that may be an error is read without a guard | phase 4 (M5) |
+| E-TYPE-001 | error | type mismatch: an operand, a condition, an argument or a function argument has the wrong type | types (M5), see 9 |
+| E-TYPE-002 | error | the output of an action has no such field | types (M5) |
+| E-TYPE-003 | error | a required argument of the action is missing | types (M5) |
+| W-TYPE-004 | warning | the action does not take this argument | types (M5) |
+| W-TYPE-005 | warning | `==` or `!=` between types that have no value in common (the result is always the same) | types (M5) |
+| W-AVAIL-001 | warning | a reference may read an output that does not exist (the step can be skipped or can have failed) | availability (M5), see 10 |
+| W-AVAIL-002 | warning | a reference needs more elements of a group than the join guarantees | availability (M5) |
+| W-GOAL-001 | warning | a goal may be skipped, or the goals do not cover every case | availability (M5) |
+| W-COMP-001 | warning | a step with side effects has no `compensate` in a workflow that undoes failed runs | availability (M5), see 5.4 |
 
 The parser does not stop at the first error: it inserts an error node and continues at the next
 synchronisation token (`)`, `]`, `,`, `and`, `or`, end of the string), so one run reports all
@@ -525,3 +545,123 @@ apart from the errors (`SaveResult.findings`, `WorkflowService.findings`), and t
 the action (`Registry.signatures()`); with no signatures every output is opaque and a group is
 reported as not analysed.
 
+
+## 9. Types of expressions and arguments (M5)
+
+The check runs after a successful compilation, in the analysis (`analysis/types.py`), because it
+needs the declared interface of the actions, which the compiler does not know (the layer rule of
+`architecture.md`). Its errors are errors of the document: they come back in `diagnostics`, block
+the publication, and the warnings come back in `findings` as in 8.4. A foreach step is checked
+once, through its first instance, and reported at the position of the source text.
+
+### 9.1 The type of a reference
+
+- `${inputs.x}` has the declared type of the input (`list<string>` for a list input).
+- `${step.f}` has the type that the action of the step declares for the field `f`. An action that
+  declares its output (the registry does) and has no such field gives E-TYPE-002. An action
+  without a declared output (`approval.wait`) gives `string` for the fields of its `choices` and
+  `any` for the others.
+- `${step[var].f}` is the same for one instance; `${step[*].f}` is `list<type of f>`.
+- A path continued after the reference (`${check[*].rows}[0].code`) walks the type: an index
+  needs a list and gives its element type, `.name` needs a record that has the field.
+
+### 9.2 Operators and functions
+
+An error is reported only where the run would fail (3.1) or where the declared type of an
+argument is broken. The result of an operator whose operands are `any` is `any`.
+
+| Operator | Operands | Result |
+| --- | --- | --- |
+| `+ - *` | numbers | `int` if both are `int`, else `float` |
+| `+` | two strings | `string` |
+| `/` | numbers | `float` |
+| `%` | numbers | as `+` |
+| unary `-` | a number | the same |
+| `< <= > >=` | two numbers, two strings, or two dates | `bool` |
+| `== !=` | any two | `bool`; W-TYPE-005 when the two types have no value in common (`string` and `int`, a `list` and a number) |
+| `and or not` | booleans | `bool` |
+| `x in y` | `y` a `list<T>` (any `x`), a `string` (`x` a string) or a record (`x` a string) | `bool` |
+
+Built-in functions: `len(list | string | record)` gives `int`; `sum(list<number>)` gives the element
+type; `min` and `max` take `list<number>` or `list<string>` and give the element type;
+`count(list)` gives `int`; `exists(reference)` gives `bool`. `when` and `ensures` must be `bool`.
+
+### 9.3 Arguments
+
+A value in `with` is a literal, a template or a whole reference. A whole reference keeps its type;
+a template with text has type `string` and each reference in it must be a string, a number, a
+boolean or a date (a list, a record or `null` is a run-time error, 3.1); a YAML list or mapping
+has the type of its items (`list<any>` when it is empty). The type of the value must fit the
+declared type of the argument (E-TYPE-001, at the reference or at the step when the value has no
+position of its own). A required argument that is missing is E-TYPE-003, an argument the action
+does not take is W-TYPE-004. An action that is not known to the checker (no signature) is not
+checked.
+
+## 10. Availability of outputs, groups and goals (M5)
+
+### 10.1 What is guaranteed
+
+Let `ran(Y)` be the condition, over the inputs and the outputs that guards read, under which `Y`
+runs when no action fails (the optimistic run; in the code it is the exact run condition of 8.3).
+`Av(Y, X)` is a condition under which "if `Y` starts, then `X` has SUCCEEDED". It is sufficient,
+never necessary: where the analysis cannot tell it says less, not more. For the predecessors
+`P_1 ... P_n` of `Y` let `G_i(X)` be true when `X` is `P_i` and `Av(P_i, X)` otherwise.
+
+- `all_success`: `Av(Y, X) = G_1(X) or ... or G_n(X)`. `Y` starts only when all of them
+  succeeded, so one of them is enough.
+- `any_success` and `at_least`: `Av(Y, X) = and over i of (S_i or G_i(X))`, where `S_i` is
+  `not ran(P_i)` when `P_i` cannot fail, and `false` when `P_i` has `on_failure: continue`. A
+  predecessor that did not run cannot be the one that succeeded; one that may have failed can be
+  neither assumed to have run nor to have been absent.
+- `all_done`: nothing is guaranteed; `Av(Y, X)` is false.
+
+A predecessor with `on_failure: fail` that fails stops the run before `Y` is decided (5.1), so
+it does not weaken the conditions. Past the clause cap of the solver, or on an opaque guard, a
+condition is taken as false: the analysis keeps fewer facts, never invented ones.
+
+### 10.2 References
+
+For every reference in `with`, `when` or `ensures` of `Y` to the output of `X` (not `Y` itself):
+
+- in `with` and `ensures`, the reference is valid when `when(Y)` entails `Av(Y, X)` (an entailment
+  query to the solver); otherwise W-AVAIL-001 with a value that shows it ("`approve` is skipped
+  when `decision == 'rejected'`"), or a message that the solver could not decide;
+- in `when`, `when(Y)` is not an assumption (it is what is being computed), so the reference must
+  be valid with the assumption `true`, except that a conjunct `exists(reference)` on the left of
+  an `and` proves the reference to the right of it.
+
+A reference to a step through `[*]` also needs a number of elements (10.3).
+
+### 10.3 Groups
+
+The elements of `x[*].f` are the instances of `x` that SUCCEEDED, in declaration order. The
+number that is guaranteed when `Y` starts is, for the predecessors that are instances of `x`:
+`n` for `all_success`, `k` for `at_least: k`, `1` for `any_success`, `0` for `all_done`. A
+reference needs `i + 1` elements when it indexes the list with a literal `i`, and one element as
+the argument of `min` or `max`. W-AVAIL-002 when the need exceeds what is guaranteed.
+
+### 10.4 Goals and dead steps
+
+For `goals: any_of`, W-GOAL-001 when the conditions `ran(g)` of the goals do not cover every case
+(the solver's exhaustiveness query, with an input that shows it); for `all_of`, once per goal that
+is not guaranteed to run. A goal whose `ran` is unsatisfiable is dead (8.2), and so is every step
+whose `ran` is unsatisfiable (an ancestor is dead or always skipped): W-DEAD-001 names the first
+dead ancestor. The optimistic run ignores failures; a goal that fails is a failure of the run
+and not a skipped goal.
+
+### 10.5 Side effects without an undo
+
+A step whose action is declared to have an effect outside the engine (the registry says so:
+`db.write`, `email.send`, `http.call`) and that has no `compensate` gets W-COMP-001 when some
+step of the workflow has `on_failure: compensate`: a failed run will leave it as it is.
+
+## 11. Priority by the feasible critical path (M5)
+
+The priority of a ready step (5.1) is the length of the longest feasible chain that starts at it:
+a sequence of steps, each an ancestor of the next, that can all run in the same execution. A
+skipped step costs nothing, so a chain may pass over it. The chain is feasible when the solver
+finds the conjunction of the `ran` conditions of its steps satisfiable. Durations are the
+averages as before. When the inputs of the run are known they are fixed in the conditions
+(a guard on an input is then decided), so the priority is that of this run. The number of
+alternative chains kept at a step is capped; a cut gives a lower bound and the plain longest
+path is the upper bound. An opaque atom counts as true, which keeps the result an upper bound.
