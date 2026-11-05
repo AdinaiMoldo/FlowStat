@@ -71,13 +71,18 @@ add_expr  : mul_expr ( ('+' | '-') mul_expr )*
 mul_expr  : unary ( ('*' | '/' | '%') unary )*
 unary     : '-' unary | postfix
 postfix   : primary ( '.' ident | '[' expr ']' | '(' [ expr ( ',' expr )* ] ')' )*
-primary   : literal | '${' path '}' | ident | '(' expr ')'
+primary   : literal | list | '${' path '}' | ident | '(' expr ')'
+list      : '[' [ expr ( ',' expr )* ] ']'
 literal   : int | float | string ('...' or "...") | 'true' | 'false' | 'null'
 ```
 
 Precedence from the loosest to the tightest: `or`, `and`, `not`, comparison, `+ -`, `* / %`,
 unary minus, postfix. Comparison does not chain: `a < b < c` is an error (E-EXPR-003). Built-in functions:
 `len`, `sum`, `min`, `max`, `count`, `exists`.
+
+A list literal is a primary, so `${approve.decision} in ['approved', 'escalated']` is an expression;
+at run time it is a list value and `in` tests membership (3.1). `[` after a primary is an index and
+at the start of a primary it is a list, so the two do not clash.
 
 An expression outside the analysable fragment (a function call that is not built in, a regular
 expression, arithmetic on two variables with a multiplication) is still valid. The static analysis
@@ -128,6 +133,66 @@ and the position of the expression.
 | E-RUN-006 | index out of range or of the wrong kind |
 | E-RUN-007 | wrong number of arguments of a function, or an invalid argument |
 | E-RUN-008 | `when` or `ensures` did not give a boolean |
+
+### 3.2 Static analysis of guards (the fragment of C6)
+
+The analysis of M4 reads the `when` of a step and answers three questions: can two guards hold at
+once, does a set of guards cover every case, can a guard hold at all. It does so with the solver
+(`solver/`), which handles a small fragment exactly and says "unknown" for everything else.
+
+**Variables and domains.** A variable is a reference whose domain is known:
+
+- an input: its declared type (`int`, `float`, `bool`, `string`), narrowed by the optional keys
+  `values` (the allowed constants), `min` and `max` (section 8.2);
+- a field of the output of a step, with the type the action declares for it;
+- the field `decision` of `approval.wait`: an enumeration whose values are the argument
+  `decisions` of the step, `[approved, rejected]` when it is not given.
+
+A reference whose domain is not known (a list, a record, a field of an action without a declared
+schema, a reference through `[*]`) is opaque.
+
+**The fragment.** An atom is one of
+
+- `x op c` or `c op x`, `op` one of `== != < <= > >=`, `x` a variable and `c` a literal;
+- `x + c op d`, `x - c op d` (the constant moves to the right);
+- `x - y op c` and `x op y + c`, with `x` and `y` numeric variables;
+- `x in [c1, c2, ...]` with literals;
+- a boolean variable on its own.
+
+Atoms are combined with `and`, `or` and `not`. Negation is pushed to the atoms (`not (x < 3)` is
+`x >= 3`), so the fragment is closed under negation. A comparison of two literals is evaluated.
+Everything else is an opaque atom: a call (`len`, `exists`, `sum`, ...), `*`, `/`, `%`, an ordering
+of strings, a comparison with `null`, a list or a record. A comparison of two different types is
+`false` for `==` and `true` for `!=` (3.1); an ordering of two different types is opaque, because
+the run would fail and not branch.
+
+**Numbers.** Constants and weights are exact rationals, read from the text of the literal. Over
+integers a strict atom is tightened (`x < 6` is `x <= 5`); a relation between an integer and a
+float variable is read over the real numbers. A float input is a real number: `x > 3` has a
+witness (`3.5`), and a witness is always a number that the engine's evaluator confirms.
+
+**Answers.** A question is answered
+
+- `sat` with a witness (an assignment of the variables that the evaluator of 3.1 accepts),
+- `unsat`, proved, or
+- `unknown`.
+
+A clause with an opaque atom is `unsat` only when the rest of the clause is `unsat` without it;
+otherwise it is `unknown`, never `sat`. A predicate whose disjunctive normal form has more than 64
+clauses is `unknown`. No warning is based on `unknown` (section 8).
+
+**How it is decided.** The predicate becomes a disjunction of clauses (DNF with the cap). A clause
+is a conjunction of atoms. Each variable gets its domain from the atoms on it alone (a union of
+intervals for numbers, a finite set for enumerations and booleans, a finite or cofinite set for
+strings). The relations between two variables are the edges of a difference graph with weights
+`(c, k)`, `k` the number of strict edges; the clause is unsatisfiable when the graph has a negative
+cycle (`c < 0`, or `c = 0` and `k > 0`), found by Bellman-Ford. A witness is built from the
+shortest distances, then moved to a boundary value inside the domain of each variable. The check
+of the second implementation (Floyd-Warshall) is a test, not part of the product.
+
+**Questions the analysis asks.** `sat(p)`; `exclusive(p, q)` is `unsat(p and q)`; `entails(p, q)` is
+`unsat(p and not q)`; `exhaustive(p1..pn)` is `unsat(not p1 and ... and not pn)`, and its witness
+is the uncovered case.
 
 ## 4. Types
 
@@ -328,6 +393,9 @@ for steps that came from `foreach` expansion, through the source map).
 | E-GRAPH-001 | error | dependency cycle (the shortest one is reported) | compiler |
 | E-CAT-001 to E-CAT-004 | error | invalid catalogue file (shape, item, missing or duplicate code) | catalogue loader |
 | E-INPUT-001 to E-INPUT-005 | error | value of a run input: missing, wrong type, pattern, not in the catalogue list, unknown input | input validation |
+| E-INPUT-006 to E-INPUT-008 | error | value of a run input outside `values`, below `min`, above `max` | input validation |
+| W-BRANCH-001, W-BRANCH-002, W-DEAD-001 | warning | overlapping or uncovered branches, a step that can never run | analysis (M4), see 8.4 |
+| I-BRANCH-003, I-TEST-001 | info | a group or a test target the analysis cannot decide | analysis (M4), see 8.4 |
 | E-VER-001 | error | the `version` in the text differs from the version number being published | service |
 | E-VER-002 | error | the `workflow` name in the text differs from the name it is saved under | service |
 | E-RUN-001 to E-RUN-008 | error | runtime error of an expression, see 3.1 (the step FAILS) | engine |
@@ -355,5 +423,82 @@ syntax errors of a document.
 ## 7. Open points for M1
 
 - ~~Escape sequences in strings~~ Closed 3 November: `\n \t \r \\ \' \"` are the escapes; any other escape is E-EXPR-004 and the character is kept.
-- Whether `in` takes a list literal (`x in [1, 2]`) in M1 or only a catalogue list.
+- ~~Whether `in` takes a list literal (`x in [1, 2]`) in M1 or only a catalogue list.~~ Closed 5 November (M4): it does, a list literal is a primary (section 3).
 - ~~Exact `retry` semantics when `ensures` fails~~ Closed 5 November: the step fails at once and is not retried (section 5.3).
+
+## 8. Analysis of branches, dead steps and test inputs (M4)
+
+### 8.1 Branch groups
+
+A branch group is a set of at least two steps that
+
+- have a `when`,
+- have the same `needs`,
+- have guards over the same set of variables,
+- are not instances of one `foreach` step.
+
+Guards over different variables are independent choices, not alternatives, and are not compared. A
+guarded step that is alone in its group is an optional step and gets no coverage warning. This is
+a heuristic: it recognises the shape of `publish` and `return_to_regions` and is wrong for a group
+that is meant to be partial; such a group is silenced by writing the guard of the missing case.
+
+For a group the analysis reports, with the diagnostics of 8.4:
+
+- **overlap**: two members whose guards can hold at once, with a witness (the two steps then both
+  run);
+- **uncovered**: a case that no member handles, with a witness. A case such as `escalated` is
+  reported by name.
+
+Both are reported only when proved (`sat`). When a group contains an opaque atom nothing is
+claimed and a note says that the group could not be analysed.
+
+### 8.2 Dead steps
+
+A step is dead when its guard is `unsat` over the domains of its variables. This includes a guard
+that contradicts an input constraint (`values`, `min`, `max`). That an ancestor is dead or always
+skipped, so the step never runs, is the optimistic-run condition of C2 (M5); M4 reports a guard
+that is unsatisfiable by itself. Input constraints:
+
+- `values: [..]` lists the allowed constants (the type of each is the type of the input);
+- `min` and `max` bound an `int` or `float` input, inclusive;
+- they are checked when a run starts: E-INPUT-006 (not one of `values`), E-INPUT-007 (below `min`),
+  E-INPUT-008 (above `max`).
+
+### 8.3 Generated test inputs
+
+A target is "step `s` runs" or "step `s` is skipped", for each guarded step. A test case is
+
+- values for the variables that guards read,
+- the outputs that mocked actions return (an output field that no guard reads gets the default of
+  its type: `0`, `0.0`, `false`, `""`, an empty list),
+- the inputs that no guard reads, given by the caller (`--input`); the solver does not generate
+  text that matches a pattern.
+
+For each target the generator takes candidates from the solver: a witness of the guard together
+with the guards of its guarded ancestors, the boundaries of every comparison, and every value of an
+enumeration. What a case really covers is decided by `predict`: an optimistic run of the plan that
+applies the four join rules (5.1) to concrete values and evaluates guards with the evaluator of 3.1.
+The test set is a greedy set cover over the targets (the case that covers most still uncovered
+targets, ties broken by the order of the plan), so it is deterministic.
+
+A target that no candidate covers is "infeasible" when the solver proved it (the guard, or its
+negation, is `unsat`) and "no input found" otherwise; nothing more is claimed for the latter.
+
+The command `flowstat tests NAME [VERSION] --input ...` prints the cases, runs each through
+`simulate` with mocked actions and reports every step whose observed state (run or skipped)
+differs from the prediction. A contract (`ensures`) that fails on a mocked output is reported
+as a difference.
+
+### 8.4 Diagnostics of the analysis
+
+| Code | Severity | Meaning |
+| --- | --- | --- |
+| W-BRANCH-001 | warning | two steps of a branch group can both run (the witness is in the message) |
+| W-BRANCH-002 | warning | a case that no step of a branch group handles (the witness is in the message) |
+| W-DEAD-001 | warning | the guard of a step can never be true |
+| I-BRANCH-003 | info | a branch group could not be analysed (an opaque atom, or too many clauses) |
+| I-TEST-001 | info | a target for which no test input exists: proved infeasible, or not found |
+
+Warnings and notes come from the analysis and do not block `publish`; only errors do. The analysis
+runs after a successful compilation, so it never sees a plan with errors.
+
