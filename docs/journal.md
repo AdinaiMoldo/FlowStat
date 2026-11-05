@@ -236,3 +236,8 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Found: the gain over the plain path is small on random workflows (0.0% to 0.9% of the makespan with the inputs of the run), because the plain path is already within 1.4% of the bound. The note in `research/priority-rules.md` says so and does not claim more. The case of the story is decided by it, and that is a test.
 - Found by the tests: two thresholds of "the check is not empty" were set above what random workflows produce (1,408 comparisons against 1,500; 69 against 100); they were lowered to the measured level and not the other way round.
 - Limit: durations are 1 in a real run until runs keep averages; the cost without inputs (up to 1.1 s at 200 steps) is why the service uses the inputs of the run.
+
+## 2026-11-05 M5 measurement and close-out
+
+- Measured: availability against plain reachability on 250 random workflows, by enumeration in the reference interpreter: 648 safe reads, plain recognises 57.1%, ours 91.5%, and neither lets an unsafe read through. The remaining 55 false warnings are nearly all reads behind `at_least` or `any_success` where one dependency depends on another; the rule passes on facts about the ancestors of each dependency only. Left as a stated limit and not widened now: it is a precision gain of at most 8.5 points, and a wider rule would need its own oracle.
+- Wrote: the card `algorithms/C2.md` (it was a template), level 2 of `algorithms/C3.md`, `research/availability-measurement.md`, the review and the retrospective of M5. The retrospective names the slip of writing the type check before its tests and the corrected audit point.
