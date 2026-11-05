@@ -29,8 +29,10 @@ step         : {
   when?       : expression                     boolean; the step runs only if true
   ensures?    : expression                     boolean; checked after the action returns
   foreach?    : "name in catalogue.<list>"     expanded at publication
-  on_failure? : fail | continue                (default: fail)
-  retry?      : { max: int >= 0, backoff: fixed | exponential }
+  on_failure? : fail | continue | compensate   (default: fail)
+  retry?      : { max: int >= 0, backoff: fixed | exponential, delay?: number > 0 }
+                                                max = retries after the first attempt;
+                                                delay in seconds (default 1)
   compensate? : action name                    undo action used by the saga
 }
 ```
@@ -175,7 +177,7 @@ start once a quorum is reached.
 A step that FAILS with `on_failure: fail` (the default) stops the run: running steps are cancelled,
 every step that is not finished becomes CANCELLED and the run ends as FAILED. With
 `on_failure: continue` the failure only travels through the join rules of the steps downstream.
-`retry` is accepted and not yet applied; retries arrive with fault handling (C4).
+`retry` is applied from M3 (section 5.3); `on_failure: compensate` runs the saga of section 5.4.
 
 ### 5.2 Actions
 
@@ -193,6 +195,67 @@ workflow text does not repeat these schemas.
 | `db.write` | `rows: list` | `written: int`, `batch: string` | batch is the run id; writing again replaces (idempotent) |
 | `db.delete_batch` | none | `deleted: int` | removes the batch of the run (compensation, used from M3) |
 | `email.send` | none | `queued: int` | puts a message in the outbox table; nothing is sent |
+
+### 5.3 Retry and idempotency keys
+
+`retry: {max: n, backoff: fixed | exponential, delay: d}` retries a step after a *transient*
+failure. `max` counts retries, so the step makes at most `n + 1` attempts; `delay` is in seconds and
+defaults to 1.
+
+- Transient or not is decided by the action, not by the workflow: a lost connection, a timeout and an HTTP 5xx are transient; a missing file, a failed validation, an HTTP 4xx and an unexpected exception are not. A permanent failure fails the step at once, whatever `retry` says.
+- A failed contract (`ensures`) or an error in an expression is never retried: the action returned, so the failure is in the result and a second call would repeat its side effect for nothing.
+- The delay before the retry number k (k = 1, 2, ...) is `d` for `fixed` and `d * 2^(k-1)` for `exponential`. There is no jitter, so a run is reproducible.
+- During the delay the step stays RUNNING and keeps its slot; each retry is an event (`STEP_RETRY`) with the attempt number, the delay and the error that caused it.
+- When the retries are used up the step FAILS with the code and message of the last error, and its `on_failure` policy applies.
+- Every attempt carries the idempotency key `run id / step id / attempt number` (attempts start at 1). An action that honours the key makes a repeated attempt harmless. After a crash the lost attempt is run again with the same key (section 5.5).
+
+### 5.4 Compensation (saga)
+
+`on_failure: compensate` stops the run as `fail` does (running steps are cancelled, steps not yet
+finished become CANCELLED) and then undoes the completed work.
+
+1. The steps to undo are those that SUCCEEDED and declare `compensate: action`.
+2. A step is undone only after every step it can reach (its descendants through `needs`, including steps without `compensate` in between) that is also to be undone has been undone. Independent compensations run in parallel, within the limit of `m`.
+3. The compensation action receives the arguments the step had when it ran (`with`, rendered again from the recorded outputs) and the key `run id / step id / compensate / attempt`.
+4. A compensation that fails transiently is retried with the `retry` of its step, or with 3 retries and exponential backoff when the step has none. When the retries are used up the compensation fails; the steps that were waiting for it stay uncompensated, the others continue.
+5. The run ends COMPENSATED when every step in the list was undone (also when the list is empty), and COMPENSATION_FAILED otherwise, with the list of steps that remain.
+
+A step that was undone has the state COMPENSATED instead of SUCCEEDED; a step whose compensation is
+running is COMPENSATING and one whose compensation failed is COMPENSATION_FAILED. An effect that
+cannot be undone (an e-mail that was sent) is expressed by not declaring `compensate`; the step is
+then simply not in the list. A warning for a step with side effects and no `compensate` needs
+information about the actions and comes with the static analysis (M5).
+
+### 5.5 Crash recovery and uncertain steps
+
+The history of a run is a write-ahead log: the events a scheduler step produced are stored and committed *before* the commands they
+produced are executed and before a signal is acknowledged.
+
+After a crash the engine reads the events of every run that did not finish and rebuilds the state
+from them (no decision is taken again from scratch; the recorded states are the state). Then:
+
+- a step that was WAITING stays WAITING; its answer is still awaited;
+- a step with all dependencies finished and no events of its own is decided again (the decision is a function of recorded values, so it comes out the same);
+- a step that was RUNNING and whose action is **idempotent** is run again with the *same* attempt number and so the same key. If the first call had taken effect, the receiver recognises the key and does nothing twice;
+- a step that was RUNNING and whose action is **not idempotent** becomes UNCERTAIN (code E-REC-001). Nothing is run again automatically: the effect may or may not exist, and only a person (or the receiving system) can tell. Steps that depend on it wait, independent steps go on, and the run is WAITING when nothing else can move.
+
+An operator resolves an UNCERTAIN step in one of two ways: **done** (the effect exists; the operator may
+give the output that the step would have produced, `{}` by default), which makes the step SUCCEEDED, or
+**retry** (the effect does not exist, or a repeat is acceptable), which starts a new attempt with the
+next attempt number. Both are recorded as events with the time and the decision.
+
+A run that was COMPENSATING continues its compensation: compensations that have a COMPENSATED event are
+not repeated; the one that was in flight follows the rule above, so its action must be idempotent
+(a non-idempotent compensation becomes UNCERTAIN in the same way).
+
+Whether an action is idempotent is part of its declared interface (the registry, section 5.2):
+`xlsx.read`, `statguard.validate`, `stats.aggregate`, `db.write`, `db.delete_batch` and `http.call`
+(which sends the key) are idempotent; `email.send` is not.
+
+Limits, stated: exactly-once delivery is impossible without the cooperation of the receiving system,
+so for an action that ignores the key the guarantee is "at most once automatically, otherwise
+UNCERTAIN"; a clock jump is not part of the fault model; one process owns a run at a time (the owner
+switch is C5, M8).
 
 ## 6. Diagnostics
 
@@ -245,6 +308,10 @@ for steps that came from `foreach` expansion, through the source map).
 | E-ACT-006 | error | the target database cannot be opened, or the rows cannot be written | actions |
 | E-ACT-007 | error | a path leads outside the data directory | actions |
 | E-ACT-009 | error | an argument of the action is missing or has the wrong type | actions |
+| E-REC-001 | error | the outcome of a non-idempotent step is unknown after a crash (the step is UNCERTAIN) | recovery |
+| E-COMP-001 | error | a compensation failed after its retries (the step is COMPENSATION_FAILED) | recovery |
+| E-ACT-008 | error | an HTTP call failed in transport, timed out or got a 5xx answer (transient) | actions |
+| E-ACT-010 | error | an HTTP call got a 4xx answer (permanent) | actions |
 | E-ACT-999 | error | an action raised an exception it did not expect (the step FAILS, the run goes on) | engine |
 | E-TYPE-001 | error | type mismatch | phase 4 (M5) |
 | W-TYPE-002 | warning | output that may be an error is read without a guard | phase 4 (M5) |
@@ -257,4 +324,4 @@ syntax errors of a document.
 
 - ~~Escape sequences in strings~~ Closed 3 November: `\n \t \r \\ \' \"` are the escapes; any other escape is E-EXPR-004 and the character is kept.
 - Whether `in` takes a list literal (`x in [1, 2]`) in M1 or only a catalogue list.
-- Exact `retry` semantics when `ensures` fails (retry the action, or fail at once).
+- ~~Exact `retry` semantics when `ensures` fails~~ Closed 5 November: the step fails at once and is not retried (section 5.3).

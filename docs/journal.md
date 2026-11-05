@@ -101,3 +101,13 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Not claimed: that the feasible critical path of M5 will win. The generated DAGs have no conditions that make a chain unreachable; M5 needs a generator with such branches and reports against this table.
 - Closed: M2 review and retrospective, card C3 level 1, backlog and traceability. The tag `m2` is created by the user in the GitHub interface, as for `m1`.
 
+## 2026-11-05 M3 audit
+
+- Found: eleven gaps between the Proposal and the code of M2 (listed in `milestones/M3.md`). The two that would have cost most if found late: events were stored only after a run (a crash would lose the whole history), and the action interface had no idempotency flag, so recovery could not tell which steps may be run again.
+- Chose: recovery folds the recorded states and does not replay decisions. Replaying the scheduler from the inputs would need the raw results of actions, which are not all in the log (a failed contract leaves no output), and a fold is also what the Proposal describes.
+- Chose: the lost attempt of an idempotent step is run again with the same key, not a new one; with a new key the receiver could not recognise the repeat.
+- Chose: an operator's retry of an UNCERTAIN step uses a new attempt number (the person accepts the risk of a repeat).
+- Chose: no jitter in the backoff, so that a run and its tests are reproducible.
+- Dropped: a timeout for a waiting step from M3 (no story, no criterion); written to M9. A warning for missing `compensate` moves to M5.
+- Rejected: `httpx` for the HTTP action; the standard library is enough and one dependency fewer has to be installed on both CI systems.
+
