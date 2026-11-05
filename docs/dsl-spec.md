@@ -268,13 +268,17 @@ workflow text does not repeat these schemas.
 
 | Action | Arguments | Output | Notes |
 | --- | --- | --- | --- |
-| `xlsx.read` | `path: string` | `rows: list`, `count: int` | first sheet; header `code, name, value`; empty rows ignored; path is relative to the data directory |
-| `statguard.validate` | `rows: list` | `rows: list`, `checked: int` | codes non-empty and unique, values numbers and not negative, at least one row |
-| `stats.aggregate` | `parts: list` | `rows: list`, `regions: int` | sum of `value` by `code`, in code order |
-| `approval.wait` | `role: string` | the answer (`decision`, `by`) | pauses the step; the driver supplies the answer |
-| `db.write` | `rows: list` | `written: int`, `batch: string` | batch is the run id; writing again replaces (idempotent) |
+| `xlsx.read` | `path: string` | `rows: list<row>`, `count: int` | first sheet; header `code, name, value`; empty rows ignored; path is relative to the data directory |
+| `statguard.validate` | `rows: list<row>` | `rows: list<row>`, `checked: int` | codes non-empty and unique, values numbers and not negative, at least one row |
+| `stats.aggregate` | `parts: list<list<row>>` | `rows: list<row>`, `regions: int` | sum of `value` by `code`, in code order |
+| `approval.wait` | `role: string`; optional `decisions: list<string>` | `decision: string`, `by: string` | pauses the step; the driver supplies the answer |
+| `db.write` | `rows: list<row>` | `written: int`, `batch: string` | batch is the run id; writing again replaces (idempotent); has an effect (10.5) |
 | `db.delete_batch` | none | `deleted: int` | removes the batch of the run (compensation, used from M3) |
-| `email.send` | none | `queued: int` | puts a message in the outbox table; nothing is sent |
+| `email.send` | none | `queued: int` | puts a message in the outbox table; nothing is sent; has an effect (10.5) |
+| `http.call` | `url: string`; optional `method: string`, `body: any`, `timeout: float` | `status: int` | 5.3; has an effect (10.5) |
+
+The types are written in the notation of section 4 and are what the type check of section 9 reads;
+the registry derives the Python type it checks at run time from the same declaration.
 
 ### 5.3 Retry and idempotency keys
 

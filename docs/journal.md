@@ -208,3 +208,13 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Found: the first reading of the table was settled by the specification (`at_least`: "UPSTREAM_FAILED when f > 0 and s + f >= k", with failures counting FAILED and UPSTREAM_FAILED), and the engine agrees on all 1,920 compared states, so there was no difference to resolve.
 - Limit: the evaluator of the interpreter covers literals, lists, references to inputs and to outputs, `not`, minus, `and`, `or`, arithmetic and comparison; calls are not modelled, and the random workflows do not use them.
 
+## 2026-11-05 Types (US-18, US-19)
+
+- Chose: a type is a small closed set (`string`, `int`, `float`, `bool`, `date`, `null`, `list`, `record`, and `any` for what is not known). `any` fits everything and gives `any`, which is how one mistake gives one message: a comparison that fails is still a `bool`, so the `and` and the `when` around it stay quiet.
+- Chose: the actions declare their types in the same notation (`list<row>`, `list<list<row>>`), and the registry derives the Python class that it checks at run time from the declaration, so there is one source. A test compares the two. Optional arguments (`method`, `body`, `timeout`, and `decisions` of an approval) are declared, otherwise W-TYPE-004 would name real arguments as typos.
+- Chose: `exists(...)` reads its argument quietly; a missing field is what it is for. A call that is not built in is valid and `any` (spec 3), not an error.
+- Chose: the shape of the message for a comparison is "A list cannot be compared with a number: '>' takes two numbers, two strings or two dates", at the left operand, which is where the comparison starts in the text.
+- Went wrong: `analysis/types.py` was written before its tests, against the rule that C1 is tested first. The tests that followed were written from the specification and not from the code (the table of operators, the example of the story, a comparison of 600 random expressions with the reference evaluator), and seven deliberate faults each failed them, so the check is a real one, but the order was wrong and the retrospective of M5 says so.
+- Found by the tests: positions in a diagnostic refer to the whole document, so a test that looks at the line of the error needs the lines of the head that the helper adds; and a foreach step cannot be a goal (E-REF-009), so the test of nine instances ends in another step.
+- Limit: an argument given as a YAML literal has no position of its own, so its error is reported at the step.
+

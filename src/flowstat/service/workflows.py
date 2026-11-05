@@ -9,8 +9,9 @@ from dataclasses import dataclass, field
 
 from flowstat.analysis.guards import analyse
 from flowstat.analysis.signatures import Signatures
+from flowstat.analysis.types import check_types
 from flowstat.compiler.catalogue import Catalogue
-from flowstat.compiler.compile import compile_workflow
+from flowstat.compiler.compile import CompileResult, compile_workflow
 from flowstat.compiler.inputs import InputError, validate_inputs
 from flowstat.compiler.plan import Plan
 from flowstat.model.diagnostics import Diagnostic, Severity
@@ -74,20 +75,37 @@ class WorkflowService:
         lists = self.catalogue_repo.all_lists()
         return Catalogue({name: tuple(items) for name, items in lists.items()})
 
+    # -- compilation and analysis --------------------------------------------------------------
+    def _compile(self, text: str, catalogue: Catalogue) -> CompileResult:
+        """The compiler, then the check of types; an error of either leaves no plan."""
+        result = compile_workflow(text, catalogue, self.known_actions)
+        if result.plan is None:
+            return result
+        errors = [
+            d for d in check_types(result.plan, self.signatures) if d.severity is Severity.ERROR
+        ]
+        return CompileResult(None, errors) if errors else result
+
+    def _findings(self, plan: Plan) -> list[Diagnostic]:
+        """Warnings and notes: the types, then the guards."""
+        found = [d for d in check_types(plan, self.signatures) if d.severity is not Severity.ERROR]
+        found += analyse(plan, self.signatures)
+        return sorted(found, key=lambda d: (d.line, d.column, d.code))
+
     # -- versions ------------------------------------------------------------------------------
     def save_draft(self, name: str, text: str, now: str) -> SaveResult:
         """Store the text (a draft can hold errors) and report what is wrong with it."""
         catalogue = self.catalogue()
         version = self.versions_store.save(name, text, snapshot_to_json(catalogue), now)
-        result = compile_workflow(text, catalogue, self.known_actions)
-        findings = analyse(result.plan, self.signatures) if result.plan is not None else []
+        result = self._compile(text, catalogue)
+        findings = self._findings(result.plan) if result.plan is not None else []
         return SaveResult(version, result.diagnostics, findings)
 
     def publish(self, name: str, number: int, now: str) -> Version:
         """Freeze a draft. Nothing changes when the document has errors."""
         draft = self.versions_store.get(name, number)
         catalogue = self.catalogue()
-        result = compile_workflow(draft.text, catalogue, self.known_actions)
+        result = self._compile(draft.text, catalogue)
         if result.plan is None:
             raise PublishError(result.diagnostics)
         problems: list[Diagnostic] = []
@@ -120,8 +138,8 @@ class WorkflowService:
     def findings(self, name: str, number: int) -> list[Diagnostic]:
         """Warnings and notes of a version: what the analysis could say about its guards."""
         version = self.versions_store.get(name, number)
-        result = compile_workflow(version.text, self._catalogue_for(version), self.known_actions)
-        return analyse(result.plan, self.signatures) if result.plan is not None else []
+        result = self._compile(version.text, self._catalogue_for(version))
+        return self._findings(result.plan) if result.plan is not None else []
 
     def get(self, name: str, number: int) -> Version:
         return self.versions_store.get(name, number)
@@ -137,7 +155,7 @@ class WorkflowService:
 
     def get_plan(self, name: str, number: int) -> Plan:
         version = self.versions_store.get(name, number)
-        result = compile_workflow(version.text, self._catalogue_for(version), self.known_actions)
+        result = self._compile(version.text, self._catalogue_for(version))
         if result.plan is None:
             raise InvalidWorkflowError(result.diagnostics)
         return result.plan
