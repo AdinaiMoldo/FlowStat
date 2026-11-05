@@ -5,8 +5,10 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
+from flowstat.analysis.guards import analyse
+from flowstat.analysis.signatures import Signatures
 from flowstat.compiler.catalogue import Catalogue
 from flowstat.compiler.compile import compile_workflow
 from flowstat.compiler.inputs import InputError, validate_inputs
@@ -30,7 +32,8 @@ class PublishError(InvalidWorkflowError):
 @dataclass(frozen=True)
 class SaveResult:
     version: Version
-    diagnostics: list[Diagnostic]  # empty when the draft is ready to be published
+    diagnostics: list[Diagnostic]  # errors; empty when the draft is ready to be published
+    findings: list[Diagnostic] = field(default_factory=list)  # warnings and notes (C6)
 
 
 def snapshot_to_json(catalogue: Catalogue) -> str:
@@ -52,10 +55,16 @@ def _value_position(text: str, key: str) -> tuple[int, int]:
 
 
 class WorkflowService:
-    def __init__(self, db: sqlite3.Connection, known_actions: frozenset[str] | None = None) -> None:
+    def __init__(
+        self,
+        db: sqlite3.Connection,
+        known_actions: frozenset[str] | None = None,
+        signatures: Signatures | None = None,
+    ) -> None:
         self.versions_store = VersionStore(db)
         self.catalogue_repo = CatalogueRepo(db)
         self.known_actions = known_actions
+        self.signatures: Signatures = signatures or {}
 
     # -- catalogue -----------------------------------------------------------------------------
     def set_catalogue_list(self, list_name: str, items: list[dict[str, str]]) -> None:
@@ -71,7 +80,8 @@ class WorkflowService:
         catalogue = self.catalogue()
         version = self.versions_store.save(name, text, snapshot_to_json(catalogue), now)
         result = compile_workflow(text, catalogue, self.known_actions)
-        return SaveResult(version, result.diagnostics)
+        findings = analyse(result.plan, self.signatures) if result.plan is not None else []
+        return SaveResult(version, result.diagnostics, findings)
 
     def publish(self, name: str, number: int, now: str) -> Version:
         """Freeze a draft. Nothing changes when the document has errors."""
@@ -106,6 +116,12 @@ class WorkflowService:
         if problems:
             raise PublishError(sorted(problems, key=lambda d: (d.line, d.column)))
         return self.versions_store.publish(name, number, snapshot_to_json(catalogue), now)
+
+    def findings(self, name: str, number: int) -> list[Diagnostic]:
+        """Warnings and notes of a version: what the analysis could say about its guards."""
+        version = self.versions_store.get(name, number)
+        result = compile_workflow(version.text, self._catalogue_for(version), self.known_actions)
+        return analyse(result.plan, self.signatures) if result.plan is not None else []
 
     def get(self, name: str, number: int) -> Version:
         return self.versions_store.get(name, number)

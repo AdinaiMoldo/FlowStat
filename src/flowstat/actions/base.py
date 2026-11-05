@@ -6,6 +6,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
+from flowstat.analysis.signatures import Choices
 from flowstat.engine.runner import Pause
 
 
@@ -61,3 +62,7 @@ class ActionSpec:
     # A repeated call with the same key has no further effect (docs/dsl-spec.md 5.5). The safe
     # default is False: after a crash such a call is not repeated by the engine, a person decides.
     idempotent: bool = False
+    # Output fields that hold one of a list of strings (the decision of an approval); the analysis
+    # of guards reads them as an enumeration. Not checked when the action returns (a person
+    # answers an approval, so the answer comes from outside).
+    choices: Mapping[str, Choices] | None = None

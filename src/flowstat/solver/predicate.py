@@ -128,6 +128,18 @@ def variables(p: Pred) -> set[str]:
             return set()
 
 
+def has_opaque(p: Pred) -> bool:
+    match p:
+        case Opaque():
+            return True
+        case And(items=items) | Or(items=items):
+            return any(has_opaque(i) for i in items)
+        case Not(item=item):
+            return has_opaque(item)
+        case _:
+            return False
+
+
 # -- normal forms -----------------------------------------------------------------------------
 def nnf(p: Pred, negate: bool = False) -> Pred:
     """Negation normal form: negations are pushed to the atoms and absorbed by them."""
