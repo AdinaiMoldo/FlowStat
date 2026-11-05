@@ -429,6 +429,9 @@ def compile_workflow(
                     i.required,
                     i.pos.line,
                     i.pos.column,
+                    i.values,
+                    i.minimum,
+                    i.maximum,
                 )
                 for i in wf.inputs
             ),

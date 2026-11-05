@@ -163,3 +163,85 @@ def test_validation_does_not_change_the_given_values() -> None:
         CAT,
     )
     assert values == {"rs": ["BIS"]}
+
+
+# -- constraints on the values: values, min, max (US-23, dsl-spec 8.2) ---------------------------
+def test_the_plan_carries_values_min_and_max() -> None:
+    plan = plan_of(
+        "  n: {type: int, min: 0, max: 100}\n"
+        "  s: {type: string, values: [a, b]}\n"
+        "  r: {type: float, min: 0.5}\n"
+        "  p: {type: string}\n"
+    )
+    n, s, r, p = plan.inputs
+    assert (n.minimum, n.maximum, n.values) == (0, 100, None)
+    assert s.values == ("a", "b") and s.minimum is None
+    assert (r.minimum, r.maximum) == (0.5, None)
+    assert (p.values, p.minimum, p.maximum) == (None, None, None)
+
+
+def codes_of(inputs: str) -> list[tuple[str, int]]:
+    result = compile_workflow(doc(inputs), CAT)
+    return [(d.code, d.line) for d in result.diagnostics]
+
+
+@pytest.mark.parametrize(
+    "inputs",
+    [
+        "  s: {type: string, values: [a, 5]}\n",
+        "  n: {type: int, values: [1, 2.5]}\n",
+        "  d: {type: date, values: ['2025-01-01']}\n",
+        "  l: {type: 'list<int>', values: [1]}\n",
+        "  b: {type: bool, values: [1]}\n",
+        "  s: {type: string, min: 1}\n",
+        "  b: {type: bool, max: 1}\n",
+        "  n: {type: int, min: 5, max: 1}\n",
+        "  n: {type: int, min: 0, max: 5, values: [1, 9]}\n",
+    ],
+)
+def test_constraints_that_do_not_fit_the_type_are_errors(inputs: str) -> None:
+    assert codes_of(inputs) == [("E-SHAPE-004", 4)]
+
+
+def test_constraints_that_fit_are_accepted() -> None:
+    assert (
+        codes_of(
+            "  f: {type: float, values: [1, 2.5]}\n"
+            "  n: {type: int, min: 1.5, max: 9}\n"
+            "  b: {type: bool, values: [true]}\n"
+            "  e: {type: int, min: 3, max: 3}\n"
+        )
+        == []
+    )
+
+
+def validated(inputs: str, values: dict[str, object]) -> list[str]:
+    plan = plan_of(inputs)
+    _, errors = validate_inputs(plan, values, CAT)
+    return [e.code for e in errors]
+
+
+def test_a_value_outside_values_is_refused() -> None:
+    spec = "  s: {type: string, values: [a, b]}\n  n: {type: int, values: [1, 2, 3]}\n"
+    assert validated(spec, {"s": "a", "n": 2}) == []
+    assert validated(spec, {"s": "c", "n": 2}) == ["E-INPUT-006"]
+    assert validated(spec, {"s": "a", "n": 4}) == ["E-INPUT-006"]
+
+
+def test_a_number_outside_min_and_max_is_refused() -> None:
+    spec = "  n: {type: int, min: 0, max: 100}\n  r: {type: float, min: 0.5}\n"
+    assert validated(spec, {"n": 0, "r": 0.5}) == []
+    assert validated(spec, {"n": 100, "r": 7}) == []
+    assert validated(spec, {"n": -1, "r": 1}) == ["E-INPUT-007"]
+    assert validated(spec, {"n": 101, "r": 1}) == ["E-INPUT-008"]
+    assert validated(spec, {"n": 5, "r": 0.25}) == ["E-INPUT-007"]
+
+
+def test_a_default_is_checked_like_a_given_value() -> None:
+    assert validated("  n: {type: int, default: 50, max: 10}\n", {}) == ["E-INPUT-008"]
+    assert validated("  n: {type: int, default: 5, max: 10}\n", {}) == []
+
+
+def test_the_type_is_checked_before_the_constraints() -> None:
+    assert validated("  n: {type: int, min: 0}\n", {"n": "x"}) == ["E-INPUT-002"]
+    assert validated("  n: {type: int, values: [1]}\n", {"n": True}) == ["E-INPUT-002"]

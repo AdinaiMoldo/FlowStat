@@ -14,13 +14,13 @@ from decimal import Decimal
 from fractions import Fraction
 
 from flowstat.analysis.signatures import Signatures
-from flowstat.compiler.plan import Plan, PlanStep
-from flowstat.dsl.ast import Ref
+from flowstat.compiler.plan import InputSpec, Plan, PlanStep
+from flowstat.dsl.ast import Ref, to_source
 from flowstat.model.diagnostics import Diagnostic, Severity
-from flowstat.solver.domains import Domain
+from flowstat.solver.domains import Domain, as_number
 from flowstat.solver.lower import Var, lower
 from flowstat.solver.predicate import Pred, has_opaque, variables
-from flowstat.solver.solve import Status, overlap, uncovered
+from flowstat.solver.solve import Status, check, overlap, uncovered
 
 _INPUT_KINDS = {"string": "str", "int": "int", "float": "real", "bool": "bool"}
 _OUTPUT_KINDS = frozenset({"int", "real", "bool", "str"})
@@ -66,7 +66,7 @@ class _Resolver:
         for spec in self.plan.inputs:
             if spec.name == name:
                 kind = _INPUT_KINDS.get(spec.type)
-                return None if kind is None else Domain(kind)
+                return None if kind is None else _declared(kind, spec)
         return None
 
     def _output(self, step_id: str, name: str) -> Domain | None:
@@ -85,6 +85,12 @@ class _Resolver:
         return Domain(kind) if kind in _OUTPUT_KINDS else None
 
 
+def _declared(kind: str, spec: InputSpec) -> Domain:
+    """The domain of an input: its type, narrowed by ``values``, ``min`` and ``max``."""
+    low, high = as_number(spec.minimum), as_number(spec.maximum)
+    return Domain(kind, spec.values, low, high)
+
+
 def _listed(step: PlanStep, argument: str) -> tuple[str, ...]:
     """The strings of a list given as an argument of the step, or nothing."""
     for key, parts in step.with_:
@@ -99,17 +105,29 @@ def analyse(plan: Plan, signatures: Signatures) -> list[Diagnostic]:
     """Warnings and notes about the guards of a compiled plan, in the order of the plan."""
     resolver = _Resolver(plan, signatures)
     groups: dict[tuple[frozenset[str], frozenset[str]], list[_Guard]] = {}
+    out: list[Diagnostic] = []
     for step in plan.steps:
         if step.when is None or step.loop is not None:
             continue
         pred = lower(step.when, resolver)
         guard = _Guard(step, pred, not has_opaque(pred))
+        if check(pred, resolver.domains).status is Status.UNSAT:
+            out.append(_dead(guard))
         groups.setdefault((frozenset(step.needs), frozenset(variables(pred))), []).append(guard)
-    out: list[Diagnostic] = []
     for members in groups.values():
         if len(members) >= 2:
             out.extend(_analyse_group(members, resolver.domains))
-    return out
+    return sorted(out, key=lambda d: (d.line, d.column))
+
+
+def _dead(guard: _Guard) -> Diagnostic:
+    """The guard is unsatisfiable (an opaque part cannot make an unsatisfiable rest satisfiable)."""
+    assert guard.step.when is not None
+    message = (
+        f"'{guard.step.id}' can never run: {to_source(guard.step.when)} is false for every value "
+        "that the inputs and the actions allow"
+    )
+    return _diagnostic("W-DEAD-001", Severity.WARNING, message, guard)
 
 
 def _analyse_group(members: list[_Guard], domains: dict[str, Domain]) -> list[Diagnostic]:

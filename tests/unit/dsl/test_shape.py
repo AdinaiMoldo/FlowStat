@@ -74,6 +74,10 @@ CASES: list[tuple[str, str, list[str]]] = [
     ("input without type", HEAD + "inputs:\n  q: " + MARK + "{pattern: x}\n" + STEPS + GOALS, ["E-SHAPE-002"]),
     ("input is a number", HEAD + "inputs:\n  q: " + MARK + "5\n" + STEPS + GOALS, ["E-SHAPE-003"]),
     ("input required not bool", HEAD + "inputs:\n  q: {type: string, required: " + MARK + "maybe}\n" + STEPS + GOALS, ["E-SHAPE-003"]),
+    ("input values not a list", HEAD + "inputs:\n  q: {type: string, values: " + MARK + "x}\n" + STEPS + GOALS, ["E-SHAPE-003"]),
+    ("input values empty", HEAD + "inputs:\n  q: {type: string, values: " + MARK + "[]}\n" + STEPS + GOALS, ["E-SHAPE-004"]),
+    ("input min not a number", HEAD + "inputs:\n  q: {type: int, min: " + MARK + "abc}\n" + STEPS + GOALS, ["E-SHAPE-003"]),
+    ("input max is a boolean", HEAD + "inputs:\n  q: {type: int, max: " + MARK + "true}\n" + STEPS + GOALS, ["E-SHAPE-003"]),
     ("document is a list", MARK + "- a\n", ["E-SHAPE-003"]),
     ("unknown key without a neighbour", HEAD + MARK + "zzzzzz: 1\n" + STEPS + GOALS, ["E-SHAPE-001"]),
     (
