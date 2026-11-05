@@ -36,6 +36,36 @@ CREATE TABLE IF NOT EXISTS catalogue_items (
     PRIMARY KEY (list_name, position),
     UNIQUE (list_name, code)
 );
+
+CREATE TABLE IF NOT EXISTS runs (
+    run_id     TEXT    PRIMARY KEY,
+    workflow   TEXT    NOT NULL,
+    version    INTEGER NOT NULL,
+    inputs     TEXT    NOT NULL,
+    created_at TEXT    NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS run_events (
+    run_id  TEXT    NOT NULL,
+    seq     INTEGER NOT NULL,
+    kind    TEXT    NOT NULL,
+    at      REAL    NOT NULL,
+    step    TEXT,
+    state   TEXT,
+    outcome TEXT,
+    code    TEXT,
+    message TEXT,
+    output  TEXT,
+    PRIMARY KEY (run_id, seq)
+);
+
+CREATE TRIGGER IF NOT EXISTS run_events_no_update
+BEFORE UPDATE ON run_events
+BEGIN SELECT RAISE(ABORT, 'the history of a run is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS run_events_no_delete
+BEFORE DELETE ON run_events
+BEGIN SELECT RAISE(ABORT, 'the history of a run is append-only'); END;
 """
 
 

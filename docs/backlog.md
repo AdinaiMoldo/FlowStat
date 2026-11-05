@@ -26,12 +26,12 @@ Recount of 5 November: the baseline of 203 SP stays the zero point of the burndo
 | US-03 | As a designer, I get a precise error when my text is not a valid workflow document | B1 | 5 | Must | M1 | done |
 | US-04 | As a designer, I see unknown references and cycles with line numbers | C1 | 5 | Must | M1 | done |
 | US-05 | As a designer, I fan a step out over all regions | C1 | 8 | Must | M1 | done |
-| US-06 | As an operator, I run a workflow and independent steps run in parallel | C3 | 8 | Must | M2 | not started |
-| US-07 | As an operator, I get correct skips, failures and quorum behaviour | C3 | 8 | Must | M2 | not started |
-| US-08 | As an operator, I approve or reject a run that waits for me | C3 | 5 | Must | M2 | not started |
-| US-09 | As an operator, I see an explicit outcome for every run | C3 | 3 | Must | M2 | not started |
-| US-10 | As a designer, I declare a contract on a step's output | C3, C1 | 3 | Must | M2 | not started |
-| US-11 | As an operator, I see the history of a run | A2 | 3 | Must | M2 | not started |
+| US-06 | As an operator, I run a workflow and independent steps run in parallel | C3 | 8 | Must | M2 | done |
+| US-07 | As an operator, I get correct skips, failures and quorum behaviour | C3 | 8 | Must | M2 | done |
+| US-08 | As an operator, I approve or reject a run that waits for me | C3 | 5 | Must | M2 | done |
+| US-09 | As an operator, I see an explicit outcome for every run | C3 | 3 | Must | M2 | done |
+| US-10 | As a designer, I declare a contract on a step's output | C3, C1 | 3 | Must | M2 | done |
+| US-11 | As an operator, I see the history of a run | A2 | 3 | Must | M2 | done |
 | US-12 | As a designer, I read a regional xlsx form and write results to the database in steps | B6 | 8 | Must | M2 | not started |
 | US-13 | As an operator, transient errors are retried | C4 | 2 | Must | M3 | not started |
 | US-14 | As an operator, a failed run is compensated in the right order | C4 | 8 | Must | M3 | not started |

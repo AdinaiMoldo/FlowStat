@@ -1,0 +1,94 @@
+"""Tests of the run report: a fold over the events (US-11)."""
+
+from __future__ import annotations
+
+from flowstat.model.events import Event, EventKind
+from flowstat.model.history import report_from
+from flowstat.model.states import RunOutcome, StepState
+
+S = StepState
+STEPS = ["a", "b", "c"]
+
+
+def fin(seq: int, at: float, step: str, state: StepState, **kw: object) -> Event:
+    return Event(seq, EventKind.STEP_FINISHED, at, step=step, state=state, **kw)  # type: ignore[arg-type]
+
+
+def started(seq: int, at: float, step: str) -> Event:
+    return Event(seq, EventKind.STEP_STARTED, at, step=step)
+
+
+def test_no_events_means_a_created_run_with_pending_steps() -> None:
+    report = report_from("r1", "demo", 1, [], STEPS)
+    assert report.status == "CREATED" and report.outcome is None
+    assert [(s.step, s.state) for s in report.steps] == [(x, S.PENDING) for x in STEPS]
+    assert report.started_at is None and report.finished_at is None
+
+
+def test_each_step_shows_state_start_end_and_error() -> None:
+    log = [
+        Event(0, EventKind.RUN_STARTED, 10.0),
+        started(1, 10.0, "a"),
+        fin(2, 12.0, "a", S.SUCCEEDED, output={"n": 1}),
+        started(3, 12.0, "b"),
+        fin(4, 13.5, "b", S.FAILED, code="E-ACT-002", message="cannot read BIS.xlsx"),
+        fin(5, 13.5, "c", S.UPSTREAM_FAILED),
+        Event(6, EventKind.RUN_FINISHED, 13.5, outcome=RunOutcome.FAILED),
+    ]
+    report = report_from("r1", "demo", 1, log, STEPS)
+    a, b, c = report.steps
+    assert (a.state, a.started_at, a.finished_at, a.code, a.output) == (
+        S.SUCCEEDED,
+        10.0,
+        12.0,
+        None,
+        {"n": 1},
+    )
+    assert (b.state, b.started_at, b.finished_at) == (S.FAILED, 12.0, 13.5)
+    assert (b.code, b.message) == ("E-ACT-002", "cannot read BIS.xlsx")
+    assert (c.state, c.started_at, c.finished_at) == (S.UPSTREAM_FAILED, None, 13.5)
+    assert (report.status, report.outcome) == ("FINISHED", RunOutcome.FAILED)
+    assert (report.started_at, report.finished_at) == (10.0, 13.5)
+
+
+def test_steps_keep_the_order_of_the_plan() -> None:
+    log = [Event(0, EventKind.RUN_STARTED, 0.0), started(1, 0.0, "c"), started(2, 0.0, "a")]
+    assert [s.step for s in report_from("r", "d", 1, log, STEPS).steps] == STEPS
+
+
+def test_a_running_run_shows_running_steps() -> None:
+    log = [Event(0, EventKind.RUN_STARTED, 0.0), started(1, 0.0, "a")]
+    report = report_from("r", "d", 1, log, STEPS)
+    assert report.status == "RUNNING"
+    assert [s.state for s in report.steps] == [S.RUNNING, S.PENDING, S.PENDING]
+
+
+def test_a_run_whose_only_active_step_waits_is_waiting() -> None:
+    log = [
+        Event(0, EventKind.RUN_STARTED, 0.0),
+        started(1, 0.0, "a"),
+        Event(2, EventKind.STEP_WAITING, 1.0, step="a"),
+    ]
+    report = report_from("r", "d", 1, log, STEPS)
+    assert report.status == "WAITING" and report.steps[0].state is S.WAITING
+
+
+def test_a_waiting_step_keeps_its_start_and_gets_an_end_when_answered() -> None:
+    log = [
+        Event(0, EventKind.RUN_STARTED, 0.0),
+        started(1, 2.0, "a"),
+        Event(2, EventKind.STEP_WAITING, 3.0, step="a"),
+        fin(3, 9.0, "a", S.SUCCEEDED, output={"decision": "approved"}),
+    ]
+    a = report_from("r", "d", 1, log, STEPS).steps[0]
+    assert (a.started_at, a.finished_at, a.state) == (2.0, 9.0, S.SUCCEEDED)
+
+
+def test_a_running_step_next_to_a_waiting_one_keeps_the_run_running() -> None:
+    log = [
+        Event(0, EventKind.RUN_STARTED, 0.0),
+        started(1, 0.0, "a"),
+        started(2, 0.0, "b"),
+        Event(3, EventKind.STEP_WAITING, 1.0, step="a"),
+    ]
+    assert report_from("r", "d", 1, log, STEPS).status == "RUNNING"
