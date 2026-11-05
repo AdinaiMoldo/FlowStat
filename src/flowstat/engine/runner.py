@@ -48,8 +48,14 @@ def run_threaded(
     clock: Callable[[], float],
     sleep: Callable[[float], None],
     answer: Answerer | None = None,
+    journal: Callable[[], None] | None = None,
+    commands: list[Command] | None = None,
 ) -> None:
     """Run the scheduler to the end, or until only waiting steps are left.
+
+    ``journal`` is called after every call into the scheduler and before its commands are
+    dispatched: it stores the new events (the write-ahead log, docs/dsl-spec.md 5.5). ``commands``
+    are the commands of a restore or a resolution; the run goes on from them instead of starting.
 
     ``answer`` is asked when a step pauses; an answer finishes the step, ``None`` leaves it
     WAITING (the run then returns with no outcome). A step cancelled while its thread is still
@@ -70,16 +76,18 @@ def run_threaded(
 
     with ThreadPoolExecutor(max_workers=scheduler.max_parallel) as pool:
 
-        def dispatch(commands: list[Command]) -> None:
+        def dispatch(batch: list[Command]) -> None:
             nonlocal in_flight
-            for command in commands:
+            if journal is not None:
+                journal()  # the events first: a command may have an effect the crash cannot undo
+            for command in batch:
                 if isinstance(command, Cancel):
                     cancelled.add(command.step)
                 else:
                     in_flight += 1
                     pool.submit(work, command)
 
-        dispatch(scheduler.start(clock()))
+        dispatch(scheduler.start(clock()) if commands is None else commands)
         while in_flight:
             command, outcome = results.get()
             in_flight -= 1
@@ -87,14 +95,14 @@ def run_threaded(
                 continue
             step = command.step
             if isinstance(outcome, Ok):
-                commands = scheduler.step_done(step, dict(outcome.output), clock())
+                batch = scheduler.step_done(step, dict(outcome.output), clock())
             elif isinstance(outcome, Error):
-                commands = scheduler.step_failed(
+                batch = scheduler.step_failed(
                     step, outcome.code, outcome.message, clock(), outcome.transient
                 )
             else:
-                commands = scheduler.step_waiting(step, clock())
+                batch = scheduler.step_waiting(step, clock())
                 reply = answer(command) if answer is not None else None
                 if reply is not None:
-                    commands += scheduler.signal(step, dict(reply), clock())
-            dispatch(commands)
+                    batch += scheduler.signal(step, dict(reply), clock())
+            dispatch(batch)

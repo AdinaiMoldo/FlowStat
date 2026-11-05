@@ -161,3 +161,80 @@ def test_a_failed_undo_shows_its_error() -> None:
     ]
     a = report_from("r", "d", 1, log, ["a", "b"]).steps[0]
     assert a.state is S.COMPENSATION_FAILED and (a.code, a.message) == ("E-COMP-001", "undo lost")
+
+
+# -- uncertain steps (US-16) -------------------------------------------------------------------
+def uncertain(seq: int, at: float, step: str, attempt: int = 1) -> Event:
+    return Event(
+        seq,
+        EventKind.STEP_UNCERTAIN,
+        at,
+        step=step,
+        state=StepState.RUNNING,
+        code="E-REC-001",
+        message="the outcome is unknown",
+        attempt=attempt,
+    )
+
+
+UNSURE = [
+    Event(0, EventKind.RUN_STARTED, 0.0),
+    started(1, 0.0, "a"),
+    Event(2, EventKind.RUN_RESUMED, 5.0),
+    uncertain(3, 5.0, "a"),
+]
+
+
+def test_an_uncertain_step_is_shown_with_its_code_and_the_run_is_waiting() -> None:
+    report = report_from("r", "d", 1, UNSURE, STEPS)
+
+    a = report.steps[0]
+    assert (a.state, a.code, a.message) == (S.UNCERTAIN, "E-REC-001", "the outcome is unknown")
+    assert (report.status, report.outcome) == ("WAITING", None)
+
+
+def test_an_uncertain_step_marked_done_is_succeeded_and_loses_the_error() -> None:
+    log = [
+        *UNSURE,
+        Event(4, EventKind.STEP_RESOLVED, 6.0, step="a", decision="done"),
+        fin(5, 6.0, "a", S.SUCCEEDED, output={"queued": 1}),
+    ]
+
+    a = report_from("r", "d", 1, log, STEPS).steps[0]
+
+    assert (a.state, a.code, a.output, a.finished_at) == (S.SUCCEEDED, None, {"queued": 1}, 6.0)
+
+
+def test_a_retry_decision_makes_the_step_run_again_with_the_next_attempt() -> None:
+    log = [*UNSURE, Event(4, EventKind.STEP_RESOLVED, 6.0, step="a", decision="retry", attempt=2)]
+
+    report = report_from("r", "d", 1, log, STEPS)
+
+    a = report.steps[0]
+    assert (a.state, a.attempts, a.code) == (S.RUNNING, 2, None)
+    assert report.status == "RUNNING"
+
+
+def test_an_uncertain_undo_is_shown_and_the_run_waits_while_it_is_compensating() -> None:
+    log = [
+        Event(0, EventKind.RUN_STARTED, 0.0),
+        started(1, 0.0, "a"),
+        fin(2, 1.0, "a", S.SUCCEEDED, output={}),
+        Event(3, EventKind.COMPENSATION_STARTED, 2.0),
+        Event(4, EventKind.STEP_COMPENSATING, 2.0, step="a", attempt=1),
+        Event(5, EventKind.RUN_RESUMED, 9.0),
+        Event(
+            6,
+            EventKind.STEP_UNCERTAIN,
+            9.0,
+            step="a",
+            state=StepState.COMPENSATING,
+            code="E-REC-001",
+            message="unknown",
+            attempt=1,
+        ),
+    ]
+
+    report = report_from("r", "d", 1, log, STEPS)
+
+    assert report.steps[0].state is S.UNCERTAIN and report.status == "WAITING"

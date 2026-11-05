@@ -131,3 +131,15 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Stated limit: a step that was cancelled while running may have had an effect that is not recorded and is not undone.
 - Also: the reference to the name of the engineering notes file in `milestones/M2.md` was reworded.
 
+## 2026-11-05 Recovery (US-15, US-16)
+
+- Chose: the rebuilding of a run is `Scheduler.restore`, a method of the scheduler, and not a function in `recovery/`. It writes the private state (queues, counters, undo bookkeeping) and a second place that did so would have to know it all. What `recovery/` keeps is the write-ahead log and the saga order; the package docstring says where the rest is and why.
+- Chose: the restore folds the recorded states and derives everything else from them (counters of unfinished predecessors, the queue, the heap of undos). It takes no decision again except for steps that were decided but had no event; those come out the same because a decision is a function of recorded values. The crash tests confirm it: every cut gives the same states and outputs as the uninterrupted run.
+- Chose: the engine is told whether an action is idempotent by a function (`is_idempotent` of the registry), as it is told the planner of the compensation. Default is not idempotent: forgetting the flag costs a question to a person, not a second mail.
+- Chose: UNCERTAIN releases its slot, like WAITING, so independent steps go on even with one worker. The price is that an operator's retry starts at once and can exceed the limit by one call (written in `dsl-spec.md` 5.5).
+- Chose: the stop that a failure causes is recorded as several events and the restore completes it if only some of them are stored. The commit of a call is one transaction, so this cannot happen at present; the crash suite cuts after every single event anyway, so the recovery does not rest on the transaction.
+- Chose: `resolve` refuses when steps are still to be repeated (`resume` first). Otherwise one command would both repeat steps and resolve one, and it would be unclear what was asked.
+- Measured, not assumed: three broken restores (a repeated call with the next attempt number, no repeated call, the half-recorded stop not completed) were put in one at a time. The unit tests and the crash suite fail for each (109, 110 and 14 failing tests). The suite is a real check and not a table of what the code does.
+- Found while writing the tests: the simulated driver did not know how to answer a step that was WAITING at the restore; it now asks for the answer again, as a person would. A whole-value `${...}` keeps the type of the value (an integer stays an integer); my first expectation in a test assumed a string.
+- Stated limit: a call that was in flight at the crash may still be running in another process when the engine restarts (the fault model is a stop of the engine and its calls, one owner per run; the owner switch is C5, M8).
+

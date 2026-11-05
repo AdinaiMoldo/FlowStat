@@ -16,6 +16,9 @@ class EventKind(Enum):
     STEP_FINISHED = "STEP_FINISHED"
     COMPENSATION_STARTED = "COMPENSATION_STARTED"  # the run stopped and now undoes its work
     STEP_COMPENSATING = "STEP_COMPENSATING"  # the undo of a step starts (attempt in `attempt`)
+    RUN_RESUMED = "RUN_RESUMED"  # the engine restarted and rebuilt the run from its history
+    STEP_UNCERTAIN = "STEP_UNCERTAIN"  # a crash left a non-idempotent call whose result is unknown
+    STEP_RESOLVED = "STEP_RESOLVED"  # a person decided about an uncertain step (`decision`)
     RUN_FINISHED = "RUN_FINISHED"
 
 
@@ -32,3 +35,6 @@ class Event:
     output: dict[str, object] | None = None  # a succeeded step: what it produced
     attempt: int | None = None  # STEP_RETRY: the number of the attempt that starts next
     delay: float | None = None  # STEP_RETRY: seconds to wait before that attempt
+    decision: str | None = None  # STEP_RESOLVED: "done" or "retry"
+    # STEP_UNCERTAIN: `state` is where the step was (RUNNING, or COMPENSATING for an undo) and
+    # `attempt` the attempt whose result is unknown; STEP_RESOLVED "retry": `attempt` is the new one

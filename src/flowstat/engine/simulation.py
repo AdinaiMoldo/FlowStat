@@ -10,11 +10,12 @@ from __future__ import annotations
 
 import heapq
 import random
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 
 from flowstat.compiler.plan import Plan
 from flowstat.engine.scheduler import Cancel, Command, CompensationPlanner, Scheduler, Start
+from flowstat.model.events import Event
 from flowstat.model.states import TERMINAL_STEP_STATES, StepState
 
 
@@ -49,6 +50,7 @@ class Simulation:
     finished: dict[str, float]
     attempts: dict[str, list[float]]  # start time of every attempt (after its delay)
     undone: dict[str, tuple[float, float]]  # compensated steps: (start of the undo, end of it)
+    calls: list[Start]  # every call that was made, in the order of the commands
 
 
 def simulate(
@@ -62,6 +64,8 @@ def simulate(
     priority_durations: Mapping[str, float] | None = None,
     policy: str = "longest_path",
     compensation_planner: CompensationPlanner | None = None,
+    resume: Sequence[Event] | None = None,
+    idempotent: Callable[[str], bool] | None = None,
 ) -> Simulation:
     """Run the plan on a virtual clock.
 
@@ -69,6 +73,8 @@ def simulate(
     given. ``answers`` maps a waiting step to (delay after it started waiting, answer).
     ``priority_durations`` are the weights the scheduler uses for priorities (default: the same).
     ``policy`` is ``longest_path`` or ``fifo`` (the baseline of the benchmark).
+    ``resume`` is the recorded history of a run that crashed: the run is restored from it (with
+    ``idempotent``, default: every action is) and goes on from the time of its last event.
     """
     weights = priority_durations if priority_durations is not None else durations
     scheduler = Scheduler(
@@ -95,6 +101,7 @@ def simulate(
     attempts: dict[str, list[float]] = {}
     undo_started: dict[str, float] = {}
     undone: dict[str, tuple[float, float]] = {}
+    calls: list[Start] = []
 
     def push(at: float, kind: str, step: str) -> None:
         nonlocal serial
@@ -106,6 +113,7 @@ def simulate(
             if isinstance(command, Cancel):
                 cancelled.add(command.step)
                 continue
+            calls.append(command)
             begin = now + command.delay  # a retry waits for its backoff first
             if command.compensation:
                 undo_started.setdefault(command.step, begin)
@@ -118,12 +126,19 @@ def simulate(
             push(begin + result.duration, kind, command.step)
 
     now = 0.0
-    schedule(scheduler.start(now), now)
+    if resume is None:
+        schedule(scheduler.start(now), now)
+    else:
+        now = resume[-1].at if resume else 0.0
+        schedule(scheduler.restore(resume, now, idempotent or (lambda action: True)), now)
+        for waiting, state in scheduler.states.items():  # the answer is still awaited
+            if state is StepState.WAITING and answers is not None and waiting in answers:
+                push(now + answers[waiting][0], "answer", waiting)
     while queue:
         now, _, _, kind, step = heapq.heappop(queue)
         if step in cancelled:
             continue
-        result = pending[step]
+        result = pending.get(step)
         if kind == "wait":
             commands = scheduler.step_waiting(step, now)
             if answers is not None and step in answers:
@@ -145,4 +160,4 @@ def simulate(
         elif kind != "wait" and state in TERMINAL_STEP_STATES:
             finished.setdefault(step, now)
         schedule(commands, now)
-    return Simulation(scheduler, now, started, finished, attempts, undone)
+    return Simulation(scheduler, now, started, finished, attempts, undone, calls)

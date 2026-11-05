@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS run_events (
     output  TEXT,
     attempt INTEGER,
     delay   REAL,
+    decision TEXT,
     PRIMARY KEY (run_id, seq)
 );
 
@@ -74,13 +75,20 @@ BEGIN SELECT RAISE(ABORT, 'the history of a run is append-only'); END;
 def open_database(path: str) -> sqlite3.Connection:
     """Open (and create if needed) the database. ``":memory:"`` gives a private test database."""
     db = sqlite3.connect(path, isolation_level=None)  # autocommit; transactions are explicit
+    # An event that was committed must survive a power loss: the log is written before the
+    # action runs (docs/dsl-spec.md 5.5), so a lost event would be a lost fact.
+    db.execute("PRAGMA synchronous = FULL")
     db.executescript(SCHEMA)
     _add_missing_columns(db)
     return db
 
 
 # Columns added after the first release of the schema: (table, column, type).
-_LATER_COLUMNS = [("run_events", "attempt", "INTEGER"), ("run_events", "delay", "REAL")]
+_LATER_COLUMNS = [
+    ("run_events", "attempt", "INTEGER"),
+    ("run_events", "delay", "REAL"),
+    ("run_events", "decision", "TEXT"),
+]
 
 
 def _add_missing_columns(db: sqlite3.Connection) -> None:

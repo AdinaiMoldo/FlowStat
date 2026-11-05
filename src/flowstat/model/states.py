@@ -15,6 +15,7 @@ class StepState(Enum):
     SKIPPED = "SKIPPED"  # its condition was false, or its join cannot be satisfied
     UPSTREAM_FAILED = "UPSTREAM_FAILED"  # a predecessor failed and the join cannot be satisfied
     CANCELLED = "CANCELLED"  # the run was stopped before the step finished
+    UNCERTAIN = "UNCERTAIN"  # a crash left it RUNNING and the effect may exist; a person decides
     COMPENSATING = "COMPENSATING"  # the undo of a succeeded step is running (dsl-spec 5.4)
     COMPENSATED = "COMPENSATED"  # the step succeeded and was undone
     COMPENSATION_FAILED = "COMPENSATION_FAILED"  # the undo failed; the step is not undone

@@ -48,6 +48,7 @@ def report_from(
     finished: dict[str, float] = {}
     record: dict[str, Event] = {}
     undo: dict[str, Event] = {}  # the final event of an undo (COMPENSATED or its failure)
+    unsure: dict[str, Event] = {}  # the STEP_UNCERTAIN of a step that is still uncertain
     compensating = False
     run_started: float | None = None
     run_finished: float | None = None
@@ -72,6 +73,16 @@ def report_from(
             state[step] = StepState.COMPENSATING
         elif event.kind is EventKind.STEP_WAITING:
             state[step] = StepState.WAITING
+        elif event.kind is EventKind.STEP_UNCERTAIN:
+            state[step] = StepState.UNCERTAIN
+            unsure[step] = event
+        elif event.kind is EventKind.STEP_RESOLVED:
+            was = unsure.pop(step, None)
+            if event.decision == "retry":
+                undoing = was is not None and was.state is StepState.COMPENSATING
+                state[step] = StepState.COMPENSATING if undoing else StepState.RUNNING
+                if event.attempt is not None:
+                    attempts[step] = max(attempts.get(step, 0), event.attempt)
         elif event.kind is EventKind.STEP_FINISHED and event.state in _UNDO_STATES:
             state[step] = event.state
             undo[step] = event
@@ -85,8 +96,8 @@ def report_from(
             state[s],
             started.get(s),
             finished.get(s),
-            _error(s, record, undo)[0],
-            _error(s, record, undo)[1],
+            _error(s, record, undo, unsure)[0],
+            _error(s, record, undo, unsure)[1],
             record[s].output if s in record else None,
             attempts.get(s, 0),
             undo[s].at if s in undo else None,
@@ -109,9 +120,11 @@ _UNDO_STATES = frozenset({StepState.COMPENSATED, StepState.COMPENSATION_FAILED})
 
 
 def _error(
-    step: str, record: dict[str, Event], undo: dict[str, Event]
+    step: str, record: dict[str, Event], undo: dict[str, Event], unsure: dict[str, Event]
 ) -> tuple[str | None, str | None]:
-    """The error to show: that of a failed undo, otherwise that of the step itself."""
+    """The error to show: why the step is uncertain, that of a failed undo, or that of the step."""
+    if step in unsure:
+        return unsure[step].code, unsure[step].message
     if step in undo and undo[step].code is not None:
         return undo[step].code, undo[step].message
     if step in record:
@@ -129,9 +142,12 @@ def _status(
         return "FINISHED"
     if run_started is None:
         return "CREATED"
+    values = list(state.values())
+    active = StepState.RUNNING in values or StepState.COMPENSATING in values
+    if StepState.UNCERTAIN in values and not active:
+        return "WAITING"  # only a person can move the run on
     if compensating:
         return "COMPENSATING"
-    values = list(state.values())
     if StepState.WAITING in values and StepState.RUNNING not in values:
         return "WAITING"
     return "RUNNING"

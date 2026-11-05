@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import heapq
 from collections import ChainMap, deque
-from collections.abc import Callable, Collection, Mapping
+from collections.abc import Callable, Collection, Iterable, Mapping
 from dataclasses import dataclass
 
 from flowstat.compiler.plan import JoinSpec, Plan, RetrySpec
@@ -133,6 +133,8 @@ class Scheduler:
         self._undo_ready: list[int] = []  # heap of -index: later steps are undone first
         self._undo_running: set[int] = set()
         self._undo_failed = False
+        self._uncertain: set[int] = set()  # steps whose outcome a crash made unknown (US-16)
+        self._uncertain_undo: set[int] = set()  # those of them that were undoing a step
         self._ctx = EvalContext(self.inputs, self.outputs, self._instances)
 
     # -- what the driver may ask ---------------------------------------------------------------
@@ -143,10 +145,18 @@ class Scheduler:
         if not self._started:
             return "CREATED"
         if self._undoing:
-            return "COMPENSATING"
+            return "WAITING" if self._uncertain and not self._undo_running else "COMPENSATING"
         if self._running or self._ready or self._queue:
             return "RUNNING"
-        return "WAITING" if self._waiting else "RUNNING"
+        return "WAITING" if self._waiting or self._uncertain else "RUNNING"
+
+    def waiting_steps(self) -> list[str]:
+        """Steps that wait for an answer, in the order of the plan."""
+        return [s.id for s in self.plan.steps if self.states[s.id] is StepState.WAITING]
+
+    def arguments(self, step_id: str) -> dict[str, object]:
+        """The arguments the step was given when it started (as recorded outputs render them)."""
+        return dict(self._args[self._index[step_id]])
 
     # -- events from the driver ----------------------------------------------------------------
     def start(self, now: float) -> list[Command]:
@@ -239,6 +249,229 @@ class Scheduler:
         self._stop(now, keep=-1)
         return self._advance(now)
 
+    # -- recovery after a crash (docs/dsl-spec.md 5.5) ------------------------------------------
+    def restore(
+        self, events: Iterable[Event], now: float, idempotent: Callable[[str], bool]
+    ) -> list[Command]:
+        """Rebuild the run from its recorded history and return the commands that go on from it.
+
+        The recorded states are the state; no decision is taken again. A step that was RUNNING
+        (or whose undo was running) is run again with the same attempt number when its action is
+        idempotent, and becomes UNCERTAIN otherwise. ``idempotent`` tells it for an action name;
+        the engine does not know the registry of actions. Steps that were decided but had no event
+        of their own are decided again, which gives the same answer: a decision is a function of
+        recorded values.
+        """
+        if self._started or self.events:
+            raise ValueError("restore needs a new scheduler")
+        recorded = list(events)
+        if not recorded:
+            return self.start(now)
+        self.events = recorded
+        self._started = True
+        ran = self._fold(recorded)
+        if self.outcome is not None:
+            return []
+        self._log(EventKind.RUN_RESUMED, now)
+        steps = self.plan.steps
+        states = self.states
+        self._terminal = sum(1 for s in steps if states[s.id] in TERMINAL_STEP_STATES)
+        for j, preds in enumerate(self._preds):
+            self._remaining[j] = sum(
+                1 for p in preds if states[steps[p].id] not in TERMINAL_STEP_STATES
+            )
+        stopping = any(
+            states[s.id] is StepState.FAILED and s.on_failure in ("fail", "compensate")
+            for s in steps
+        )
+        cancelled = any(states[s.id] is StepState.CANCELLED for s in steps)
+        self._compensate_requested = any(
+            states[s.id] is StepState.FAILED and s.on_failure == "compensate" for s in steps
+        )
+        self._cancelled = cancelled and not stopping
+        self._stopped = stopping or cancelled or self._undoing
+        for i in ran:  # what a step was given is a function of the recorded outputs
+            self._args[i] = self._render(i)
+        if self._stopped and not self._undoing:
+            self._stop(now, keep=-1)  # a stop that was recorded in part is completed
+            self._commands.clear()  # nothing is running any more, so nothing is to be cancelled
+        for i, step in enumerate(steps):
+            if states[step.id] is StepState.RUNNING:
+                self._recover(i, step.action, False, idempotent, now)
+            elif states[step.id] is StepState.COMPENSATING and step.compensate is not None:
+                self._recover(i, step.compensate, True, idempotent, now)
+            elif states[step.id] is StepState.WAITING:
+                self._waiting.add(i)
+            elif states[step.id] is StepState.UNCERTAIN:
+                self._uncertain.add(i)
+        if self._undoing:
+            self._rebuild_undo()
+            self._undo_dispatch(now)
+            self._undo_maybe_finish(now)
+            return self._flush()
+        self._queue.extend(
+            i
+            for i, s in enumerate(steps)
+            if states[s.id] is StepState.PENDING and self._remaining[i] == 0
+        )
+        return self._advance(now)
+
+    def _fold(self, recorded: list[Event]) -> set[int]:
+        """Apply the recorded events to the states. Returns the steps that have run."""
+        ran: set[int] = set()
+        undo_uncertain: set[int] = set()
+        for e in recorded:
+            i = self._index.get(e.step) if e.step is not None else None
+            if e.step is not None and i is None:
+                raise ValueError(f"unknown step {e.step!r}: the history is of another workflow")
+            if e.kind is EventKind.RUN_FINISHED:
+                self.outcome = e.outcome
+            elif e.kind is EventKind.COMPENSATION_STARTED:
+                self._undoing = True
+            elif i is None:
+                continue
+            elif e.kind is EventKind.STEP_STARTED:
+                self.states[e.step or ""] = StepState.RUNNING
+                self._attempt[i] = 1
+                ran.add(i)
+            elif e.kind is EventKind.STEP_WAITING:
+                self.states[e.step or ""] = StepState.WAITING
+            elif e.kind is EventKind.STEP_RETRY and e.attempt is not None:
+                self._attempt[i] = e.attempt
+            elif e.kind is EventKind.STEP_COMPENSATING:
+                self.states[e.step or ""] = StepState.COMPENSATING
+                self._attempt[i] = e.attempt or 1
+                ran.add(i)
+            elif e.kind is EventKind.STEP_UNCERTAIN:
+                self.states[e.step or ""] = StepState.UNCERTAIN
+                self._attempt[i] = e.attempt or self._attempt[i]
+                if e.state is StepState.COMPENSATING:
+                    undo_uncertain.add(i)
+            elif e.kind is EventKind.STEP_RESOLVED:
+                if e.decision == "retry":
+                    undo = i in undo_uncertain
+                    self.states[e.step or ""] = (
+                        StepState.COMPENSATING if undo else StepState.RUNNING
+                    )
+                    self._attempt[i] = e.attempt or self._attempt[i] + 1
+                undo_uncertain.discard(i)
+            elif e.kind is EventKind.STEP_FINISHED and e.state is not None:
+                self.states[e.step or ""] = e.state
+                if e.state is StepState.SUCCEEDED:
+                    self.outputs[e.step or ""] = dict(e.output or {})
+                if e.code is not None:
+                    self.errors[e.step or ""] = (e.code, e.message or "")
+        self._uncertain_undo = {
+            i for i in undo_uncertain if self.states[self.plan.steps[i].id] is StepState.UNCERTAIN
+        }
+        return ran
+
+    def _render(self, i: int) -> dict[str, object]:
+        try:
+            return {n: render_template(parts, self._ctx) for n, parts in self.plan.steps[i].with_}
+        except EvalError:  # cannot happen for a step that ran: its inputs were recorded
+            return {}
+
+    def _recover(
+        self, i: int, action: str, undo: bool, idempotent: Callable[[str], bool], now: float
+    ) -> None:
+        """A call was in flight at the crash: repeat it with the same key, or ask a person."""
+        step = self.plan.steps[i]
+        if idempotent(action):
+            (self._undo_running if undo else self._running).add(i)
+            start = Start(step.id, action, dict(self._args[i]), self._attempt[i], 0.0, undo)
+            self._commands.append(start)
+            return
+        self.states[step.id] = StepState.UNCERTAIN
+        self._uncertain.add(i)
+        if undo:
+            self._uncertain_undo.add(i)
+        self._log(
+            EventKind.STEP_UNCERTAIN,
+            now,
+            step=step.id,
+            state=StepState.COMPENSATING if undo else StepState.RUNNING,
+            code="E-REC-001",
+            message=(
+                f"the engine stopped during the call of {action}; the outcome is unknown "
+                "(the effect may exist): decide with 'resolve' (done or retry)"
+            ),
+            attempt=self._attempt[i],
+        )
+
+    def _rebuild_undo(self) -> None:
+        """The compensation phase as it stands after the recorded events."""
+        assert self._planner is not None
+        steps = self.plan.steps
+        live = {
+            StepState.SUCCEEDED,
+            StepState.COMPENSATING,
+            StepState.COMPENSATED,
+            StepState.COMPENSATION_FAILED,
+        }
+        to_undo = [
+            s.id
+            for i, s in enumerate(steps)
+            if s.compensate is not None and (self.states[s.id] in live or i in self._uncertain_undo)
+        ]
+        blockers = self._planner(self.plan, to_undo)
+        for step_id in to_undo:
+            i = self._index[step_id]
+            if self.states[step_id] in (StepState.COMPENSATED, StepState.COMPENSATION_FAILED):
+                self._undo_failed |= self.states[step_id] is StepState.COMPENSATION_FAILED
+                continue
+            waiting_for = {
+                self._index[b]
+                for b in blockers[step_id]
+                if self.states[b] is not StepState.COMPENSATED
+            }
+            self._undo_blockers[i] = waiting_for
+            for b in waiting_for:
+                self._undo_waiting_on.setdefault(b, set()).add(i)
+            if self.states[step_id] is StepState.SUCCEEDED and not waiting_for:
+                heapq.heappush(self._undo_ready, -i)
+
+    def resolve(
+        self,
+        step_id: str,
+        decision: str,
+        now: float,
+        output: Mapping[str, object] | None = None,
+    ) -> list[Command]:
+        """A person decides about an UNCERTAIN step: ``done`` (the effect exists; ``output`` is
+        what the step would have produced) or ``retry`` (a new attempt). Ignored when the step is
+        not uncertain."""
+        if decision not in ("done", "retry"):
+            raise ValueError("the decision is done or retry")
+        i = self._index.get(step_id)
+        if i is None or self.states[step_id] is not StepState.UNCERTAIN:
+            return []
+        step = self.plan.steps[i]
+        undo = i in self._uncertain_undo
+        self._uncertain.discard(i)
+        self._uncertain_undo.discard(i)
+        if decision == "done":
+            self._log(EventKind.STEP_RESOLVED, now, step=step_id, decision="done")
+            if undo:
+                return self._undo_finished(i, now)
+            return self._complete(i, dict(output or {}), now)
+        self._attempt[i] += 1
+        self._log(
+            EventKind.STEP_RESOLVED, now, step=step_id, decision="retry", attempt=self._attempt[i]
+        )
+        if undo:
+            self.states[step_id] = StepState.COMPENSATING
+            self._undo_running.add(i)
+            action = step.compensate or step.action
+        else:
+            self.states[step_id] = StepState.RUNNING
+            self._running.add(i)
+            action = step.action
+        self._commands.append(
+            Start(step_id, action, dict(self._args[i]), self._attempt[i], 0.0, undo)
+        )
+        return self._flush()
+
     # -- internals -----------------------------------------------------------------------------
     def _log(self, kind: EventKind, now: float, **fields: object) -> None:
         self.events.append(Event(len(self.events), kind, now, **fields))  # type: ignore[arg-type]
@@ -284,6 +517,7 @@ class Scheduler:
         self.states[step.id] = state
         self._running.discard(i)
         self._waiting.discard(i)
+        self._uncertain.discard(i)
         self._terminal += 1
         if code is not None:
             self.errors[step.id] = (code, message or "")
@@ -320,6 +554,7 @@ class Scheduler:
             self.states[step.id] = StepState.CANCELLED
             self._running.discard(j)
             self._waiting.discard(j)
+            self._uncertain.discard(j)
             self._terminal += 1
             self._log(EventKind.STEP_FINISHED, now, step=step.id, state=StepState.CANCELLED)
 
@@ -454,7 +689,7 @@ class Scheduler:
         return self._flush()
 
     def _undo_maybe_finish(self, now: float) -> None:
-        if self._undo_running or self._undo_ready:
+        if self._undo_running or self._undo_ready or self._uncertain:
             return
         # steps whose undo was blocked by a failed undo stay SUCCEEDED: the run says so
         self.outcome = (

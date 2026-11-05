@@ -155,3 +155,53 @@ def test_times_come_from_the_given_clock() -> None:
     times = [e.at for e in s.events]
     assert times == sorted(times) and len(set(times)) > 1
     assert all(float(t).is_integer() for t in times)
+
+
+# -- write-ahead and recovery (US-15) ----------------------------------------------------------
+def test_the_events_are_committed_before_the_commands_run() -> None:
+    s = scheduler(TWO_THEN_ONE, "goals: {any_of: [c]}\n", workers=2)
+    committed: list[list[object]] = []
+    checked: list[bool] = []
+
+    def execute(command: Start) -> Outcome:
+        seen = committed[-1]  # the last commit before this call
+        checked.append(any(getattr(e, "step", None) == command.step for e in seen))
+        return Ok({})
+
+    run_threaded(s, execute, counter(), no_sleep, journal=lambda: committed.append(list(s.events)))
+
+    assert checked == [True, True, True]
+    assert s.outcome is RunOutcome.SUCCEEDED
+    assert len(committed[-1]) == len(s.events)  # everything is committed at the end
+
+
+def test_the_journal_is_called_once_per_step_of_the_scheduler_and_before_dispatch() -> None:
+    s = scheduler("  a:\n    action: x.y\n", "goals: {any_of: [a]}\n", workers=1)
+    log: list[str] = []
+
+    def execute(command: Start) -> Outcome:
+        log.append("run")
+        return Ok({})
+
+    run_threaded(s, execute, counter(), no_sleep, journal=lambda: log.append("commit"))
+
+    assert log == ["commit", "run", "commit"]
+
+
+def test_a_run_goes_on_from_the_commands_of_a_restore() -> None:
+    steps = "  a:\n    action: x.y\n  b:\n    action: x.y\n    needs: [a]\n"
+    plan = plan_of(doc(steps, "goals: {any_of: [b]}\n"))
+    first = Scheduler(plan, {}, 1)
+    first.start(0.0)
+    first.step_done("a", {}, 1.0)  # b has started; the engine dies here
+    again = Scheduler(plan, {}, 1)
+    commands = again.restore(first.events, 5.0, lambda action: True)
+    ran: list[tuple[str, int]] = []
+
+    def execute(command: Start) -> Outcome:
+        ran.append((command.step, command.attempt))
+        return Ok({})
+
+    run_threaded(again, execute, counter(), no_sleep, commands=commands)
+
+    assert ran == [("b", 1)] and again.outcome is RunOutcome.SUCCEEDED

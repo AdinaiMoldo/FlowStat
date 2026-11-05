@@ -139,3 +139,16 @@ def test_the_key_of_a_compensation_differs_from_the_key_of_the_step(tmp_path: Pa
     run(Start("a", "t.go", {"n": 1}))
     run(Start("a", "t.go", {"n": 1}, compensation=True))
     assert keys == ["run-1/a/1", "run-1/a/compensate/1"]
+
+
+def test_only_actions_that_ignore_the_key_are_not_idempotent() -> None:
+    registry = default_registry()
+
+    assert registry.is_idempotent("db.write") and registry.is_idempotent("db.delete_batch")
+    assert registry.is_idempotent("xlsx.read") and registry.is_idempotent("statguard.validate")
+    assert registry.is_idempotent("stats.aggregate") and registry.is_idempotent("approval.wait")
+    assert not registry.is_idempotent("email.send")
+
+
+def test_an_unknown_action_is_not_idempotent() -> None:
+    assert not default_registry().is_idempotent("nope.nothing")

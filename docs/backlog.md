@@ -35,8 +35,8 @@ Recount of 5 November: the baseline of 203 SP stays the zero point of the burndo
 | US-12 | As a designer, I read a regional xlsx form and write results to the database in steps | B6 | 8 | Must | M2 | done |
 | US-13 | As an operator, transient errors are retried | C4 | 2 | Must | M3 | done |
 | US-14 | As an operator, a failed run is compensated in the right order | C4 | 8 | Must | M3 | done |
-| US-15 | As an operator, a run survives an engine crash | C4 | 8 | Must | M3 | not started |
-| US-16 | As an operator, I decide about steps whose outcome is unknown after a crash | C4 | 5 | Must | M3 | not started |
+| US-15 | As an operator, a run survives an engine crash | C4 | 8 | Must | M3 | done |
+| US-16 | As an operator, I decide about steps whose outcome is unknown after a crash | C4 | 5 | Must | M3 | done |
 | US-17 | As a developer, I test recovery against an action server that misbehaves | C4 | 5 | Must | M3 | not started |
 | US-18 | As a designer, I see type errors in parameters and conditions | C1 | 8 | Must | M5 | not started |
 | US-19 | As a designer, I get correct types for fan-in references | C1 | 5 | Should | M5 | not started |
