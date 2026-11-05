@@ -15,6 +15,7 @@ from dataclasses import dataclass
 
 from flowstat.compiler.plan import Plan
 from flowstat.engine.scheduler import Cancel, Command, Scheduler, Start
+from flowstat.model.states import TERMINAL_STEP_STATES
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,6 +29,7 @@ class Fail:
     duration: float = 1.0
     code: str = "E-ACT-001"
     message: str = "failed"
+    transient: bool = False  # a retry may help (docs/dsl-spec.md 5.3)
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,8 +45,9 @@ Behavior = Callable[[Start], Result]
 class Simulation:
     scheduler: Scheduler
     makespan: float  # virtual time from the start to the last event
-    started: dict[str, float]
+    started: dict[str, float]  # when the first attempt of each step started
     finished: dict[str, float]
+    attempts: dict[str, list[float]]  # start time of every attempt (after its delay)
 
 
 def simulate(
@@ -80,6 +83,7 @@ def simulate(
     serial = 0
     started: dict[str, float] = {}
     finished: dict[str, float] = {}
+    attempts: dict[str, list[float]] = {}
 
     def push(at: float, kind: str, step: str) -> None:
         nonlocal serial
@@ -91,11 +95,13 @@ def simulate(
             if isinstance(command, Cancel):
                 cancelled.add(command.step)
                 continue
-            started[command.step] = now
+            begin = now + command.delay  # a retry waits for its backoff first
+            started.setdefault(command.step, begin)
+            attempts.setdefault(command.step, []).append(begin)
             result = act(command)
             pending[command.step] = result
             kind = "wait" if isinstance(result, Wait) else "end"
-            push(now + result.duration, kind, command.step)
+            push(begin + result.duration, kind, command.step)
 
     now = 0.0
     schedule(scheduler.start(now), now)
@@ -114,11 +120,14 @@ def simulate(
             commands = scheduler.signal(step, dict(answers[step][1]), now)
             finished[step] = now
         elif isinstance(result, Fail):
-            commands = scheduler.step_failed(step, result.code, result.message, now)
-            finished[step] = now
+            commands = scheduler.step_failed(
+                step, result.code, result.message, now, transient=result.transient
+            )
+            if scheduler.states[step] in TERMINAL_STEP_STATES:
+                finished[step] = now
         else:
             assert isinstance(result, Done)
             commands = scheduler.step_done(step, dict(result.output or {}), now)
             finished[step] = now
         schedule(commands, now)
-    return Simulation(scheduler, now, started, finished)
+    return Simulation(scheduler, now, started, finished, attempts)

@@ -29,6 +29,8 @@ class Start:
     step: str
     action: str
     args: dict[str, object]
+    attempt: int = 1  # 1 for the first call; a retry has the next number (it is part of the key)
+    delay: float = 0.0  # seconds the driver waits before the call (the backoff of a retry)
 
 
 @dataclass(frozen=True, slots=True)
@@ -103,6 +105,8 @@ class Scheduler:
         self._queue: deque[int] = deque()
         self._running: set[int] = set()
         self._waiting: set[int] = set()
+        self._attempt = [1] * n  # the attempt that is running (or ran last) for each step
+        self._args: list[dict[str, object]] = [{} for _ in range(n)]  # as rendered at dispatch
         self._commands: list[Command] = []
         self._terminal = 0
         self._started = False
@@ -143,12 +147,42 @@ class Scheduler:
             return []
         return self._complete(i, output, now)
 
-    def step_failed(self, step_id: str, code: str, message: str, now: float) -> list[Command]:
+    def step_failed(
+        self, step_id: str, code: str, message: str, now: float, transient: bool = False
+    ) -> list[Command]:
+        """The action failed. A transient failure of a running step with a retry left gives the
+        step another attempt (docs/dsl-spec.md 5.3); anything else finishes the step as FAILED."""
         i = self._index.get(step_id)
         if i is None or self.states[step_id] not in (StepState.RUNNING, StepState.WAITING):
             return []
+        retry = self.plan.steps[i].retry
+        if (
+            transient
+            and retry is not None
+            and self.states[step_id] is StepState.RUNNING
+            and self._attempt[i] <= retry.max
+        ):
+            return [self._retry(i, code, message, now)]
         self._finish(i, StepState.FAILED, now, code, message)
         return self._advance(now)
+
+    def _retry(self, i: int, code: str, message: str, now: float) -> Start:
+        step = self.plan.steps[i]
+        assert step.retry is not None
+        retries_done = self._attempt[i]  # attempt 1 failed: this is retry number 1
+        factor = 2 ** (retries_done - 1) if step.retry.backoff == "exponential" else 1
+        delay = step.retry.delay * factor
+        self._attempt[i] += 1
+        self._log(
+            EventKind.STEP_RETRY,
+            now,
+            step=step.id,
+            code=code,
+            message=message,
+            attempt=self._attempt[i],
+            delay=delay,
+        )
+        return Start(step.id, step.action, dict(self._args[i]), self._attempt[i], delay)
 
     def step_waiting(self, step_id: str, now: float) -> list[Command]:
         i = self._index.get(step_id)
@@ -286,8 +320,10 @@ class Scheduler:
             return
         self.states[step.id] = StepState.RUNNING
         self._running.add(i)
+        self._attempt[i] = 1
+        self._args[i] = args
         self._log(EventKind.STEP_STARTED, now, step=step.id)
-        self._commands.append(Start(step.id, step.action, args))
+        self._commands.append(Start(step.id, step.action, dict(args)))
 
     def _advance(self, now: float) -> list[Command]:
         while True:

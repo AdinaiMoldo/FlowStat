@@ -33,7 +33,7 @@ Recount of 5 November: the baseline of 203 SP stays the zero point of the burndo
 | US-10 | As a designer, I declare a contract on a step's output | C3, C1 | 3 | Must | M2 | done |
 | US-11 | As an operator, I see the history of a run | A2 | 3 | Must | M2 | done |
 | US-12 | As a designer, I read a regional xlsx form and write results to the database in steps | B6 | 8 | Must | M2 | done |
-| US-13 | As an operator, transient errors are retried | C4 | 2 | Must | M3 | not started |
+| US-13 | As an operator, transient errors are retried | C4 | 2 | Must | M3 | done |
 | US-14 | As an operator, a failed run is compensated in the right order | C4 | 8 | Must | M3 | not started |
 | US-15 | As an operator, a run survives an engine crash | C4 | 8 | Must | M3 | not started |
 | US-16 | As an operator, I decide about steps whose outcome is unknown after a crash | C4 | 5 | Must | M3 | not started |

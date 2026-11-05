@@ -97,3 +97,32 @@ def test_reading_a_form_through_the_registry_gives_its_declared_schema(tmp_path:
         Start("load[BIS]", "xlsx.read", {"path": "BIS/2025Q1.xlsx"})
     )
     assert isinstance(out, Ok) and set(out.output) == {"rows", "count"}
+
+
+def test_a_transient_action_error_is_marked_transient(tmp_path: Path) -> None:
+    def lost(args: object, context: object) -> dict[str, object]:
+        raise ActionError("E-ACT-008", "connection lost", transient=True)
+
+    out = Registry([spec(lost)]).executor(ctx(tmp_path))(Start("s", "t.go", {"n": 1}))
+    assert out == Error("E-ACT-008", "connection lost", transient=True)
+
+
+def test_an_ordinary_action_error_is_permanent(tmp_path: Path) -> None:
+    def bad(args: object, context: object) -> dict[str, object]:
+        raise ActionError("E-ACT-002", "cannot read x")
+
+    out = Registry([spec(bad)]).executor(ctx(tmp_path))(Start("s", "t.go", {"n": 1}))
+    assert isinstance(out, Error) and out.transient is False
+
+
+def test_the_idempotency_key_of_an_attempt_reaches_the_action(tmp_path: Path) -> None:
+    keys: list[str] = []
+
+    def note(args: object, context: ActionContext) -> dict[str, object]:
+        keys.append(context.key)
+        return {}
+
+    run = Registry([spec(note)]).executor(ctx(tmp_path))
+    run(Start("load[BIS]", "t.go", {"n": 1}))
+    run(Start("load[BIS]", "t.go", {"n": 1}, attempt=3))
+    assert keys == ["run-1/load[BIS]/1", "run-1/load[BIS]/3"]

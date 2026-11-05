@@ -22,6 +22,7 @@ class StepRecord:
     code: str | None = None
     message: str | None = None
     output: dict[str, object] | None = None
+    attempts: int = 0  # 0: never ran; 1: ran once; more: retried after transient failures
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,6 +43,7 @@ def report_from(
     """Fold the events into a report. Steps appear in the order of the plan (``step_ids``)."""
     state = {s: StepState.PENDING for s in step_ids}
     started: dict[str, float] = {}
+    attempts: dict[str, int] = {}
     finished: dict[str, float] = {}
     record: dict[str, Event] = {}
     run_started: float | None = None
@@ -58,6 +60,9 @@ def report_from(
         elif event.kind is EventKind.STEP_STARTED:
             state[step] = StepState.RUNNING
             started[step] = event.at
+            attempts[step] = max(attempts.get(step, 0), 1)
+        elif event.kind is EventKind.STEP_RETRY and event.attempt is not None:
+            attempts[step] = max(attempts.get(step, 0), event.attempt)
         elif event.kind is EventKind.STEP_WAITING:
             state[step] = StepState.WAITING
         elif event.kind is EventKind.STEP_FINISHED and event.state is not None:
@@ -73,6 +78,7 @@ def report_from(
             record[s].code if s in record else None,
             record[s].message if s in record else None,
             record[s].output if s in record else None,
+            attempts.get(s, 0),
         )
         for s in step_ids
     ]

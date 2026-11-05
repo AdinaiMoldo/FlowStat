@@ -31,6 +31,11 @@ class Int:
 
 
 @dataclass(frozen=True)
+class Positive:
+    """A number (integer or decimal) greater than zero."""
+
+
+@dataclass(frozen=True)
 class Bool:
     pass
 
@@ -75,7 +80,7 @@ class ByKind:
     sequence: Shape | None = None
 
 
-Shape = Str | Int | Bool | Enum | AnyValue | Seq | Map | ByKind
+Shape = Str | Int | Positive | Bool | Enum | AnyValue | Seq | Map | ByKind
 
 # -- the interpreter ---------------------------------------------------------------------------
 
@@ -151,15 +156,26 @@ class _Checker:
         else:
             self.check(node, chosen)
 
-    def _scalar(self, node: YNode, shape: Str | Int | Bool | Enum) -> None:
+    def _scalar(self, node: YNode, shape: Str | Int | Positive | Bool | Enum) -> None:
         if not isinstance(node, Scalar):
-            expected = {Str: "a string", Int: "an integer", Bool: "a boolean", Enum: "a string"}
+            expected = {
+                Str: "a string",
+                Int: "an integer",
+                Positive: "a number",
+                Bool: "a boolean",
+                Enum: "a string",
+            }
             self.wrong_kind(node, expected[type(shape)])
             return
         value = node.value
         if isinstance(shape, Bool):
             if not isinstance(value, bool):
                 self.wrong_kind(node, "a boolean")
+        elif isinstance(shape, Positive):
+            if isinstance(value, bool) or not isinstance(value, int | float):
+                self.wrong_kind(node, "a number")
+            elif value <= 0:
+                self.invalid(node, "the value must be greater than 0")
         elif isinstance(shape, Int):
             if isinstance(value, bool) or not isinstance(value, int):
                 self.wrong_kind(node, "an integer")
@@ -278,6 +294,7 @@ STEP_SHAPE = Map(
                 {
                     "max": Key(Int(0), required=True),
                     "backoff": Key(Enum(("fixed", "exponential"))),
+                    "delay": Key(Positive()),
                 }
             )
         ),

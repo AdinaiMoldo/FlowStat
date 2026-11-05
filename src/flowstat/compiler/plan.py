@@ -19,8 +19,9 @@ class JoinSpec:
 
 @dataclass(frozen=True, slots=True)
 class RetrySpec:
-    max: int
-    backoff: str
+    max: int  # retries after the first attempt
+    backoff: str  # fixed or exponential
+    delay: float = 1.0  # seconds before the first retry
 
 
 @dataclass(frozen=True, slots=True)

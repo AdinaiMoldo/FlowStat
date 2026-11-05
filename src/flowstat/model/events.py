@@ -12,6 +12,7 @@ class EventKind(Enum):
     RUN_STARTED = "RUN_STARTED"
     STEP_STARTED = "STEP_STARTED"
     STEP_WAITING = "STEP_WAITING"
+    STEP_RETRY = "STEP_RETRY"  # a transient failure; the step gets another attempt after a delay
     STEP_FINISHED = "STEP_FINISHED"
     RUN_FINISHED = "RUN_FINISHED"
 
@@ -27,3 +28,5 @@ class Event:
     code: str | None = None  # a failed step: the error code and message
     message: str | None = None
     output: dict[str, object] | None = None  # a succeeded step: what it produced
+    attempt: int | None = None  # STEP_RETRY: the number of the attempt that starts next
+    delay: float | None = None  # STEP_RETRY: seconds to wait before that attempt
