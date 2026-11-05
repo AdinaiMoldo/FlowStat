@@ -12,6 +12,7 @@ import sqlite3
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
+from flowstat.analysis.critical import priorities
 from flowstat.compiler.inputs import InputError
 from flowstat.compiler.plan import Plan
 from flowstat.engine.scheduler import Command, Scheduler
@@ -80,7 +81,7 @@ class RunService:
         """A scheduler for a run that has no history yet."""
         run = self.store.get(run_id)
         plan = self.workflows.get_plan(run.workflow, run.version)
-        scheduler = Scheduler(plan, run.inputs, workers, compensation_planner=compensation_blockers)
+        scheduler = self._scheduler(plan, run.inputs, workers)
         return Launch(scheduler, WriteAheadLog(self.store, run_id), [])
 
     def recover(
@@ -94,9 +95,16 @@ class RunService:
         run = self.store.get(run_id)
         plan = self.workflows.get_plan(run.workflow, run.version)
         events = self.store.events(run_id)
-        scheduler = Scheduler(plan, run.inputs, workers, compensation_planner=compensation_blockers)
+        scheduler = self._scheduler(plan, run.inputs, workers)
         commands = scheduler.restore(events, now, idempotent)
         return Launch(scheduler, WriteAheadLog(self.store, run_id, stored=len(events)), commands)
+
+    def _scheduler(self, plan: Plan, inputs: Mapping[str, object], workers: int) -> Scheduler:
+        """A scheduler whose priorities are the feasible critical path for these inputs."""
+        feasible = priorities(plan, self.workflows.signatures, inputs=inputs).priority
+        return Scheduler(
+            plan, inputs, workers, compensation_planner=compensation_blockers, priorities=feasible
+        )
 
     def report(self, run_id: str) -> RunReport:
         run = self.store.get(run_id)

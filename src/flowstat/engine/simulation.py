@@ -64,6 +64,7 @@ def simulate(
     priority_durations: Mapping[str, float] | None = None,
     policy: str = "longest_path",
     compensation_planner: CompensationPlanner | None = None,
+    priorities: Mapping[str, float] | None = None,
     resume: Sequence[Event] | None = None,
     idempotent: Callable[[str], bool] | None = None,
 ) -> Simulation:
@@ -72,7 +73,8 @@ def simulate(
     ``durations`` give the running time of every step (default 1.0) when no ``behavior`` is
     given. ``answers`` maps a waiting step to (delay after it started waiting, answer).
     ``priority_durations`` are the weights the scheduler uses for priorities (default: the same).
-    ``policy`` is ``longest_path`` or ``fifo`` (the baseline of the benchmark).
+    ``policy`` is ``longest_path`` or ``fifo`` (the baseline of the benchmark). ``priorities``
+    replace the longest path of the steps they name (the feasible critical path, dsl-spec 11).
     ``resume`` is the recorded history of a run that crashed: the run is restored from it (with
     ``idempotent``, default: every action is) and goes on from the time of its last event.
     """
@@ -84,6 +86,7 @@ def simulate(
         durations=weights,
         policy=policy,
         compensation_planner=compensation_planner,
+        priorities=priorities,
     )
     rng = random.Random(seed)
     run_time = durations or {}

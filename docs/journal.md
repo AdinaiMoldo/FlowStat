@@ -227,3 +227,12 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Found by the tests: two acceptance tests passed vacuously at first because a `replace` in the test did not match the text (`decision}` has a brace); they were caught because the finding they expected was absent, and the check now shows the changed guard.
 - The example workflow gives no finding, and the expectations of the US-20 acceptance tests (test_us20) changed only where W-GOAL-001 and I-AVAIL-003 are new.
 
+
+## 2026-11-05 Feasible critical path (US-35)
+
+- Chose: the priorities are an argument of the scheduler (`priorities`) and not a policy of its own. The plain longest path stays as the default and as the baseline; the run service computes the feasible one for the inputs of the run when it launches or recovers a run.
+- Chose: a step meets the alternatives of all its descendants, not only its successors, because a chain may pass over a skipped step (the join `all_done`); the reference interpreter reads a chain the same way, which is how the oracle could be exact.
+- Went wrong, found by the benchmark: the first version dropped the chains beyond the cap, so a priority could be shorter than a chain that runs. In 97 to 100 of 100 random workflows the cap was reached when the inputs are not known, and the schedule was worse than the plain path (1.088 of the bound against 1.006). The unit tests had not seen it because their workflows are small. A cut now keeps the longest chain that was left out under the weaker condition of its first step, so every priority is an upper bound; the spec (11), the milestone text and the card say so, and the test of the cut checks `full <= capped <= plain`.
+- Found: the gain over the plain path is small on random workflows (0.0% to 0.9% of the makespan with the inputs of the run), because the plain path is already within 1.4% of the bound. The note in `research/priority-rules.md` says so and does not claim more. The case of the story is decided by it, and that is a test.
+- Found by the tests: two thresholds of "the check is not empty" were set above what random workflows produce (1,408 comparisons against 1,500; 69 against 100); they were lowered to the measured level and not the other way round.
+- Limit: durations are 1 in a real run until runs keep averages; the cost without inputs (up to 1.1 s at 200 steps) is why the service uses the inputs of the run.

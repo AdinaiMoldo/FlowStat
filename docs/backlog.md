@@ -55,6 +55,6 @@ Recount of 5 November: the baseline of 203 SP stays the zero point of the burndo
 | US-32 | As a designer, I learn which running instances can move to a new version | C5 | 13 | Should | M8 | not started |
 | US-33 | As an operator, I move a migratable run to the new version | C5 | 8 | Should | M8 | not started |
 | US-34 | As an admin, I see failure rate and average duration per workflow | A5 | 3 | Could | M8 | not started |
-| US-35 | As an operator, steps on the longest chain that can really run start first | C3 | 5 | Should | M5 | not started |
+| US-35 | As an operator, steps on the longest chain that can really run start first | C3 | 5 | Should | M5 | done |
 
 Acceptance criteria: `stories.md`. The same stories are GitHub issues, grouped by milestone.
