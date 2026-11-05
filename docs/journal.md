@@ -58,3 +58,9 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - The Playbook names the nine regional offices (seven oblasts plus Bishkek and Osh) at its first mention; the catalogue keeps calling them regions.
 - The copies of both documents in `docs/` are refreshed from the current text; the document properties carry only the author and the title.
 
+## 2026-11-05 M2 starts: evaluation semantics before code
+
+- Chose: strict, small semantics (booleans for `and`/`or`/`not`, no implicit conversions, `exists` as the only guard) written in `dsl-spec.md` 3.1 before the evaluator. A fan-in reads the instances that succeeded, in declaration order.
+- Rejected: Python truthiness (a number in a `when` would silently work and hide a mistake), and `null` for a missing field (a typo in a field name would silently make a condition false).
+- Checked with: the evaluator is compared with Python on random expressions (same value on every case in the common fragment) and with golden cases for every error code.
+
