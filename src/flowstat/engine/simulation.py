@@ -56,15 +56,17 @@ def simulate(
     seed: int = 0,
     answers: Mapping[str, tuple[float, Mapping[str, object]]] | None = None,
     priority_durations: Mapping[str, float] | None = None,
+    policy: str = "longest_path",
 ) -> Simulation:
     """Run the plan on a virtual clock.
 
     ``durations`` give the running time of every step (default 1.0) when no ``behavior`` is
     given. ``answers`` maps a waiting step to (delay after it started waiting, answer).
     ``priority_durations`` are the weights the scheduler uses for priorities (default: the same).
+    ``policy`` is ``longest_path`` or ``fifo`` (the baseline of the benchmark).
     """
     weights = priority_durations if priority_durations is not None else durations
-    scheduler = Scheduler(plan, inputs, max_parallel, durations=weights)
+    scheduler = Scheduler(plan, inputs, max_parallel, durations=weights, policy=policy)
     rng = random.Random(seed)
     run_time = durations or {}
 

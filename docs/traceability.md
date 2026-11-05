@@ -17,3 +17,6 @@ Row per requirement: UR or DR, user story, function (A/B/C), design element, tes
 | UR-02 (a broken contract is a failure) | US-10 | C3, C1 | `engine/scheduler.py` (`ensures`), `engine/evaluator.py` | `tests/unit/engine/test_evaluator.py`, `tests/acceptance/test_us06_us10.py` | passed, M2 |
 | UR-02 (an explicit result for every run) | US-11 | A2 | `repo/runs.py`, `model/history.py`, `service/runs.py` | `tests/unit/repo/test_runs.py`, `tests/unit/model/test_history.py`, `tests/unit/service/test_runs.py`, `tests/acceptance/test_us11.py` | passed, M2 |
 | UR-02 (a run uses the department's files and database) | US-12 | B6 | `actions/` (`xlsx`, `statguard`, `stats`, `database`, `email`, `registry`), `engine/runner.py`, `service/cli.py` | `tests/unit/actions/`, `tests/unit/engine/test_runner.py`, `tests/unit/service/test_cli.py`, `tests/acceptance/test_us12.py` | passed, M2 |
+| NFR-09 (coverage of the C1-C6 packages) | US-06 to US-12 | C3 | `engine/` | `pytest --cov` gate in CI | passed, 98% at the end of M2 |
+| UR-02 (priority of ready steps) | US-06 | C3 | `engine/scheduler.py` (policy) | `benchmarks/bench_priority.py`, `docs/research/priority-rules.md` | longest path within 0.4% of the bound, FIFO up to 21.5% above |
+

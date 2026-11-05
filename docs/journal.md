@@ -94,3 +94,10 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Chose: example workflow is version 1, so that `flowstat publish` works on an empty database.
 - Left for M3: `retry` and its backoff, a timeout for a waiting step, resuming a run that was waiting when the process ended.
 
+## 2026-11-05 Priority rules and the close of M2
+
+- Measured: plain longest path against FIFO on 600 random DAGs (`research/priority-rules.md`). The longest path is within 0.4% of the lower bound; FIFO is up to 21.5% above it. Longest path was shorter in 534 cases, equal in 63, longer in 3, so it is a heuristic and not a guarantee, and the card says so.
+- Chose: a `policy` argument of the scheduler (`longest_path` or `fifo`) only to have the baseline. It changes the order of starts and never the result, which a test checks.
+- Not claimed: that the feasible critical path of M5 will win. The generated DAGs have no conditions that make a chain unreachable; M5 needs a generator with such branches and reports against this table.
+- Closed: M2 review and retrospective, card C3 level 1, backlog and traceability. The tag `m2` is created by the user in the GitHub interface, as for `m1`.
+
