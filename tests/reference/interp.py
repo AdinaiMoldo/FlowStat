@@ -22,10 +22,12 @@ from typing import Any
 from flowstat.compiler.plan import Plan
 from flowstat.dsl.ast import (
     Binary,
+    Call,
     Compare,
     Expr,
     ListLit,
     Literal,
+    Name,
     Ref,
     Unary,
 )
@@ -112,6 +114,11 @@ def value(expr: Expr, env: Mapping[str, object], done: frozenset[str]) -> object
             return _arithmetic(op, value(left, env, done), value(right, env, done))
         case Compare(op=op, left=left, right=right):
             return _compare(op, value(left, env, done), value(right, env, done))
+        case Call(func=Name(name="len"), args=(arg,)):
+            v = value(arg, env, done)
+            if not isinstance(v, str | list | dict):
+                raise Fail("len needs a list, a string or a record")
+            return len(v)
     raise NotImplementedError(type(expr).__name__)
 
 

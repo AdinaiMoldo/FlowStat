@@ -6,7 +6,7 @@ and the registry checks it when the action returns (docs/milestones/M2.md, audit
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import replace
 
 from flowstat.actions.base import ActionContext, ActionError, ActionSpec
@@ -19,6 +19,24 @@ from flowstat.actions.xlsx import read_form
 from flowstat.analysis.signatures import ActionSignature, Choices, Signatures
 from flowstat.engine.runner import Error, Executor, Ok, Outcome, Pause
 from flowstat.engine.scheduler import Start
+
+_NOTATION = {str: "string", int: "int", float: "float", bool: "bool", list: "list<any>"}
+
+
+def notation(python_type: type) -> str:
+    """The type of the DSL that a Python class stands for (``any`` when there is none)."""
+    return _NOTATION.get(python_type, "any")
+
+
+def _declared(
+    python: Mapping[str, type] | None, notated: Mapping[str, str] | None
+) -> dict[str, str] | None:
+    """The types of a group of names in the notation of the DSL; ``None`` when not declared."""
+    if python is None and notated is None:
+        return None
+    merged = {name: notation(t) for name, t in (python or {}).items()}
+    merged.update(notated or {})
+    return merged
 
 
 def _fits(value: object, expected: type) -> bool:
@@ -40,7 +58,19 @@ class Registry:
         out: dict[str, ActionSignature] = {}
         for name, spec in self._specs.items():
             fields = {f: kinds[t] for f, t in (spec.output or {}).items() if t in kinds}
-            out[name] = ActionSignature(fields, dict(spec.choices or {}), spec.waits)
+            outputs = _declared(spec.output, spec.output_types)
+            optional = dict(spec.optional or {})
+            for choice in (spec.choices or {}).values():
+                optional.setdefault(choice.argument, "list<string>")
+            out[name] = ActionSignature(
+                fields,
+                dict(spec.choices or {}),
+                spec.waits,
+                _declared(spec.params, spec.param_types) or {},
+                optional,
+                outputs,
+                spec.effect,
+            )
         return out
 
     def is_idempotent(self, action: str) -> bool:
@@ -91,10 +121,16 @@ class Registry:
 
 
 def default_registry() -> Registry:
+    rows = "list<row>"
     return Registry(
         [
             ActionSpec(
-                "xlsx.read", {"path": str}, {"rows": list, "count": int}, read_form, idempotent=True
+                "xlsx.read",
+                {"path": str},
+                {"rows": list, "count": int},
+                read_form,
+                idempotent=True,
+                output_types={"rows": rows},
             ),
             ActionSpec(
                 "statguard.validate",
@@ -102,6 +138,8 @@ def default_registry() -> Registry:
                 {"rows": list, "checked": int},
                 validate,
                 idempotent=True,
+                param_types={"rows": rows},
+                output_types={"rows": rows},
             ),
             ActionSpec(
                 "stats.aggregate",
@@ -109,6 +147,8 @@ def default_registry() -> Registry:
                 {"rows": list, "regions": int},
                 aggregate,
                 idempotent=True,
+                param_types={"parts": f"list<{rows}>"},
+                output_types={"rows": rows},
             ),
             ActionSpec(
                 "approval.wait",
@@ -118,6 +158,7 @@ def default_registry() -> Registry:
                 idempotent=True,
                 choices={"decision": Choices(("approved", "rejected"), "decisions")},
                 waits=True,
+                output_types={"decision": "string", "by": "string"},
             ),
             ActionSpec(
                 "db.write",
@@ -125,10 +166,22 @@ def default_registry() -> Registry:
                 {"written": int, "batch": str},
                 write_rows,
                 idempotent=True,
+                param_types={"rows": rows},
+                effect=True,
             ),
             ActionSpec("db.delete_batch", {}, {"deleted": int}, delete_batch, idempotent=True),
-            ActionSpec("http.call", {"url": str}, {"status": int}, http_call, idempotent=True),
+            ActionSpec(
+                "http.call",
+                {"url": str},
+                {"status": int},
+                http_call,
+                idempotent=True,
+                optional={"method": "string", "body": "any", "timeout": "float"},
+                effect=True,
+            ),
             # the outbox keeps one row per key, but a real mail server would send twice
-            ActionSpec("email.send", {}, {"queued": int}, send_email, idempotent=False),
+            ActionSpec(
+                "email.send", {}, {"queued": int}, send_email, idempotent=False, effect=True
+            ),
         ]
     )

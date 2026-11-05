@@ -67,3 +67,10 @@ class ActionSpec:
     # answers an approval, so the answer comes from outside).
     choices: Mapping[str, Choices] | None = None
     waits: bool = False  # the action pauses the step until a person answers (an approval)
+    # The interface in the notation of the DSL (docs/dsl-spec.md, section 4), for the type check
+    # before a run. A name that is not listed here gets the type of its Python class (``list`` is
+    # ``list<any>``); a test says that the two agree.
+    param_types: Mapping[str, str] | None = None
+    output_types: Mapping[str, str] | None = None
+    optional: Mapping[str, str] | None = None  # arguments the action may take, with their types
+    effect: bool = False  # the action changes something outside the engine (docs/dsl-spec.md 10.5)
