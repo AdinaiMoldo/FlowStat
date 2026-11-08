@@ -118,8 +118,11 @@ in this order:
    `E-AUTH-002`). "A quarterly publication requires the approval of the chief statistician"
    (DR-04) is this check.
 
-The answer is recorded with the name of the user (`by`), not with the role string. The same check
-is used by the command line (`--decision`), which until now accepted any string.
+The answer is 202 with `{"run_id", "step", "decision", "by"}`: the checks are made before the
+answer and the run is driven on in the background, like a new run. It is recorded with the name of
+the user (`by`), not with the role string. The same checks 1 and 2
+are used by the command line (`--decision`), which until now accepted two fixed words whatever the
+step declared; the command line is the operator of the machine, so it asks for no title.
 
 A stopped app leaves its unfinished runs as they are in the log. They are taken up by `flowstat
 resume`; resuming every unfinished run at start is M8.

@@ -256,3 +256,11 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Found: the current Starlette test client needs `httpx2`, not `httpx`; the dev extra and `reuse.md` name it. Ruff's B008 flags `Depends(...)` in defaults, which is how FastAPI reads dependencies, so it is declared immutable in the config and not silenced per line.
 - Found by my own tests: saving a text while the latest version is a draft edits that draft, so a second save does not give number 2. The test now says so. The line of a version error in the example file is 3 (the file starts with a blank line).
 - Chose: a body with an unknown field is rejected (422 `E-API-001` per field), so a misspelt field is not silently ignored. `E-API-006` (405) and `E-API-500` were added to the table of errors.
+
+## 2026-11-08 US-25 runs over REST
+
+- Built: `POST /workflows/{name}/runs` (202 and a run id after the version, the inputs and the store are checked), `GET /runs/{id}`, `GET /runs`, `POST /runs/{id}/decisions`. A run is driven by the pool of the executable (`AppConfig.submit`), one thread at a time per run (`RunLocks`); the job opens its own SQLite connection. The driving code that the command line had inside `_drive` moved to `service/driving.py`, so the two entry points cannot differ.
+- Chose: the answer to an approval is checked in the request (a pass that stores nothing) and again in the job, which rebuilds the scheduler on its own connection. The lock is held between the two, so the state cannot change under them.
+- Chose: the checks of an answer are `RunService.answer`: step waiting, decision declared, title held, in that order, and a test fixes the order. The command line uses the first two; `--decision` no longer has a fixed list of two words in `argparse`, because a step may declare others.
+- Found while testing: with a pool that runs the job before replying, the second of two simultaneous answers always gets 409, so the test says `[202, 409]` and not "one of two outcomes". A test with a real thread pool starts six runs and joins the pool instead of sleeping.
+- Limit: `GET /runs` builds the report of every run to give its status; it is linear in the number of runs and events. Fine for the size of this project, noted for the measurement of M6.

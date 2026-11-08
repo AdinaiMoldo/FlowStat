@@ -9,8 +9,9 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from flowstat.actions.registry import default_registry
-from flowstat.api import errors, workflows
+from flowstat.api import errors, runs, workflows
 from flowstat.api.config import AppConfig
+from flowstat.api.locks import RunLocks
 
 DESCRIPTION = """\
 REST API of FlowStat. Every route except `/health` needs `Authorization: Bearer <token>`; the role
@@ -23,6 +24,8 @@ def create_app(config: AppConfig) -> FastAPI:
     app = FastAPI(title="FlowStat", version="0.1.0", description=DESCRIPTION)
     app.state.config = config
     app.state.registry = default_registry()
+    app.state.locks = RunLocks()
     errors.install(app)
     app.include_router(workflows.router)
+    app.include_router(runs.router)
     return app

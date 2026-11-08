@@ -41,7 +41,8 @@ def concrete(path: str) -> str:
 
 def test_the_walk_is_not_empty(env: Env) -> None:
     found = {(m, p) for m, p, _ in operations(env)}
-    assert len(found) >= 8
+    assert len(found) >= 12
+    assert ("POST", "/runs/{run_id}/decisions") in found
     assert ("POST", "/workflows/{name}/versions/{n}/publish") in found
     assert ("GET", "/health") in found
 
@@ -71,7 +72,7 @@ def test_each_route_is_allowed_to_the_roles_of_the_table_and_to_no_other(env: En
                 assert response.status_code == 403, (method, path, role)
                 assert response.json()["errors"][0]["code"] == "E-AUTH-002"
             checked += 1
-    assert checked >= 8 * 4
+    assert checked >= 12 * 4
 
 
 def test_the_openapi_document_is_the_golden_file(env: Env) -> None:

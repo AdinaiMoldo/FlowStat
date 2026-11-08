@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel, ConfigDict
 
 from flowstat.model.diagnostics import Diagnostic
@@ -77,3 +79,59 @@ class CatalogueIn(Request):
 class CatalogueSaved(BaseModel):
     list: str
     count: int
+
+
+class StartIn(Request):
+    inputs: dict[str, Any] = {}
+    version: int | None = None
+
+
+class Started(BaseModel):
+    run_id: str
+    workflow: str
+    version: int
+    status: str
+
+
+class StepOut(BaseModel):
+    step: str
+    state: str
+    started_at: float | None
+    finished_at: float | None
+    code: str | None
+    message: str | None
+    output: dict[str, Any] | None
+    attempts: int
+    compensated_at: float | None
+
+
+class RunOut(BaseModel):
+    run_id: str
+    workflow: str
+    version: int
+    status: str
+    outcome: str | None
+    started_at: float | None
+    finished_at: float | None
+    steps: list[StepOut]
+
+
+class RunSummary(BaseModel):
+    run_id: str
+    workflow: str
+    version: int
+    status: str
+    outcome: str | None
+    created_at: str
+
+
+class DecisionIn(Request):
+    step: str
+    decision: str
+
+
+class Decided(BaseModel):
+    run_id: str
+    step: str
+    decision: str
+    by: str
