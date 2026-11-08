@@ -49,7 +49,8 @@ from flowstat.service.runs import (
 from flowstat.service.workflows import WorkflowService
 
 log = logging.getLogger("flowstat.api")
-router = SecuredRouter(tags=["runs"])
+router = SecuredRouter(tags=["runs"])  # the core only: start a run of any workflow
+shared = SecuredRouter(tags=["runs"])  # the same routes in the core and in a deployed service
 
 Prepare = Callable[[RunService], tuple[Launch, list[Command] | None]]
 
@@ -127,7 +128,7 @@ def start_run(
 ) -> Started:
     """Check, store and start a run of ``name``; shared by the core and the service."""
     config = config_of(request)
-    number = body.version if body.version is not None else _latest_published(workflows, name)
+    number = body.version if body.version is not None else latest_published(workflows, name)
     run_id = config.new_id()
     try:
         runs.start(run_id, name, number, body.inputs, config.clock())
@@ -155,7 +156,7 @@ def start_run(
     return Started(run_id=run_id, workflow=name, version=number, status="CREATED")
 
 
-def _latest_published(workflows: WorkflowService, name: str) -> int:
+def latest_published(workflows: WorkflowService, name: str) -> int:
     versions = workflows.versions(name)
     if not versions:
         raise fail(404, "E-API-002", f"there is no workflow '{name}'")
@@ -169,7 +170,10 @@ def answer_run(request: Request, runs: RunService, run_id: str, body: DecisionIn
     """Check an answer to an approval and drive the run on; shared by the core and the service."""
     config, registry, locks = config_of(request), registry_of(request), locks_of(request)
     user: User = request.state.user
-    titles = None if user.role == "admin" else user.titles
+    # An admin, and the key of a deployed service (which exists to serve one workflow), may answer
+    # an approval whatever title it names; anyone else needs the title.
+    anything = user.role == "admin" or getattr(request.app.state, "any_title", False)
+    titles = None if anything else user.titles
 
     def prepare(service: RunService) -> tuple[Launch, list[Command] | None]:
         launch = service.recover(run_id, config.workers, config.time(), registry.is_idempotent)
@@ -246,19 +250,19 @@ def start(
     return start_run(request, workflows, runs, name, body)
 
 
-@router.secured("GET", "/runs", "runs:read", summary="List runs, newest first")
+@shared.secured("GET", "/runs", "runs:read", summary="List runs, newest first")
 def runs_list(
     workflow: str | None = None, status: str | None = None, runs: RunService = Depends(get_runs)
 ) -> list[RunSummary]:
     return list_runs(runs, workflow, status)
 
 
-@router.secured("GET", "/runs/{run_id}", "runs:read", summary="The report of a run")
+@shared.secured("GET", "/runs/{run_id}", "runs:read", summary="The report of a run")
 def run_report(run_id: str, runs: RunService = Depends(get_runs)) -> RunOut:
     return read_run(runs, run_id)
 
 
-@router.secured(
+@shared.secured(
     "POST",
     "/runs/{run_id}/decisions",
     "runs:decide",

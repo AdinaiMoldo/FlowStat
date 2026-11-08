@@ -71,6 +71,20 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TEXT    NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS deployments (
+    id         TEXT    PRIMARY KEY,
+    workflow   TEXT    NOT NULL,
+    version    INTEGER NOT NULL,
+    kind       TEXT    NOT NULL CHECK (kind IN ('process', 'docker')),
+    status     TEXT    NOT NULL CHECK (status IN ('starting', 'running', 'failed', 'stopped')),
+    endpoint   TEXT,
+    bundle     TEXT    NOT NULL,
+    handle     TEXT,
+    detail     TEXT,
+    created_at TEXT    NOT NULL,
+    updated_at TEXT    NOT NULL
+);
+
 CREATE TRIGGER IF NOT EXISTS run_events_no_update
 BEFORE UPDATE ON run_events
 BEGIN SELECT RAISE(ABORT, 'the history of a run is append-only'); END;

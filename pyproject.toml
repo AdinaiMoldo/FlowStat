@@ -17,7 +17,7 @@ dependencies = [
 [project.optional-dependencies]
 # Category B components. They live outside the C1-C6 packages (see tests/architecture).
 api = ["fastapi", "pydantic", "uvicorn"]
-actions = ["openpyxl", "httpx2"]
+actions = ["openpyxl"]  # http.call uses urllib from the standard library
 deploy = ["jinja2", "docker"]
 dev = ["pytest", "pytest-cov", "hypothesis", "mypy", "ruff", "pre-commit", "openpyxl", "httpx2"]
 
@@ -28,7 +28,7 @@ flowstat = "flowstat.service.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-flowstat = ["py.typed"]
+flowstat = ["py.typed", "deploy/templates/*.j2"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -77,4 +77,9 @@ files = ["src/flowstat", "tests"]
 [[tool.mypy.overrides]]
 # openpyxl ships no type information (action xlsx.read, category B).
 module = ["openpyxl", "openpyxl.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# The Docker SDK ships no type information (the container launcher, category B).
+module = ["docker", "docker.*"]
 ignore_missing_imports = true

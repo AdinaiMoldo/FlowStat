@@ -8,8 +8,9 @@ from pathlib import Path
 import pytest
 from fastapi import FastAPI
 
-from flowstat.api.__main__ import RunPool, main
+from flowstat.api.edge import RunPool
 from flowstat.repo.db import open_database
+from flowstat.serve.__main__ import main
 from flowstat.service.users import UserService
 from tests.unit.api.helpers import TOKENS
 

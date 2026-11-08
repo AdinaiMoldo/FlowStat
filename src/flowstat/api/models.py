@@ -135,3 +135,61 @@ class Decided(BaseModel):
     step: str
     decision: str
     by: str
+
+
+class DeployIn(Request):
+    workflow: str
+    version: int | None = None
+    kind: str = "process"
+
+
+class DeploymentOut(BaseModel):
+    id: str
+    workflow: str
+    version: int
+    kind: str
+    status: str
+    endpoint: str | None
+    detail: str | None
+    created_at: str
+    updated_at: str
+
+
+class DeployedOut(DeploymentOut):
+    api_key: str  # shown once: only its hash is kept
+
+
+class ServiceHealth(BaseModel):
+    status: str
+    workflow: str
+    version: int
+
+
+class InputOut(BaseModel):
+    name: str
+    type: str
+    required: bool
+    default: Any = None
+    pattern: str | None
+    ref: str | None
+    values: list[Any] | None
+    minimum: float | None
+    maximum: float | None
+
+
+class ManifestOut(BaseModel):
+    service_id: str
+    text_sha256: str
+    catalogue_sha256: str
+    created_at: str
+
+
+class SchemaOut(BaseModel):
+    workflow: str
+    version: int
+    inputs: list[InputOut]
+    manifest: ManifestOut
+
+
+class ServiceStartIn(Request):
+    inputs: dict[str, Any] = {}

@@ -121,3 +121,21 @@ def test_the_store_does_not_read_the_clock() -> None:
         s.save("demo", "a", "{}", T1)
         s.publish("demo", 1, "{}", T2)
     assert one.get("demo", 1) == two.get("demo", 1)
+
+
+def test_a_version_published_elsewhere_can_be_imported_with_its_number_and_never_changes() -> None:
+    import sqlite3
+
+    from flowstat.model.versions import Version, VersionStatus
+
+    db = open_database(":memory:")
+    store = VersionStore(db)
+    imported = Version("demo", 4, VersionStatus.PUBLISHED, "text", "{}", "t0", "t1")
+    store.import_published(imported)
+    assert store.get("demo", 4) == imported and store.latest("demo") == imported
+    with pytest.raises(sqlite3.IntegrityError):
+        store.import_published(imported)  # the number is taken
+    with pytest.raises(sqlite3.DatabaseError, match="immutable"):
+        db.execute("UPDATE versions SET text = 'x' WHERE name = 'demo'")
+    with pytest.raises(ValueError):
+        store.import_published(Version("demo", 5, VersionStatus.DRAFT, "t", "{}", "t0", None))

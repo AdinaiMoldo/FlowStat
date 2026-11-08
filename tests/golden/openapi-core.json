@@ -110,6 +110,175 @@
         "title": "DecisionIn",
         "type": "object"
       },
+      "DeployIn": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "default": "process",
+            "title": "Kind",
+            "type": "string"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          },
+          "workflow": {
+            "title": "Workflow",
+            "type": "string"
+          }
+        },
+        "required": [
+          "workflow"
+        ],
+        "title": "DeployIn",
+        "type": "object"
+      },
+      "DeployedOut": {
+        "properties": {
+          "api_key": {
+            "title": "Api Key",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "endpoint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endpoint"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          },
+          "workflow": {
+            "title": "Workflow",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "workflow",
+          "version",
+          "kind",
+          "status",
+          "endpoint",
+          "detail",
+          "created_at",
+          "updated_at",
+          "api_key"
+        ],
+        "title": "DeployedOut",
+        "type": "object"
+      },
+      "DeploymentOut": {
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "endpoint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endpoint"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          },
+          "workflow": {
+            "title": "Workflow",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "workflow",
+          "version",
+          "kind",
+          "status",
+          "endpoint",
+          "detail",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "DeploymentOut",
+        "type": "object"
+      },
       "DiagnosticOut": {
         "properties": {
           "code": {
@@ -797,6 +966,326 @@
           "workflows"
         ],
         "x-permission": "catalogue:write"
+      }
+    },
+    "/deployments": {
+      "get": {
+        "operationId": "list_deployments_deployments_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DeploymentOut"
+                  },
+                  "title": "Response List Deployments Deployments Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no valid token (E-AUTH-001)"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the role lacks the permission (E-AUTH-002)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "not found (E-API-002)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "conflict with the state of the resource (E-API-003)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the request is invalid (E-API-001, E-API-004, E-API-005, E-INPUT-*)"
+          }
+        },
+        "summary": "List deployments",
+        "tags": [
+          "deployments"
+        ],
+        "x-permission": "deployments:read"
+      },
+      "post": {
+        "operationId": "deploy_deployments_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeployIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeployedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no valid token (E-AUTH-001)"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the role lacks the permission (E-AUTH-002)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "not found (E-API-002)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "conflict with the state of the resource (E-API-003)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the request is invalid (E-API-001, E-API-004, E-API-005, E-INPUT-*)"
+          }
+        },
+        "summary": "Deploy a published version as a service",
+        "tags": [
+          "deployments"
+        ],
+        "x-permission": "deployments:write"
+      }
+    },
+    "/deployments/{deployment_id}": {
+      "delete": {
+        "operationId": "stop_deployment_deployments__deployment_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "deployment_id",
+            "required": true,
+            "schema": {
+              "title": "Deployment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeploymentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no valid token (E-AUTH-001)"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the role lacks the permission (E-AUTH-002)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "not found (E-API-002)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "conflict with the state of the resource (E-API-003)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the request is invalid (E-API-001, E-API-004, E-API-005, E-INPUT-*)"
+          }
+        },
+        "summary": "Stop a deployment",
+        "tags": [
+          "deployments"
+        ],
+        "x-permission": "deployments:write"
+      },
+      "get": {
+        "operationId": "read_deployment_deployments__deployment_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "deployment_id",
+            "required": true,
+            "schema": {
+              "title": "Deployment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeploymentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no valid token (E-AUTH-001)"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the role lacks the permission (E-AUTH-002)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "not found (E-API-002)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "conflict with the state of the resource (E-API-003)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the request is invalid (E-API-001, E-API-004, E-API-005, E-INPUT-*)"
+          }
+        },
+        "summary": "One deployment",
+        "tags": [
+          "deployments"
+        ],
+        "x-permission": "deployments:read"
       }
     },
     "/health": {
