@@ -49,7 +49,7 @@ Recount of 5 November: the baseline of 203 SP stays the zero point of the burndo
 | US-26 | As a designer, I edit in an IDE with live diagnostics | B2 | 8 | Should | M7 | not started |
 | US-27 | As a designer, completion shows only data available at the cursor | B2, C2 | 3 | Should | M7 | not started |
 | US-28 | As a designer, I see the workflow as a graph | B3 | 5 | Should | M7 | not started |
-| US-29 | As an admin, I restrict publishing to designers | A3 | 3 | Should | M6 | not started |
+| US-29 | As an admin, I restrict publishing to designers | A3 | 3 | Should | M6 | done (8 Nov) |
 | US-30 | As an admin, I deploy a workflow as a separate service | B5 | 13 | Must | M6 | not started |
 | US-31 | As an admin, I see the runs of deployed services in the core | A6, A2 | 5 | Must | M7 | not started |
 | US-32 | As a designer, I learn which running instances can move to a new version | C5 | 13 | Should | M8 | not started |

@@ -249,3 +249,10 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Chose: contract first (`api-spec.md`). A machine caller is a user with the operator role; a deployed service has one key made at deployment. Errors are one envelope for all non-2xx responses.
 - Found about the environment: the Docker client is installed but there is no daemon, and the Windows runners of CI cannot run Linux containers, so the container launcher cannot be verified here. The process launcher (the Proposal's fallback) is the tested path, and the review will say what was and was not run.
 - Found: `docs/reuse.md` named httpx for `http.call`, which uses `urllib`; corrected to a test dependency.
+
+## 2026-11-08 US-29 roles and the workflow routes
+
+- Built: the `users` table and `flowstat user add|disable|list` (the token is made in the command line, the database keeps its SHA-256), `service/permissions.py` as the one table of permissions, and the package `api` (`create_app`, error envelope, `SecuredRouter`, the workflow routes). A test compares the table in code with the table in `api-spec.md` section 3 and walks every route as each role and with no token.
+- Found: the current Starlette test client needs `httpx2`, not `httpx`; the dev extra and `reuse.md` name it. Ruff's B008 flags `Depends(...)` in defaults, which is how FastAPI reads dependencies, so it is declared immutable in the config and not silenced per line.
+- Found by my own tests: saving a text while the latest version is a draft edits that draft, so a second save does not give number 2. The test now says so. The line of a version error in the example file is 3 (the file starts with a blank line).
+- Chose: a body with an unknown field is rejected (422 `E-API-001` per field), so a misspelt field is not silently ignored. `E-API-006` (405) and `E-API-500` were added to the table of errors.

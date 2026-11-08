@@ -7,7 +7,9 @@ from pathlib import Path
 
 import pytest
 
+from flowstat.repo.db import open_database
 from flowstat.service.cli import main
+from flowstat.service.users import UserService, hash_token
 from tests.unit.actions.helpers import write_all_forms
 from tests.unit.engine.helpers import ROOT
 
@@ -167,3 +169,58 @@ def test_the_report_shows_how_many_attempts_a_step_needed(
     assert "tries" in header
     row = next(line for line in lines if line.startswith("load[BIS]"))
     assert row.split()[-1] == "1"  # ran once, no retry needed
+
+
+# -- users --------------------------------------------------------------------------------------
+def test_user_add_prints_a_token_once_and_stores_only_its_hash(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    db = str(tmp_path / "flowstat.db")
+    code = main(["user", "add", "olga", "--role", "operator", "--title", "chief_statistician",
+                 "--db", db])  # fmt: skip
+    out = capsys.readouterr().out
+    assert code == 0 and "chief_statistician" in out
+    token = next(line.split(": ")[1] for line in out.splitlines() if line.startswith("token: "))
+    assert len(token) == 64 and int(token, 16) >= 0
+    users = UserService(open_database(db))
+    found = users.authenticate(token)
+    assert found is not None and found.name == "olga" and found.titles == {"chief_statistician"}
+    stored = sqlite3.connect(db).execute("SELECT token_hash FROM users").fetchall()
+    assert stored == [(hash_token(token),)] and token not in str(stored)
+
+
+def test_two_users_get_different_tokens_and_a_name_is_taken_once(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    db = str(tmp_path / "flowstat.db")
+    assert main(["user", "add", "ada", "--role", "admin", "--db", db]) == 0
+    first = capsys.readouterr().out
+    assert main(["user", "add", "dina", "--role", "designer", "--db", db]) == 0
+    second = capsys.readouterr().out
+    assert first.splitlines()[1] != second.splitlines()[1]
+    assert main(["user", "add", "ada", "--role", "admin", "--db", db]) == 2
+    assert "already a user" in capsys.readouterr().err
+
+
+def test_user_add_refuses_a_bad_name_or_role(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    db = str(tmp_path / "flowstat.db")
+    assert main(["user", "add", "Bad Name", "--role", "admin", "--db", db]) == 2
+    assert "lower case" in capsys.readouterr().err
+    with pytest.raises(SystemExit):  # argparse refuses a role that does not exist
+        main(["user", "add", "ada", "--role", "boss", "--db", db])
+
+
+def test_user_disable_and_list(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    db = str(tmp_path / "flowstat.db")
+    main(["user", "add", "ada", "--role", "admin", "--db", db])
+    token = next(
+        line.split(": ")[1] for line in capsys.readouterr().out.splitlines() if "token: " in line
+    )
+    assert main(["user", "disable", "ada", "--db", db]) == 0
+    assert UserService(open_database(db)).authenticate(token) is None
+    assert main(["user", "disable", "nobody", "--db", db]) == 2
+    capsys.readouterr()
+    assert main(["user", "list", "--db", db]) == 0
+    assert capsys.readouterr().out.split() == ["ada", "admin", "-", "disabled"]

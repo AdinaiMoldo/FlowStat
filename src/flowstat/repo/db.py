@@ -62,6 +62,15 @@ CREATE TABLE IF NOT EXISTS run_events (
     PRIMARY KEY (run_id, seq)
 );
 
+CREATE TABLE IF NOT EXISTS users (
+    name       TEXT    PRIMARY KEY,
+    role       TEXT    NOT NULL CHECK (role IN ('admin', 'designer', 'operator')),
+    titles     TEXT    NOT NULL,
+    token_hash TEXT    NOT NULL UNIQUE,
+    disabled   INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT    NOT NULL
+);
+
 CREATE TRIGGER IF NOT EXISTS run_events_no_update
 BEFORE UPDATE ON run_events
 BEGIN SELECT RAISE(ABORT, 'the history of a run is append-only'); END;
@@ -80,6 +89,18 @@ def open_database(path: str) -> sqlite3.Connection:
     db.execute("PRAGMA synchronous = FULL")
     db.executescript(SCHEMA)
     _add_missing_columns(db)
+    return db
+
+
+def connect(path: str) -> sqlite3.Connection:
+    """A connection to a database that already has its schema, for one request or one driver.
+
+    It may be used by another thread than the one that made it (a web framework makes the
+    connection in one worker and uses it in another), always by one thread at a time. Waiting for
+    a lock is limited to 10 seconds.
+    """
+    db = sqlite3.connect(path, isolation_level=None, check_same_thread=False, timeout=10.0)
+    db.execute("PRAGMA synchronous = FULL")
     return db
 
 
