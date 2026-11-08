@@ -7,7 +7,6 @@ import time
 import pytest
 from playwright.sync_api import Browser, Page
 
-from flowstat.api.ui import UI_DIR
 from tests.browser.conftest import Server
 from tests.unit.api.helpers import TOKENS
 
@@ -142,8 +141,14 @@ def test_without_the_editor_the_page_is_a_text_area_with_the_same_list(
 def test_the_page_shows_where_to_get_the_editor_when_it_is_missing(
     browser: Browser, server: Server
 ) -> None:
-    if (UI_DIR / "vendor" / "VERSIONS.json").is_file():
-        pytest.skip("the editor is installed here")
-    page = open_page(browser, server, "designer")
+    """The fetched files are made unreachable for the page, as on a machine that did not fetch."""
+    page = browser.new_page()
+    page.route("**/vendor/**", lambda route: route.abort())
+    page.goto(f"{server.url}/ui/")
+    page.wait_for_selector("body[data-ready=plain]")
     assert "scripts/fetch_ui.py" in page.inner_text("#notice")
+    page.fill("#token", TOKENS["designer"])
+    page.click("#sign-in button[type=submit]")
+    page.fill("#plain", BAD)
+    page.wait_for_selector("[data-testid=problem]", timeout=5000)
     page.close()
