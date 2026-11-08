@@ -9,3 +9,4 @@ Numbers, not impressions. Each benchmark ends with a one-page table and a conclu
 | wal-cost | C4 | I3 | write before acknowledgement against write after (`bench_wal.py`) |
 | recovery | C4 | I3 | restart from scratch, plain replay and ours after a crash at every event; three orders of compensation (`bench_recovery.py`) |
 | solver | C6 | I4 | DNF with a clause cap against brute force, by predicate size; generator against one case per target and random inputs (`bench_solver.py`) |
+| api | B4, B5 | I5a | cost of a request, of listing runs, of a pool of threads and of a process deployment (`bench_api.py`) |

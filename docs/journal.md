@@ -274,3 +274,8 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Decided, and weaker than the core: the one key of a service may answer an approval whatever title it names (a service has a single machine caller and no other routes). The core still checks the title of the person. Written in api-spec section 2 and in the review.
 - The container path: there is no Docker daemon in the sandbox where this was written, so the launcher was first tested against a fake client (the build, the mounts, the published port, the removal on failure). The test marked `docker` ran in CI: on the Ubuntu runner it built the image and the container answered `/health` (the first time the image was really built); on the Windows runner it failed at first, because that daemon runs Windows containers and has no Linux image to pull (the launcher reported it correctly, with the reason, as a 409). The test now skips when the daemon is not a Linux one. The process path was run for real everywhere, including the stop.
 - Corrected: the `actions` extra named `httpx`, which no code uses (`http.call` uses `urllib`); it is removed.
+
+## 2026-11-08 M6 measurement and close-out
+
+- Measured (`benchmarks/bench_api.py`): a request is 2 to 9 ms in the app, a run to its approval 75 ms, a process deployment 0.4 to 0.6 s. Listing runs costs 5.5 ms per stored run (every report compiles the plan again), which is the one figure that is not good; the note names the two changes and they are carried to M8. A pool of four threads is 12% faster than one, not four times, and the note says why and does not claim more.
+- Wrote: `research/api-measurement.md`, the review and the retrospective of M6, the status of the milestone and the backlog.
