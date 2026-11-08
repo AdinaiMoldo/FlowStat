@@ -25,11 +25,13 @@ answer an approval step (section 5).
 
 - A token is 32 random bytes, hex-encoded, made once by `flowstat user add NAME --role ROLE
   [--title T ...]` and printed once. The database keeps only its SHA-256, so a stolen database does
-  not give the tokens. The comparison is constant-time. The random bytes come from the command line
+  not give the tokens. A token is looked up by its hash, so there is no comparison of secrets whose
+  time could leak. The random bytes come from the command line
   (the edge); no lower layer reads a source of randomness.
 - A missing, unknown or disabled token gives 401 `E-AUTH-001`. A role without the permission gives
   403 `E-AUTH-002`. The first admin is made with the same command on the database file; no
-  endpoint creates users in M6.
+  endpoint creates users in M6. `flowstat user disable NAME` stops a token and `flowstat user list`
+  shows the users, without tokens.
 - There are no passwords, sessions or JWT: the IDE of M7 keeps a token.
 - A deployed service has one key, made when it is deployed (section 7), also shown once and stored
   as a SHA-256 in the manifest. It has the permissions of `operator` and nothing else.
@@ -77,6 +79,8 @@ also this body, code `E-API-001`, status 422; FastAPI's own format is replaced.
 | 422 | `E-INPUT-001`..`008` | invalid run inputs, one error per input (the codes of `compiler/inputs.py`) |
 | 422 | `E-API-004` | the text has errors and cannot be published; `errors` holds the diagnostics |
 | 422 | `E-API-005` | the decision is not one the step declares |
+| 405 | `E-API-006` | the route exists, the method does not |
+| 500 | `E-API-500` | an unexpected failure; the message is generic and the detail is in the server log |
 
 ## 5. Runs
 

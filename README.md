@@ -37,7 +37,7 @@ scripts/          run the suite in a Linux container
 
 ```bash
 python -m venv .venv && source .venv/bin/activate    # Windows: .venv\Scripts\activate
-pip install -e ".[dev]"
+pip install -e ".[dev,api,deploy]"
 pytest --cov
 ```
 

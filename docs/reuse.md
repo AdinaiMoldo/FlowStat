@@ -24,7 +24,7 @@ Versions are those read for the Project Proposal (section 11.4); exact versions 
 | Jinja2 | Template of the generated service (B5) | BSD | 3.1.6 | B |
 | Docker SDK for Python | Build and start containers (B5) | Apache-2.0 | 7.2.0 | B |
 | openpyxl | Read and write xlsx files (B6) | MIT | 3.1.5 | B |
-| httpx | The test client of FastAPI (tests only); the action http.call uses `urllib` from the standard library | BSD-3-Clause | 0.28.1 | B |
+| httpx2 | The test client of Starlette and FastAPI (tests only); the action http.call uses `urllib` from the standard library | BSD-3-Clause | 2.13.1 | B |
 | Monaco Editor | Code editor in the IDE (B2) | MIT | 0.57.0 | B |
 | Cytoscape.js | Graph preview (B3) | MIT | 3.34.4 | B |
 | cytoscape-dagre, dagre | Layout of the graph preview (B3) | MIT | 4.0.1, 0.8.5 | B |

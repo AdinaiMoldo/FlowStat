@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import secrets
 import sqlite3
 import sys
 import time
@@ -31,9 +32,11 @@ from flowstat.model.states import RunOutcome, StepState
 from flowstat.model.versions import VersionStatus
 from flowstat.repo.db import open_database
 from flowstat.repo.runs import RunNotFoundError
+from flowstat.repo.users import UserExistsError, UserNotFoundError
 from flowstat.repo.versions import VersionNotFoundError
 from flowstat.service.cases import CaseRun, run_cases
 from flowstat.service.runs import InvalidInputsError, Launch, NotPublishedError, RunService
+from flowstat.service.users import ROLES, UserService
 from flowstat.service.workflows import PublishError, WorkflowService
 
 EXIT_OK, EXIT_NOT_DONE, EXIT_USAGE, EXIT_WAITING = 0, 1, 2, 3
@@ -301,6 +304,45 @@ def _resolve(args: argparse.Namespace) -> int:
     return _drive(args, runs, args.run_id, launch, commands)
 
 
+# -- users --------------------------------------------------------------------------------------
+def _new_token() -> str:
+    """32 random bytes, hex-encoded: the one place that reads a source of randomness."""
+    return secrets.token_hex(32)
+
+
+def _user_add(args: argparse.Namespace) -> int:
+    users = UserService(open_database(args.db))
+    token = _new_token()
+    try:
+        user = users.add(args.name, args.role, args.title, token, _now())
+    except UserExistsError:
+        return _err(f"there is already a user '{args.name}'")
+    except ValueError as error:
+        return _err(str(error))
+    titles = f" (titles: {', '.join(sorted(user.titles))})" if user.titles else ""
+    print(f"user {user.name}, role {user.role}{titles}")
+    print(f"token: {token}")
+    print("Keep the token now: only its hash is stored, and it is not shown again.")
+    return EXIT_OK
+
+
+def _user_disable(args: argparse.Namespace) -> int:
+    try:
+        UserService(open_database(args.db)).disable(args.name)
+    except UserNotFoundError:
+        return _err(f"there is no user '{args.name}'")
+    print(f"user {args.name} is disabled")
+    return EXIT_OK
+
+
+def _user_list(args: argparse.Namespace) -> int:
+    for user in UserService(open_database(args.db)).all():
+        titles = ",".join(sorted(user.titles)) or "-"
+        state = "disabled" if user.disabled else "active"
+        print(f"{user.name}  {user.role}  {titles}  {state}")
+    return EXIT_OK
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="flowstat", description="FlowStat workflow engine")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -367,6 +409,24 @@ def _parser() -> argparse.ArgumentParser:
     report.add_argument("run_id")
     report.add_argument("--db", required=True, help="the FlowStat database file")
     report.set_defaults(handler=_report)
+
+    user = commands.add_parser("user", help="manage the users of the API")
+    kinds = user.add_subparsers(dest="user_command", required=True)
+    add = kinds.add_parser("add", help="make a user and print a new token (once)")
+    add.add_argument("name")
+    add.add_argument("--role", required=True, choices=list(ROLES))
+    add.add_argument(
+        "--title", action="append", default=[], help="a title, e.g. chief_statistician"
+    )
+    add.add_argument("--db", required=True, help="the FlowStat database file")
+    add.set_defaults(handler=_user_add)
+    disable = kinds.add_parser("disable", help="stop a user's token from working")
+    disable.add_argument("name")
+    disable.add_argument("--db", required=True, help="the FlowStat database file")
+    disable.set_defaults(handler=_user_disable)
+    listing = kinds.add_parser("list", help="show the users")
+    listing.add_argument("--db", required=True, help="the FlowStat database file")
+    listing.set_defaults(handler=_user_list)
     return parser
 
 

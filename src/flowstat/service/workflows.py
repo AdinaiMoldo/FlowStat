@@ -136,6 +136,19 @@ class WorkflowService:
             raise PublishError(sorted(problems, key=lambda d: (d.line, d.column)))
         return self.versions_store.publish(name, number, snapshot_to_json(catalogue), now)
 
+    def check(self, text: str) -> tuple[list[Diagnostic], list[Diagnostic]]:
+        """The errors and the findings of a text against the live catalogue; nothing is stored."""
+        result = self._compile(text, self.catalogue())
+        findings = self._findings(result.plan) if result.plan is not None else []
+        return result.diagnostics, findings
+
+    def analyse(self, name: str, number: int) -> tuple[list[Diagnostic], list[Diagnostic]]:
+        """The errors and the findings of a stored version, against the catalogue it reads."""
+        version = self.versions_store.get(name, number)
+        result = self._compile(version.text, self._catalogue_for(version))
+        findings = self._findings(result.plan) if result.plan is not None else []
+        return result.diagnostics, findings
+
     def findings(self, name: str, number: int) -> list[Diagnostic]:
         """Warnings and notes of a version: what the analysis could say about its guards."""
         version = self.versions_store.get(name, number)
