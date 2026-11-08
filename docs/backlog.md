@@ -11,7 +11,7 @@ The full backlog (34 user stories, 203 SP baseline, 214 SP planned after the rec
 | M4 (I4a). Solver | 19 | US-20, US-23, US-24 | C6 solver and test generator | done (5 Nov) |
 | M5 (I4b). Analysis | 26 + 5 | US-18, US-19, US-21, US-22, US-35 | C1 phase 4 (types), C2, feasible critical path | done (5 Nov) |
 | M6 (I5a). API, roles and deployment | 21 | US-25, US-29, US-30 | REST API, roles, packaging a workflow as a service | done (8 Nov) |
-| M7 (I5b). IDE and service view | 21 | US-26, US-27, US-28, US-31 | Monaco editor, graph preview, completion, runs of deployed services in the core | not started |
+| M7 (I5b). IDE and service view | 21 | US-26, US-27, US-28, US-31 | Monaco editor, graph preview, completion, runs of deployed services in the core | in progress |
 | M8 (I6). Evolution | 24 | US-32 to US-34 | C5 (conformance first, handover second) and statistics | not started |
 | M9. Hardening | not estimated | - | Coverage gate, final diagrams, traceability matrix, report assembly | not started |
 

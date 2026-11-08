@@ -208,6 +208,70 @@ source of truth for them, and nothing in M6 assumes the core sees them.
 ## 8. What is not in M6
 
 User management endpoints; passwords and a login page; TLS (terminate it in front of the server);
-CORS (M7, with the IDE); rate limiting; token rotation; resuming runs when the app starts (M8);
+CORS (not needed, see section 9); rate limiting; token rotation; resuming runs when the app starts (M8);
 the outbox and the ingest of events in the core (M7); the epoch fence and migration (M8); more than
 one core process (the database is SQLite).
+
+## 9. M7: the editor, the graph, completion and the events of services
+
+### The pages
+
+The core serves the editor at `/ui/` (static files, permission `public`: they hold no data and no
+secret). The page calls the routes below with `Authorization: Bearer <token>`; the token is typed
+into the page and kept in `sessionStorage` of that tab. The page and the API have the same origin, so
+**CORS stays off**. The editor and the graph library are not in the repository: `scripts/fetch_ui.py`
+puts the pinned packages (checked by SHA-512) in `src/flowstat/api/ui/vendor/`; without them the page
+falls back to a text area and a list of diagnostics.
+
+### New routes
+
+| Route | Permission | Does |
+| --- | --- | --- |
+| `POST /graph` | `workflows:write` | body `{"text": ...}`; `{"diagnostics": [...], "graph": {...} or null}`; `graph` is null when the text has errors; stores nothing |
+| `GET /workflows/{name}/versions/{n}/graph` | `workflows:read` | `{"graph": {...}}` of a stored version; 404 for an unknown version; 422 (`E-API-004`) when the stored text does not compile |
+| `POST /complete` | `workflows:write` | body `{"text", "line", "column"}` (both from 1); `{"items": [{"label", "kind", "detail"}], "note": null or text}` |
+| `POST /deployments/{id}/events` | `events:ingest` | body `{"run": {run_id, workflow, version, inputs, created_at}, "events": [...]}`; `{"run_id", "stored_through"}` |
+
+Changed routes: `GET /runs` takes `?deployment=<id>` and every run says its `origin` (`null` for a
+run of the core, the deployment id for a run shipped by a service); `GET /deployments` and
+`GET /deployments/{id}` also give `runs` (how many runs the service has shipped) and
+`last_event_at`. `POST /deployments` shows a third key, `ingest_key`, once.
+
+### The graph
+
+```json
+{"nodes": [{"id": "load[BIS]", "base": "load", "action": "xlsx.read", "line": 14, "conditional": false,
+            "goal": false, "group": "load", "layer": 1}],
+ "edges": [{"from": "start", "to": "load[BIS]"}],
+ "groups": [{"id": "load", "size": 9}]}
+```
+
+One node per step instance, one edge per entry of `needs` of an instance; `conditional` is true when
+the step has a `when`; `goal` when it is a goal of the workflow; `group` names the base step of a
+`foreach` (null for others); `layer` is the length of the longest path from a step without
+predecessors.
+
+### Completion
+
+Inside `${` the answer holds: `inputs.<name>` for every input; the outputs of the steps for which
+`available_at` (C2) says no warning follows, as `step`, `step[*]` (a `foreach` step) or `step[var]`;
+and, after `${step.`, the fields the action of that step declares. The step is the one whose
+source lines contain the cursor. When the text with the unfinished reference cut off does not
+compile, `items` is empty and `note` names the first error; nothing is guessed.
+
+### Events of a service
+
+The service ships its events to the core in order and at least once:
+
+- The core stores them with the rule of `RunStore.append`: an event already stored and identical is
+  ignored, a different event with a used number or a gap refuses the whole batch and stores nothing
+  (409 `E-API-003`, with `expected` in the message). The pair (run, sequence number) is the key.
+- Authentication: the ingest key of the deployment (the third key, shown once). The key of another
+  deployment, a key of a user, and no key are refused (403, 403, 401). A batch with a workflow or a
+  version other than the deployment's is 422 `E-API-001`; a run id that belongs to the core is 409.
+- At most 200 events in a batch. The service keeps a cursor per run (`outbox`, in its own database)
+  that moves only after the core acknowledged; when the core answers with a gap, the cursor goes back
+  to what the core has.
+- The core reads a shipped run like its own: `GET /runs/{id}` gives the same report (the core holds the
+  version that was deployed), `GET /runs?deployment=<id>` lists them. Shipped history may lag; the
+  log of the service is the source of truth.
