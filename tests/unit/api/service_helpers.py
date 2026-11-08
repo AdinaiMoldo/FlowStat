@@ -18,7 +18,8 @@ from flowstat.service.users import hash_token
 from tests.unit.api.helpers import EXAMPLE, NAME, REGIONS
 
 T = "2026-11-08T10:00:00Z"
-KEY = "5e" * 32
+KEY = "5e" * 32  # the key that starts runs: no title
+TITLE_KEY = "7a" * 32  # the key of the title chief_statistician
 
 
 def catalogue_json() -> str:
@@ -52,7 +53,8 @@ class ServiceEnv:
 
 
 def make_service(tmp_path: Path, submit: Submit | None = None, kind: str = "process") -> ServiceEnv:
-    bundle = build_bundle(tmp_path / "bundles", "s-1", frozen(), hash_token(KEY), T, kind)
+    hashes = {"chief_statistician": hash_token(TITLE_KEY)}
+    bundle = build_bundle(tmp_path / "bundles", "s-1", frozen(), hash_token(KEY), hashes, T, kind)
     ids = (f"sr-{n:04d}" for n in itertools.count(1))
     ticks = itertools.count(1)
     config = AppConfig(
@@ -63,7 +65,7 @@ def make_service(tmp_path: Path, submit: Submit | None = None, kind: str = "proc
         time=lambda: float(next(ticks)),
         sleep=lambda seconds: None,
         new_id=lambda: next(ids),
-        new_token=lambda: "k" * 64,
+        new_token=lambda: "unused",
         submit=submit or (lambda job: job()),
         bundles=bundle,
         workers=2,

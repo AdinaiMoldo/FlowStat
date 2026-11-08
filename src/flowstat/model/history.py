@@ -116,6 +116,17 @@ def report_from(
     )
 
 
+def status_of(events: Iterable[Event]) -> tuple[str, RunOutcome | None]:
+    """The status and the outcome of a run, from its events alone (no plan needed).
+
+    The status looks only at the steps that have events, since a step that never started is
+    pending and changes nothing, so it equals the status of the full report.
+    """
+    found = list(events)
+    report = report_from("", "", 0, found, sorted({e.step for e in found if e.step is not None}))
+    return report.status, report.outcome
+
+
 _UNDO_STATES = frozenset({StepState.COMPENSATED, StepState.COMPENSATION_FAILED})
 
 

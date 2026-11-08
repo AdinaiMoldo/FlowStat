@@ -68,6 +68,7 @@ def make_env(
     db.close()
     ids = (f"r-{n:04d}" for n in itertools.count(1))
     ticks = itertools.count(1)
+    tokens = itertools.count(1)  # the first key made is 00..01, the second 00..02
     config = AppConfig(
         db_path=path,
         data_dir=tmp_path / "data",
@@ -76,7 +77,7 @@ def make_env(
         time=lambda: float(next(ticks)),
         sleep=lambda seconds: None,
         new_id=lambda: next(ids),
-        new_token=lambda: "k" * 64,
+        new_token=lambda: f"{next(tokens):064x}",
         submit=submit or (lambda job: job()),  # by default the run is driven before the reply
         bundles=tmp_path / "bundles",
         workers=2,

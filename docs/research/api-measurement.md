@@ -27,22 +27,24 @@ lookup by hash). Validating and reporting cost 8 to 9 ms because both **compile 
 plan has no stored form (gap 10 of the audit), so `get_plan` reads the version and compiles it, which
 is the 8.6 ms of `/validate`.
 
-## Listing runs is linear and not cheap
+## Listing runs: linear, and what was done about it
 
-| runs stored | `GET /runs` median ms |
-| --- | --- |
-| 1 | 7.8 |
-| 10 | 57.5 |
-| 25 | 150.9 |
-| 50 | 274.6 |
+About 5.5 ms per run: the first version built the report of every run to give its status, and each
+report compiles the plan again. The status does not need the plan (it looks only at the steps that
+have events), so the list now reads it from the events with `RunService.status`; a test checks that
+it equals the status of the full report for a created, a waiting, a finished and a rejected run.
+Measured again after the change: A report of one run still compiles the plan
+(8 ms); keeping the compiled plan of a published version is carried to M8.
 
-About 5.5 ms per run: the list builds the report of every run to give its status, and each report
-compiles the plan. This is the one figure of the milestone that is not acceptable for a large
-installation, and the cause is known. Two changes would remove it: keep the compiled plan of a
-published version in the app (a published version never changes, and neither does its snapshot), and
-let the list read the status from the events without a plan. Neither is done: the story's criteria
-do not need them and the size of this project's data does not either. It is carried to M8, where the
-app is made to start with many runs.
+| runs stored | before: median ms | after: median ms |
+| --- | --- | --- |
+| 1 | 7.8 | 4.0 |
+| 10 | 57.5 | 5.2 |
+| 25 | 150.9 | 10.1 |
+| 50 | 274.6 | 13.0 |
+
+The cost per stored run fell from about 5.5 ms to about 0.2 ms; at 50 runs the list is 21 times
+faster. The "before" column is the measurement the decision was made from.
 
 ## Many runs at once
 

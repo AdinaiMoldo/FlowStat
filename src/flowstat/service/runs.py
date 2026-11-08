@@ -17,8 +17,8 @@ from flowstat.compiler.inputs import InputError
 from flowstat.compiler.plan import Plan
 from flowstat.engine.scheduler import Command, Scheduler
 from flowstat.model.events import Event
-from flowstat.model.history import RunReport, report_from
-from flowstat.model.states import StepState
+from flowstat.model.history import RunReport, report_from, status_of
+from flowstat.model.states import RunOutcome, StepState
 from flowstat.model.versions import VersionStatus
 from flowstat.recovery.saga import compensation_blockers
 from flowstat.recovery.wal import WriteAheadLog
@@ -178,6 +178,10 @@ class RunService:
         plan = self.workflows.get_plan(run.workflow, run.version)
         events = self.store.events(run_id)
         return report_from(run_id, run.workflow, run.version, events, [s.id for s in plan.steps])
+
+    def status(self, run_id: str) -> tuple[str, RunOutcome | None]:
+        """The status and outcome of a run without compiling its plan (a list of many runs)."""
+        return status_of(self.store.events(run_id))
 
     def list_runs(self, workflow: str | None = None) -> list[StoredRun]:
         return self.store.runs() if workflow is None else self.store.runs_of(workflow)

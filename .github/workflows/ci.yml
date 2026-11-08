@@ -28,3 +28,10 @@ jobs:
         run: python -m pytest tests/architecture -q
       - name: Tests and coverage gate (at least 90 percent)
         run: python -m pytest --cov --cov-report=term-missing
+      - name: The container test must run on Linux, not be skipped
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          python -m pytest tests/acceptance/test_us30.py -m docker --no-cov -q -rs | tee docker.txt
+          if grep -q SKIPPED docker.txt; then echo "the container test was skipped"; exit 1; fi
+          grep -q "1 passed" docker.txt

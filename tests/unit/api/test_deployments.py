@@ -60,12 +60,15 @@ def test_an_admin_deploys_the_latest_published_version_and_gets_the_key_once(
     made = body(response)
     assert made["id"] == "r-0001" and made["status"] == "running" and made["kind"] == "process"
     assert made["endpoint"] == "http://127.0.0.1:9100" and made["version"] == 1
-    assert made["api_key"] == "k" * 64
+    assert made["api_key"] == f"{1:064x}"
+    assert made["title_keys"] == {"chief_statistician": f"{2:064x}"}
     # the key is shown here and nowhere else; the bundle keeps its hash only
     assert launcher.started == [env.config.bundles / "r-0001"]
     manifest = read_bundle(env.config.bundles / "r-0001").manifest
-    assert manifest.api_key_sha256 == hash_token("k" * 64)
-    assert "k" * 64 not in (env.config.bundles / "r-0001" / "manifest.json").read_text()
+    assert manifest.api_key_sha256 == hash_token(f"{1:064x}")
+    assert manifest.title_keys_sha256 == {"chief_statistician": hash_token(f"{2:064x}")}
+    text = (env.config.bundles / "r-0001" / "manifest.json").read_text()
+    assert f"{1:064x}" not in text and f"{2:064x}" not in text
     for path in ("/deployments", "/deployments/r-0001"):
         assert "api_key" not in env.call("operator", "GET", path).text
 

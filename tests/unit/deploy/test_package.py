@@ -18,7 +18,7 @@ VERSION = Version("demo", 4, VersionStatus.PUBLISHED, TEXT, '{"regions": []}', T
 def test_a_process_bundle_has_the_frozen_files_the_manifest_and_nothing_for_a_container(
     tmp_path: Path,
 ) -> None:
-    bundle = build_bundle(tmp_path, "s-1", VERSION, "ab" * 32, T, "process")
+    bundle = build_bundle(tmp_path, "s-1", VERSION, "ab" * 32, {"chief": "cd" * 32}, T, "process")
     assert bundle == tmp_path / "s-1"
     names = sorted(p.name for p in bundle.iterdir())
     assert names == ["catalogue.json", "data", "manifest.json", "workflow.yaml"]
@@ -26,11 +26,12 @@ def test_a_process_bundle_has_the_frozen_files_the_manifest_and_nothing_for_a_co
     read = read_bundle(bundle)
     assert read.manifest.text_sha256 == sha256_bytes(encode(TEXT))
     assert read.manifest.api_key_sha256 == "ab" * 32 and read.manifest.version == 4
+    assert read.manifest.title_keys_sha256 == {"chief": "cd" * 32}
     assert read.text == TEXT and read.catalogue == '{"regions": []}'
 
 
 def test_a_container_bundle_adds_the_dockerfile_and_a_copy_of_the_package(tmp_path: Path) -> None:
-    bundle = build_bundle(tmp_path, "s-2", VERSION, "ab" * 32, T, "docker")
+    bundle = build_bundle(tmp_path, "s-2", VERSION, "ab" * 32, {}, T, "docker")
     dockerfile = (bundle / "Dockerfile").read_text(encoding="utf8")
     assert dockerfile.startswith("# The service of demo v4")
     assert "FROM python:3." in dockerfile and "-slim" in dockerfile
@@ -55,6 +56,6 @@ def test_the_dockerfile_is_the_same_each_time_and_a_missing_value_is_an_error() 
 
 
 def test_a_bundle_is_never_made_over_an_existing_one(tmp_path: Path) -> None:
-    build_bundle(tmp_path, "s-1", VERSION, "ab" * 32, T, "process")
+    build_bundle(tmp_path, "s-1", VERSION, "ab" * 32, {"chief": "cd" * 32}, T, "process")
     with pytest.raises(FileExistsError):
-        build_bundle(tmp_path, "s-1", VERSION, "ab" * 32, T, "process")
+        build_bundle(tmp_path, "s-1", VERSION, "ab" * 32, {"chief": "cd" * 32}, T, "process")

@@ -148,3 +148,26 @@ def test_a_second_answer_after_the_run_finished_is_refused(world: World) -> None
     drive(world.runs, "r1", launch, world.machine, commands)
     with pytest.raises(StepNotWaitingError):
         world.runs.answer(world.launch(), "approve", "approved", "ada", None, 200.0)
+
+
+def test_the_status_from_the_events_alone_is_the_status_of_the_full_report(world: World) -> None:
+    world.runs.start("r0", NAME, 1, {"quarter": "2025Q1"}, T)
+    assert world.runs.status("r0") == ("CREATED", None)  # stored, nothing happened yet
+    world.waiting("r1")
+    assert world.runs.status("r1") == ("WAITING", None)
+    launch = world.runs.recover("r1", 2, 100.0, default_registry().is_idempotent)
+    commands = world.runs.answer(launch, "approve", "approved", "ada", None, 100.0)
+    drive(world.runs, "r1", launch, world.machine, commands)
+    world.waiting("r2")
+    launch = world.runs.recover("r2", 2, 100.0, default_registry().is_idempotent)
+    drive(
+        world.runs,
+        "r2",
+        launch,
+        world.machine,
+        world.runs.answer(launch, "approve", "rejected", "ada", None, 100.0),
+    )
+    for run_id in ("r0", "r1", "r2"):
+        full = world.runs.report(run_id)
+        assert world.runs.status(run_id) == (full.status, full.outcome), run_id
+    assert world.runs.status("r1") == ("FINISHED", RunOutcome.SUCCEEDED)

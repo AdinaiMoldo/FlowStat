@@ -33,12 +33,13 @@ answer an approval step (section 5).
   endpoint creates users in M6. `flowstat user disable NAME` stops a token and `flowstat user list`
   shows the users, without tokens.
 - There are no passwords, sessions or JWT: the IDE of M7 keeps a token.
-- A deployed service has one key, made when it is deployed (section 7), also shown once and stored
-  as a SHA-256 in the manifest. It has the permissions of `operator` and nothing else, and the
-  service has no routes for anything else. Because that key is the only caller of a service that
-  serves one workflow, it may answer an approval whatever title the step names; in the core the
-  title of the person decides (section 5). This is weaker, and is what a service with a single
-  machine caller can offer; a key per title is left for later.
+- A deployed service has keys made when it is deployed (section 7), shown once and stored as
+  SHA-256 in the manifest: one `api_key` that starts runs and reads (the permissions of `operator`,
+  no title), and one key for each title that an approval of the workflow names (`title_keys`, for
+  the example `chief_statistician`). The same check as in the core applies (section 5): the key
+  that starts runs cannot answer an approval, and the key of a title answers only the approvals of
+  that title. The answer is recorded as `approver.<title>`. The service has no routes for anything
+  else.
 
 ## 3. Permissions
 
@@ -154,7 +155,7 @@ the table `deployments` of the registry (A6).
 ```text
 <root>/<service-id>/
   manifest.json    format, service_id, workflow, version, text_sha256, catalogue_sha256,
-                   api_key_sha256, created_at
+                   api_key_sha256, title_keys_sha256, created_at
   workflow.yaml    the published text, byte for byte
   catalogue.json   the catalogue snapshot of that version
   Dockerfile       rendered from the template (kind docker)
@@ -181,8 +182,8 @@ route for workflows, the catalogue or deployments.
 **Same results.** For the same version, the same inputs, the same input files and the same
 answers to approvals, the report of a run on the service equals the report of a run in the core
 in the final state of every step, its error code, its output and the outcome of the run; the times,
-the run id and the name that answered an approval (`by`: a person in the core, the key of the
-service in a service) may differ. This is what US-30 is tested with (`tests/acceptance/test_us30.py`:
+the run id and the name that answered an approval (`by`: a person in the core, `approver.<title>` in a
+service) may differ. This is what US-30 is tested with (`tests/acceptance/test_us30.py`:
 four scenarios, an approval, a rejection, missing forms, and a run below the quorum, in-process and
 against a real process).
 
@@ -193,8 +194,8 @@ port of 127.0.0.1 and waits for `/health` (a limit of 20 s, with the clock and t
 if Docker cannot be reached the request fails with 409 and says so, and it does not fall back by
 itself (the caller chooses the kind). The operating system is touched in `deploy/` and nowhere
 else (NFR-07). `DELETE /deployments/{id}` stops the process or the container and marks the row
-`stopped` (409 when it is not running). `POST /deployments` answers 201 with the row and `api_key`,
-the only time the key is shown; 409 when the version is a draft, when there is no launcher for the
+`stopped` (409 when it is not running). `POST /deployments` answers 201 with the row, `api_key` and `title_keys`,
+the only time the keys are shown; 409 when the version is a draft, when there is no launcher for the
 kind in this process, or when the service did not start (the row stays as `failed` with the end of
 its log in `detail`). `python -m flowstat.serve` is the command that starts the core with both
 launchers; the bundles are made under `--bundles`.
