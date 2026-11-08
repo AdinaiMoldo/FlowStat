@@ -12,6 +12,7 @@ from flowstat.api.errors import ApiError, ErrorItem, fail
 from flowstat.repo.db import connect
 from flowstat.repo.users import User
 from flowstat.service.permissions import allowed
+from flowstat.service.runs import RunService
 from flowstat.service.users import UserService
 from flowstat.service.workflows import WorkflowService
 
@@ -33,6 +34,12 @@ def get_db(request: Request) -> Iterator[sqlite3.Connection]:
 def get_workflows(request: Request, db: sqlite3.Connection = Depends(get_db)) -> WorkflowService:
     registry = request.app.state.registry
     return WorkflowService(db, known_actions=registry.names(), signatures=registry.signatures())
+
+
+def get_runs(
+    db: sqlite3.Connection = Depends(get_db), workflows: WorkflowService = Depends(get_workflows)
+) -> RunService:
+    return RunService(db, workflows)
 
 
 def require(permission: str) -> Callable[..., User]:

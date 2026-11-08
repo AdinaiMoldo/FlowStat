@@ -9,7 +9,7 @@ functions; this service does not care which.
 from __future__ import annotations
 
 import sqlite3
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Collection, Mapping
 from dataclasses import dataclass
 
 from flowstat.analysis.critical import priorities
@@ -18,6 +18,7 @@ from flowstat.compiler.plan import Plan
 from flowstat.engine.scheduler import Command, Scheduler
 from flowstat.model.events import Event
 from flowstat.model.history import RunReport, report_from
+from flowstat.model.states import StepState
 from flowstat.model.versions import VersionStatus
 from flowstat.recovery.saga import compensation_blockers
 from flowstat.recovery.wal import WriteAheadLog
@@ -35,6 +36,28 @@ class InvalidInputsError(ValueError):
     def __init__(self, errors: list[InputError]) -> None:
         super().__init__("; ".join(f"{e.code} {e.message}" for e in errors))
         self.errors = errors
+
+
+class StepNotFoundError(LookupError):
+    """The run has no step of that name."""
+
+
+class StepNotWaitingError(RuntimeError):
+    """An answer was sent to a step that is not waiting for one."""
+
+
+class DecisionNotDeclaredError(ValueError):
+    def __init__(self, decision: str, allowed: tuple[str, ...]) -> None:
+        super().__init__(f"'{decision}' is not one of: {', '.join(allowed)}")
+        self.allowed = allowed
+
+
+class TitleMissingError(PermissionError):
+    """The caller does not hold the title the approval asks for (DR-04)."""
+
+    def __init__(self, title: str) -> None:
+        super().__init__(f"the title '{title}' is needed to answer this step")
+        self.title = title
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,6 +121,50 @@ class RunService:
         scheduler = self._scheduler(plan, run.inputs, workers)
         commands = scheduler.restore(events, now, idempotent)
         return Launch(scheduler, WriteAheadLog(self.store, run_id, stored=len(events)), commands)
+
+    def declared_decisions(self, action: str, args: Mapping[str, object]) -> tuple[str, ...] | None:
+        """The decisions a waiting step accepts: its argument ``decisions`` or the default of its
+        action. None when the action has no decision (it is not an approval)."""
+        signature = self.workflows.signatures.get(action)
+        choice = signature.choices.get("decision") if signature is not None else None
+        if choice is None:
+            return None
+        given = args.get(choice.argument)
+        if isinstance(given, list) and given and all(isinstance(g, str) for g in given):
+            return tuple(given)
+        return choice.default
+
+    def answer(
+        self,
+        launch: Launch,
+        step: str,
+        decision: str,
+        by: str,
+        titles: Collection[str] | None,
+        now: float,
+    ) -> list[Command]:
+        """Check an answer to a waiting step and give it to the scheduler of ``launch``.
+
+        The checks, in this order: the step is waiting; the decision is declared by the step; the
+        caller holds the title named by the argument ``role`` (``titles`` None: no title is
+        asked for, the caller is an admin or the command line). Returns the commands the answer
+        causes; the caller drives them after ``launch.commands``.
+        """
+        scheduler = launch.scheduler
+        state = scheduler.states.get(step)
+        if state is None:
+            raise StepNotFoundError(step)
+        if state is not StepState.WAITING:
+            raise StepNotWaitingError(f"{step} is {state.value}, not waiting for an answer")
+        args = scheduler.arguments(step)
+        action = next(s.action for s in scheduler.plan.steps if s.id == step)
+        allowed = self.declared_decisions(action, args) or ()
+        if decision not in allowed:
+            raise DecisionNotDeclaredError(decision, allowed)
+        title = args.get("role")
+        if titles is not None and isinstance(title, str) and title and title not in titles:
+            raise TitleMissingError(title)
+        return list(launch.commands) + scheduler.signal(step, {"decision": decision, "by": by}, now)
 
     def _scheduler(self, plan: Plan, inputs: Mapping[str, object], workers: int) -> Scheduler:
         """A scheduler whose priorities are the feasible critical path for these inputs."""

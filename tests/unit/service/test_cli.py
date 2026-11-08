@@ -224,3 +224,17 @@ def test_user_disable_and_list(tmp_path: Path, capsys: pytest.CaptureFixture[str
     capsys.readouterr()
     assert main(["user", "list", "--db", db]) == 0
     assert capsys.readouterr().out.split() == ["ada", "admin", "-", "disabled"]
+
+
+def test_a_decision_the_step_does_not_declare_is_refused_on_run_and_resume(
+    env: Env, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write_all_forms(env.data, "2025Q1")
+    env.publish()
+    capsys.readouterr()
+    assert env.run("--decision", "maybe") == 3  # the run waits; nothing was accepted
+    assert "does not accept the decision 'maybe'" in capsys.readouterr().err
+    where = ["--db", env.db, "--data", str(env.data), "--target", env.target]
+    assert main(["resume", "run-1", *where, "--decision", "maybe"]) == 2
+    assert "approved, rejected" in capsys.readouterr().err
+    assert main(["resume", "run-1", *where, "--decision", "approved"]) == 0

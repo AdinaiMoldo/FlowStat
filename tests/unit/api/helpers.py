@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -9,7 +10,7 @@ import httpx2
 from fastapi.testclient import TestClient
 
 from flowstat.api.app import create_app
-from flowstat.api.config import AppConfig
+from flowstat.api.config import AppConfig, Submit
 from flowstat.repo.db import open_database
 from flowstat.service.users import UserService
 
@@ -24,6 +25,7 @@ TOKENS = {
     "admin": "a1" * 32,
     "designer": "d2" * 32,
     "operator": "o3" * 32,
+    "clerk": "c4" * 32,  # an operator who holds no title
 }
 NAME = "quarterly_consolidation"
 
@@ -43,17 +45,30 @@ class Env:
         return self.client.request(method, path, headers=headers(role), json=json)
 
 
-def make_env(tmp_path: Path, with_catalogue: bool = True) -> Env:
+def make_env(tmp_path: Path, with_catalogue: bool = True, submit: Submit | None = None) -> Env:
     path = str(tmp_path / "flowstat.db")
     db = open_database(path)
     users = UserService(db)
     users.add("ada", "admin", set(), TOKENS["admin"], T)
     users.add("dina", "designer", set(), TOKENS["designer"], T)
     users.add("olga", "operator", {"chief_statistician"}, TOKENS["operator"], T)
+    users.add("kira", "operator", set(), TOKENS["clerk"], T)
     if with_catalogue:
         from flowstat.service.workflows import WorkflowService
 
         WorkflowService(db).set_catalogue_list("regions", REGIONS)
     db.close()
-    config = AppConfig(db_path=path, data_dir=tmp_path / "data", clock=lambda: T)
+    ids = (f"r-{n:04d}" for n in itertools.count(1))
+    ticks = itertools.count(1)
+    config = AppConfig(
+        db_path=path,
+        data_dir=tmp_path / "data",
+        target=str(tmp_path / "target.db"),
+        clock=lambda: T,
+        time=lambda: float(next(ticks)),
+        sleep=lambda seconds: None,
+        new_id=lambda: next(ids),
+        submit=submit or (lambda job: job()),  # by default the run is driven before the reply
+        workers=2,
+    )
     return Env(TestClient(create_app(config)), config)

@@ -18,13 +18,11 @@ from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
-from flowstat.actions.base import ActionContext
 from flowstat.actions.registry import default_registry
 from flowstat.analysis.generate import CaseSet, generate
 from flowstat.analysis.wording import describe
 from flowstat.compiler.catalogue import load_catalogue
 from flowstat.dsl.reader import read_yaml
-from flowstat.engine.runner import run_threaded
 from flowstat.engine.scheduler import Command, Start
 from flowstat.model.diagnostics import Diagnostic
 from flowstat.model.history import RunReport
@@ -35,7 +33,14 @@ from flowstat.repo.runs import RunNotFoundError
 from flowstat.repo.users import UserExistsError, UserNotFoundError
 from flowstat.repo.versions import VersionNotFoundError
 from flowstat.service.cases import CaseRun, run_cases
-from flowstat.service.runs import InvalidInputsError, Launch, NotPublishedError, RunService
+from flowstat.service.driving import Machine, drive
+from flowstat.service.runs import (
+    DecisionNotDeclaredError,
+    InvalidInputsError,
+    Launch,
+    NotPublishedError,
+    RunService,
+)
 from flowstat.service.users import ROLES, UserService
 from flowstat.service.workflows import PublishError, WorkflowService
 
@@ -198,9 +203,16 @@ def _latest_published(workflows: WorkflowService, name: str) -> int | None:
     return found[-1] if found else None
 
 
-def _answerer(decision: str | None) -> Callable[[Start], Mapping[str, object] | None]:
+def _answerer(
+    decision: str | None, runs: RunService
+) -> Callable[[Start], Mapping[str, object] | None]:
+    """The answer given to every approval of the run, when it is one the step declares."""
+
     def answer(command: Start) -> Mapping[str, object] | None:
         if decision is None:
+            return None
+        if decision not in (runs.declared_decisions(command.action, command.args) or ()):
+            print(f"{command.step} does not accept the decision '{decision}'", file=sys.stderr)
             return None
         return {"decision": decision, "by": str(command.args.get("role", ""))}
 
@@ -215,21 +227,8 @@ def _drive(
     commands: list[Command] | None,
 ) -> int:
     """Run the scheduler on the thread pool; its events are stored before its commands run."""
-    base = ActionContext(run_id, "", Path(args.data), args.target)
-
-    def journal() -> None:
-        launch.log.commit(launch.scheduler.events)
-
-    run_threaded(
-        launch.scheduler,
-        default_registry().executor(base),
-        time.time,
-        time.sleep,
-        _answerer(args.decision),
-        journal=journal,
-        commands=commands,
-    )
-    report = runs.report(run_id)
+    machine = Machine(Path(args.data), args.target, args.workers, time.time, time.sleep)
+    report = drive(runs, run_id, launch, machine, commands, _answerer(args.decision, runs))
     print(_format_report(report))
     return _exit_code(report)
 
@@ -264,9 +263,11 @@ def _resume(args: argparse.Namespace) -> int:
     commands = list(launch.commands)
     if args.decision is not None:  # the answer an approval was waiting for has arrived
         for step in launch.scheduler.waiting_steps():
-            role = launch.scheduler.arguments(step).get("role", "")
-            reply = {"decision": args.decision, "by": str(role)}
-            commands += launch.scheduler.signal(step, reply, time.time())
+            role = str(launch.scheduler.arguments(step).get("role", ""))
+            try:
+                commands += runs.answer(launch, step, args.decision, role, None, time.time())
+            except DecisionNotDeclaredError as error:
+                return _err(f"{step}: {error}")
     return _drive(args, runs, args.run_id, launch, commands)
 
 
@@ -375,7 +376,7 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--target", required=True, help="the database the results are written to")
     run.add_argument("--input", action="append", default=[], metavar="NAME=VALUE")
     run.add_argument("--workers", type=int, default=4, help="steps that may run at the same time")
-    run.add_argument("--decision", choices=["approved", "rejected"], help="answer for approvals")
+    run.add_argument("--decision", help="answer for approvals (one the step declares)")
     run.add_argument("--run-id", help="the run identifier (default: a new random one)")
     run.set_defaults(handler=_run)
 
@@ -385,9 +386,7 @@ def _parser() -> argparse.ArgumentParser:
     resume.add_argument("--data", required=True, help="the directory with the regional forms")
     resume.add_argument("--target", required=True, help="the database the results are written to")
     resume.add_argument("--workers", type=int, default=4, help="steps that may run at once")
-    resume.add_argument(
-        "--decision", choices=["approved", "rejected"], help="the answer a waiting approval awaits"
-    )
+    resume.add_argument("--decision", help="the answer a waiting approval awaits")
     resume.set_defaults(handler=_resume)
 
     resolve = commands.add_parser("resolve", help="decide about a step whose outcome is unknown")
