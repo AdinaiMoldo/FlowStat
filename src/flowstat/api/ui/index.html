@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FlowStat editor</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="vendor/monaco/vs/editor/editor.main.css">
+</head>
+<body>
+  <header class="bar">
+    <h1>FlowStat</h1>
+    <form id="sign-in" class="token" autocomplete="off">
+      <label for="token">Token</label>
+      <input id="token" type="password" placeholder="paste a token" autocomplete="off">
+      <button type="submit">Use</button>
+      <button type="button" id="forget">Forget</button>
+    </form>
+    <span id="who" class="muted" aria-live="polite"></span>
+  </header>
+
+  <main class="layout">
+    <aside class="side">
+      <div class="row">
+        <h2>Workflows</h2>
+        <button type="button" id="new">New</button>
+      </div>
+      <ul id="workflows" class="list"></ul>
+    </aside>
+
+    <section class="work">
+      <div class="tools">
+        <span id="name" class="name">no workflow</span>
+        <span id="state" class="muted"></span>
+        <span class="spacer"></span>
+        <button type="button" id="save" disabled>Save draft</button>
+        <button type="button" id="publish" disabled>Publish</button>
+      </div>
+      <div id="editor" class="editor"></div>
+      <textarea id="plain" class="plain" spellcheck="false" hidden aria-label="Workflow text"></textarea>
+      <p id="notice" class="notice" hidden></p>
+    </section>
+
+    <section class="problems">
+      <div class="row">
+        <h2>Problems</h2>
+        <span id="status" class="muted" aria-live="polite"></span>
+      </div>
+      <ul id="problems" class="list"></ul>
+    </section>
+  </main>
+
+  <script src="vendor/monaco/vs/loader.js"></script>
+  <script type="module" src="main.js"></script>
+</body>
+</html>

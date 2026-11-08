@@ -31,3 +31,6 @@ Thumbs.db
 
 # Generated diagram images are rebuilt from the PlantUML sources
 docs/diagrams/out/
+
+# The editor and the graph library are fetched by scripts/fetch_ui.py
+src/flowstat/api/ui/vendor/

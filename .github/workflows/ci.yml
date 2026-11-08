@@ -20,6 +20,11 @@ jobs:
           python-version: "3.12"
       - name: Install
         run: python -m pip install -e ".[dev,api,deploy]"
+      - name: The editor of the page and a browser for its tests (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          python scripts/fetch_ui.py
+          python -m playwright install --with-deps chromium
       - name: Lint
         run: python -m ruff check .
       - name: Types
@@ -35,6 +40,13 @@ jobs:
           python -m pytest tests/acceptance/test_us30.py -m docker --no-cov -q -rs | tee docker.txt
           if grep -q SKIPPED docker.txt; then echo "the container test was skipped"; exit 1; fi
           grep -q "1 passed" docker.txt
+      - name: The tests of the page must run in a browser on Linux, not be skipped
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          python -m pytest tests/browser -m browser --no-cov -q -rs | tee browser.txt
+          if grep -q SKIPPED browser.txt; then echo "a browser test was skipped"; exit 1; fi
+          grep -q "passed" browser.txt
       - name: The demonstration with a container (what is shown to the teacher)
         if: runner.os == 'Linux'
         run: python scripts/demo.py --kind docker
