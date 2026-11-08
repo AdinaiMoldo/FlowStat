@@ -26,6 +26,8 @@ layer 1   dsl                            B1 reader, C1 lexer, parser, shape vali
 layer 0   model                          shared data types
 ```
 
+Both HTTP apps are in `api`: the core's (`flowstat.api.app`) and the deployed service's (`flowstat.api.service`), which share one function for the run routes. `deploy` does not import `api`; it builds the bundle of a version and starts the service by module name, and it is the only package that touches the operating system (`subprocess`, `socket`, `docker`), which `tests/architecture` checks.
+
 The engine knows nothing about the IDE, the API, the repository or the actions: it receives them as
 protocols and the higher layers implement them. The thread-pool driver (`engine/runner.py`) takes an
 executor function; the registry of `actions` builds that function, and the command line

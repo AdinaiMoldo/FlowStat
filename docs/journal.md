@@ -241,3 +241,11 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 
 - Measured: availability against plain reachability on 250 random workflows, by enumeration in the reference interpreter: 648 safe reads, plain recognises 57.1%, ours 91.5%, and neither lets an unsafe read through. The remaining 55 false warnings are nearly all reads behind `at_least` or `any_success` where one dependency depends on another; the rule passes on facts about the ancestors of each dependency only. Left as a stated limit and not widened now: it is a precision gain of at most 8.5 points, and a wider rule would need its own oracle.
 - Wrote: the card `algorithms/C2.md` (it was a template), level 2 of `algorithms/C3.md`, `research/availability-measurement.md`, the review and the retrospective of M5. The retrospective names the slip of writing the type check before its tests and the corrected audit point.
+
+## 2026-11-08 Readiness audit of M6
+
+- Verified before starting: `main` at the M5 commit, CI green on Linux and Windows, tags m1 to m5 and the M5 milestone closed, one author in 38 commits, no mention of the assistant in files or history, and a fresh clone passes all 1,498 tests, ruff and mypy.
+- Found: nineteen gaps, listed in `milestones/M6.md`. The ones that change the design: the service app has to live in `api` because `deploy` may not import it; a token is the proof of identity and the approval title (not the platform role) is what DR-04 needs; the runner leaves nothing in memory while a step waits, so an answer is "recover, signal, drive" and becomes one service function used by the command line and the API; the plan has no serialised form, so a deployment freezes the text and the catalogue snapshot with hashes.
+- Chose: contract first (`api-spec.md`). A machine caller is a user with the operator role; a deployed service has one key made at deployment. Errors are one envelope for all non-2xx responses.
+- Found about the environment: the Docker client is installed but there is no daemon, and the Windows runners of CI cannot run Linux containers, so the container launcher cannot be verified here. The process launcher (the Proposal's fallback) is the tested path, and the review will say what was and was not run.
+- Found: `docs/reuse.md` named httpx for `http.call`, which uses `urllib`; corrected to a test dependency.
