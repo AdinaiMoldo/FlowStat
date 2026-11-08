@@ -280,9 +280,13 @@ def _wait_for(endpoint: str, key: dict[str, str], run_id: str, status: str) -> d
 def test_a_service_started_as_a_container_answers(tmp_path: Path) -> None:
     docker = pytest.importorskip("docker")
     try:
-        docker.from_env().ping()
+        client = docker.from_env()
+        client.ping()
+        kind = client.info().get("OSType")
     except Exception as error:
         pytest.skip(f"no Docker daemon here: {error}")
+    if kind != "linux":  # the Windows runners have a daemon that runs Windows containers only
+        pytest.skip(f"the daemon runs {kind} containers; the image is a Linux one")
     from flowstat.deploy.launchers import DockerLauncher
 
     env = make_env(tmp_path, packager=build_bundle, launchers={"docker": DockerLauncher()})
