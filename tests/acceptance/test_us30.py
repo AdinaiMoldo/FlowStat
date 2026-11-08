@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import functools
 import os
+import sqlite3
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -217,25 +218,27 @@ def test_the_frozen_text_is_the_published_text_byte_for_byte(tmp_path: Path) -> 
     assert frozen == stored.encode("utf8")
 
 
-# -- a real process ---------------------------------------------------------------------------
-def test_a_service_started_as_a_process_answers_and_matches_the_core(tmp_path: Path) -> None:
-    """The path that is tested everywhere (the Proposal's fallback): uvicorn on 127.0.0.1."""
-    environment = {**os.environ, "PYTHONPATH": os.pathsep.join([str(ROOT / "src")])}
-    process: Launcher = ProcessLauncher(
-        popen=functools.partial(subprocess.Popen, env=environment), limit=60.0
-    )
-    env = make_env(tmp_path, packager=build_bundle, launchers={"process": process})
+# -- a real process, and a real container ------------------------------------------------------
+def exercise(tmp_path: Path, kind: str, launcher: Launcher) -> None:
+    """Deploy v4 for real, run it through its approval, compare with the core, stop it.
+
+    The same scenario for a process and for a container: the same checks, so what is true of one
+    is true of the other. The data directory and the database of the service are on the host (a
+    bundle is mounted into a container), which the checks at the end look at.
+    """
+    env = make_env(tmp_path, packager=build_bundle, launchers={kind: launcher})
     publish_four(env)
     write_all_forms(env.config.data_dir, "2025Q1")
 
     made = env.call(
-        "admin", "POST", "/deployments", json={"workflow": NAME, "version": 4, "kind": "process"}
+        "admin", "POST", "/deployments", json={"workflow": NAME, "version": 4, "kind": kind}
     )
     assert made.status_code == 201, made.text
     row = made.json()
+    bundle = env.config.bundles / row["id"]
     try:
         assert row["status"] == "running" and row["endpoint"].startswith("http://127.0.0.1:")
-        write_all_forms(env.config.bundles / row["id"] / "data", "2025Q1")
+        write_all_forms(bundle / "data", "2025Q1")  # the forms the service reads
         key = {"Authorization": f"Bearer {row['api_key']}"}
         health = httpx2.get(row["endpoint"] + "/health", timeout=10)
         assert health.json() == {"status": "ok", "workflow": NAME, "version": 4}
@@ -249,8 +252,8 @@ def test_a_service_started_as_a_process_answers_and_matches_the_core(tmp_path: P
         started = httpx2.post(row["endpoint"] + "/runs", json=QUARTER, headers=key, timeout=30)
         assert started.status_code == 202
         service_id = started.json()["run_id"]
-        service_report = _wait_for(row["endpoint"], key, service_id, "WAITING")
-        assert service_report["status"] == "WAITING"
+        waiting = _wait_for(row["endpoint"], key, service_id, "WAITING")
+        assert waiting["status"] == "WAITING"
         title_key = {"Authorization": f"Bearer {row['title_keys']['chief_statistician']}"}
         refused = httpx2.post(
             f"{row['endpoint']}/runs/{service_id}/decisions", json=answer, headers=key, timeout=30
@@ -267,17 +270,37 @@ def test_a_service_started_as_a_process_answers_and_matches_the_core(tmp_path: P
         core_report = env.call("operator", "GET", f"/runs/{core_id}").json()
         assert normalised(service_report) == normalised(core_report)
         assert core_report["outcome"] == "SUCCEEDED"
+
+        # what the service wrote is on the host: its own log of the run and the result database
+        assert (bundle / "service.db").is_file() and (bundle / "target.db").is_file()
+        kept = sqlite3.connect(bundle / "service.db")
+        try:
+            assert kept.execute("SELECT run_id FROM runs").fetchall() == [(service_id,)]
+            assert kept.execute("SELECT COUNT(*) FROM run_events").fetchone()[0] > 20
+        finally:
+            kept.close()
     finally:
-        env.call("admin", "DELETE", f"/deployments/{row['id']}")
-    with pytest.raises(httpx2.TransportError):  # the process is gone: nobody answers
+        stopped = env.call("admin", "DELETE", f"/deployments/{row['id']}")
+    assert stopped.status_code == 200 and stopped.json()["status"] == "stopped"
+    with pytest.raises(httpx2.TransportError):  # nobody answers any more
         httpx2.get(row["endpoint"] + "/health", timeout=2)
+
+
+def test_a_service_started_as_a_process_answers_and_matches_the_core(tmp_path: Path) -> None:
+    """The path that is tested everywhere (the Proposal's fallback): uvicorn on 127.0.0.1."""
+    environment = {**os.environ, "PYTHONPATH": os.pathsep.join([str(ROOT / "src")])}
+    exercise(
+        tmp_path,
+        "process",
+        ProcessLauncher(popen=functools.partial(subprocess.Popen, env=environment), limit=60.0),
+    )
 
 
 def _wait_for(endpoint: str, key: dict[str, str], run_id: str, status: str) -> dict[str, Any]:
     """Poll a run of a service until it has the status (the real process drives it on a thread)."""
     import time
 
-    deadline = time.monotonic() + 30
+    deadline = time.monotonic() + 60
     report: dict[str, Any] = {}
     while time.monotonic() < deadline:
         report = httpx2.get(f"{endpoint}/runs/{run_id}", headers=key, timeout=10).json()
@@ -287,9 +310,9 @@ def _wait_for(endpoint: str, key: dict[str, str], run_id: str, status: str) -> d
     raise AssertionError(f"the run did not reach {status}: {report}")
 
 
-# -- a container, where there is a daemon -----------------------------------------------------
 @pytest.mark.docker
-def test_a_service_started_as_a_container_answers(tmp_path: Path) -> None:
+def test_a_service_started_as_a_container_answers_and_matches_the_core(tmp_path: Path) -> None:
+    """The main path of the Proposal, where a Linux daemon exists (the Ubuntu runner of CI)."""
     docker = pytest.importorskip("docker")
     try:
         client = docker.from_env()
@@ -301,15 +324,4 @@ def test_a_service_started_as_a_container_answers(tmp_path: Path) -> None:
         pytest.skip(f"the daemon runs {kind} containers; the image is a Linux one")
     from flowstat.deploy.launchers import DockerLauncher
 
-    env = make_env(tmp_path, packager=build_bundle, launchers={"docker": DockerLauncher()})
-    publish_four(env)
-    made = env.call(
-        "admin", "POST", "/deployments", json={"workflow": NAME, "version": 4, "kind": "docker"}
-    )
-    assert made.status_code == 201, made.text
-    row = made.json()
-    try:
-        health = httpx2.get(row["endpoint"] + "/health", timeout=10)
-        assert health.json() == {"status": "ok", "workflow": NAME, "version": 4}
-    finally:
-        env.call("admin", "DELETE", f"/deployments/{row['id']}")
+    exercise(tmp_path, "docker", DockerLauncher())

@@ -35,3 +35,6 @@ jobs:
           python -m pytest tests/acceptance/test_us30.py -m docker --no-cov -q -rs | tee docker.txt
           if grep -q SKIPPED docker.txt; then echo "the container test was skipped"; exit 1; fi
           grep -q "1 passed" docker.txt
+      - name: The demonstration with a container (what is shown to the teacher)
+        if: runner.os == 'Linux'
+        run: python scripts/demo.py --kind docker
