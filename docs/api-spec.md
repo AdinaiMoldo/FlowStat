@@ -34,7 +34,11 @@ answer an approval step (section 5).
   shows the users, without tokens.
 - There are no passwords, sessions or JWT: the IDE of M7 keeps a token.
 - A deployed service has one key, made when it is deployed (section 7), also shown once and stored
-  as a SHA-256 in the manifest. It has the permissions of `operator` and nothing else.
+  as a SHA-256 in the manifest. It has the permissions of `operator` and nothing else, and the
+  service has no routes for anything else. Because that key is the only caller of a service that
+  serves one workflow, it may answer an approval whatever title the step names; in the core the
+  title of the person decides (section 5). This is weaker, and is what a service with a single
+  machine caller can offer; a key per title is left for later.
 
 ## 3. Permissions
 
@@ -50,7 +54,7 @@ walks the routes. `public` is the single exception (`GET /health`).
 | `runs:read` | `GET /runs`, `GET /runs/{id}` | yes | yes | yes |
 | `runs:start` | `POST /workflows/{name}/runs` | yes | yes | yes |
 | `runs:decide` | `POST /runs/{id}/decisions` (and the title check, section 5) | yes | no | yes |
-| `deployments:read` | `GET /deployments` | yes | yes | yes |
+| `deployments:read` | `GET /deployments`, `GET /deployments/{id}` | yes | yes | yes |
 | `deployments:write` | `POST /deployments`, `DELETE /deployments/{id}` | yes | no | no |
 
 "Publishing is restricted to designers" (US-29) is read as: the role that writes workflows publishes
@@ -166,24 +170,34 @@ deterministic, so the plan is the one the core ran), and serves:
 | Route | Permission | Does |
 | --- | --- | --- |
 | `GET /health` | public | `{"status": "ok", "workflow": ..., "version": ...}` |
-| `GET /schema` | operator | the inputs of the workflow (name, type, constraints) and the manifest hashes |
-| `POST /runs`, `GET /runs`, `GET /runs/{id}`, `POST /runs/{id}/decisions` | operator | exactly as in section 5, for this one version |
+| `GET /schema` | `runs:read` | the inputs of the workflow (name, type, constraints) and the manifest hashes |
+| `POST /runs` | `runs:start` | as `POST /workflows/{name}/runs`, for this one version (no `version` field) |
+| `GET /runs`, `GET /runs/{id}` | `runs:read` | exactly as in section 5 |
+| `POST /runs/{id}/decisions` | `runs:decide` | exactly as in section 5 |
 
 The routes for runs are one function used by both apps, so they cannot drift. The service has no
 route for workflows, the catalogue or deployments.
 
 **Same results.** For the same version, the same inputs, the same input files and the same
 answers to approvals, the report of a run on the service equals the report of a run in the core
-in the final state of every step, its error code, its output and the outcome of the run; the times
-and the run id may differ. This is what US-30 is tested with (`tests/acceptance/test_us30.py`).
+in the final state of every step, its error code, its output and the outcome of the run; the times,
+the run id and the name that answered an approval (`by`: a person in the core, the key of the
+service in a service) may differ. This is what US-30 is tested with (`tests/acceptance/test_us30.py`:
+four scenarios, an approval, a rejection, missing forms, and a run below the quorum, in-process and
+against a real process).
 
 **Launchers.** `kind: process` starts `python -m flowstat.api.service` with `subprocess` on a free
 port of 127.0.0.1 and waits for `/health` (a limit of 20 s, with the clock and the sleep injected).
-`kind: docker` builds the image and starts a container with `data/` mounted and the port published;
+`kind: docker` builds the image and starts a container with the bundle directory mounted (so
+`data/` and `service.db` stay on the host) and the port published on 127.0.0.1;
 if Docker cannot be reached the request fails with 409 and says so, and it does not fall back by
 itself (the caller chooses the kind). The operating system is touched in `deploy/` and nowhere
 else (NFR-07). `DELETE /deployments/{id}` stops the process or the container and marks the row
-`stopped`.
+`stopped` (409 when it is not running). `POST /deployments` answers 201 with the row and `api_key`,
+the only time the key is shown; 409 when the version is a draft, when there is no launcher for the
+kind in this process, or when the service did not start (the row stays as `failed` with the end of
+its log in `detail`). `python -m flowstat.serve` is the command that starts the core with both
+launchers; the bundles are made under `--bundles`.
 
 The registry row has: id, workflow, version, kind, endpoint, status (`starting`, `running`,
 `failed`, `stopped`), the bundle path, the pid or container id, and the times. The events of the

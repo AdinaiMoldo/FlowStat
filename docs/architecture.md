@@ -15,7 +15,8 @@ A module may import only from a package on a lower layer or from its own package
 same layer do not import each other. `tests/architecture/test_layers.py` enforces this.
 
 ```text
-layer 8   api            deploy
+layer 9   serve                          the executable of the core: joins api and deploy
+layer 8   api            deploy          B4 / B5
 layer 7   migration        service        C5 / orchestration of repo, compiler and later layers
 layer 6   actions        recovery        B6 / C4
 layer 5   engine                         C3
@@ -26,7 +27,7 @@ layer 1   dsl                            B1 reader, C1 lexer, parser, shape vali
 layer 0   model                          shared data types
 ```
 
-Both HTTP apps are in `api`: the core's (`flowstat.api.app`) and the deployed service's (`flowstat.api.service`), which share one function for the run routes. `deploy` does not import `api`; it builds the bundle of a version and starts the service by module name, and it is the only package that touches the operating system (`subprocess`, `socket`, `docker`), which `tests/architecture` checks.
+Both HTTP apps are in `api`: the core's (`flowstat.api.app`) and the deployed service's (`flowstat.api.service`), which share one function for the run routes. `deploy` does not import `api`; it builds the bundle of a version and starts the service by module name, and it is the only package that touches the operating system (`subprocess`, `socket`, `docker`), which `tests/architecture` checks. The two meet in `serve`, on layer 9, which only wires them (`python -m flowstat.serve`); the part of deployment that decides things (what is recorded, in which order, what a failure leaves) is `service/deployments.py`, which takes the packager and the launchers as arguments, so it is tested without starting anything. What the bundle is and how it is checked is `service/bundle.py`, below both apps.
 
 The engine knows nothing about the IDE, the API, the repository or the actions: it receives them as
 protocols and the higher layers implement them. The thread-pool driver (`engine/runner.py`) takes an

@@ -40,6 +40,7 @@ markers = [
     "crash: crash and fault injection",
     "acceptance: Given/When/Then criteria of a user story",
     "benchmark: measurements, not pass/fail tests",
+    "docker: needs a Docker daemon; skipped where there is none",
 ]
 
 [tool.coverage.run]
