@@ -19,7 +19,7 @@ dependencies = [
 api = ["fastapi", "pydantic", "uvicorn"]
 actions = ["openpyxl"]  # http.call uses urllib from the standard library
 deploy = ["jinja2", "docker"]
-dev = ["pytest", "pytest-cov", "hypothesis", "mypy", "ruff", "pre-commit", "openpyxl", "httpx2"]
+dev = ["pytest", "pytest-cov", "hypothesis", "mypy", "ruff", "pre-commit", "openpyxl", "httpx2", "playwright"]
 
 [project.scripts]
 flowstat = "flowstat.service.cli:main"
@@ -28,7 +28,7 @@ flowstat = "flowstat.service.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-flowstat = ["py.typed", "deploy/templates/*.j2"]
+flowstat = ["py.typed", "deploy/templates/*.j2", "api/ui/*.html", "api/ui/*.css", "api/ui/*.js"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -41,6 +41,7 @@ markers = [
     "acceptance: Given/When/Then criteria of a user story",
     "benchmark: measurements, not pass/fail tests",
     "docker: needs a Docker daemon; skipped where there is none",
+    "browser: drives the page in Chromium (Playwright); skipped where either is missing",
 ]
 
 [tool.coverage.run]

@@ -48,6 +48,16 @@ flowstat user add ada --role admin --db flowstat.db      # prints a token once
 python -m flowstat.serve --db flowstat.db --data forms/ --target results.db
 ```
 
+The editor is a page of the same server. Fetch it once (about 15 MB, from the npm registry, with its
+checksums checked), then open `http://127.0.0.1:8000/ui/` and paste the token of a designer or an
+admin (`flowstat user add dina --role designer`):
+
+```bash
+python scripts/fetch_ui.py
+```
+
+Without that step the page still works, in a plain text area.
+
 ## Showing the project
 
 One command runs the whole story on synthetic data and prints it (about 5 seconds):

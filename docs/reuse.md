@@ -28,6 +28,7 @@ Versions are those read for the Project Proposal (section 11.4); exact versions 
 | Monaco Editor | Code editor in the IDE (B2) | MIT | 0.57.0 | B |
 | Cytoscape.js | Graph preview (B3) | MIT | 3.34.4 | B |
 | cytoscape-dagre, dagre | Layout of the graph preview (B3) | MIT | 4.0.1, 0.8.5 | B |
+| Playwright for Python | Drives Chromium in the tests of the page (tests only) | Apache-2.0 | 1.63.0 | test only |
 | pytest | Test runner | MIT | 9.2.0 | test only |
 | Hypothesis | Property-based tests | MPL-2.0 | 6.170.14 | test only |
 | StatGuard | The action statguard.validate (B6) | own earlier module | no version | reused, not counted |
@@ -35,3 +36,5 @@ Versions are those read for the Project Proposal (section 11.4); exact versions 
 Not used on purpose: Lark, jsonschema, Z3, sympy, python-constraint, networkx, Airflow, Celery, Temporal.
 
 Note (5 Nov 2026): pandas was planned for aggregation in B6 and is not used. `stats.aggregate` is a sum by code over a few thousand rows, which the standard library does in a dozen lines, so the dependency (and its install time on the Windows and Linux CI runs) is dropped. openpyxl is also a test dependency, because the tests build synthetic regional forms with it.
+
+Note (9 Nov 2026): Monaco, Cytoscape, dagre and cytoscape-dagre are not committed and not loaded from a CDN. `scripts/fetch_ui.py` downloads the pinned versions from the npm registry, checks the SHA-512 of each archive against the value written in the script, and unpacks the files the page uses into `src/flowstat/api/ui/vendor/` (ignored by git), with their licences in `vendor/licenses/`. Without them the page edits in a plain text area.
