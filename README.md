@@ -41,6 +41,13 @@ pip install -e ".[dev,api,deploy]"
 pytest --cov
 ```
 
+To use it from the command line, or over HTTP (the contract is `docs/api-spec.md`):
+
+```bash
+flowstat user add ada --role admin --db flowstat.db      # prints a token once
+python -m flowstat.serve --db flowstat.db --data forms/ --target results.db
+```
+
 The suite must also pass in a Linux container: `scripts/test-in-linux.sh` (or `.ps1`).
 
 ## Process

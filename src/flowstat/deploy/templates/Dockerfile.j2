@@ -1,0 +1,11 @@
+# The service of {{ workflow }} v{{ version }} (made by the packager; do not edit).
+# The bundle directory (manifest, workflow, catalogue, data, service.db) is mounted at
+# /service/bundle when the container starts, so the log of the service outlives the container.
+FROM python:{{ python }}-slim
+WORKDIR /service
+RUN pip install --no-cache-dir {% for pin in requirements %}{{ pin }}{% if not loop.last %} {% endif %}{% endfor %}
+
+COPY app /service/app
+ENV PYTHONPATH=/service/app
+EXPOSE 8000
+CMD ["python", "-m", "flowstat.api.service", "--bundle", "/service/bundle", "--host", "0.0.0.0", "--port", "8000"]

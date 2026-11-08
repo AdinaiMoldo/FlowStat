@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import itertools
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -12,6 +13,7 @@ from fastapi.testclient import TestClient
 from flowstat.api.app import create_app
 from flowstat.api.config import AppConfig, Submit
 from flowstat.repo.db import open_database
+from flowstat.service.deployments import Launcher, Packager
 from flowstat.service.users import UserService
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -45,7 +47,13 @@ class Env:
         return self.client.request(method, path, headers=headers(role), json=json)
 
 
-def make_env(tmp_path: Path, with_catalogue: bool = True, submit: Submit | None = None) -> Env:
+def make_env(
+    tmp_path: Path,
+    with_catalogue: bool = True,
+    submit: Submit | None = None,
+    packager: Packager | None = None,
+    launchers: Mapping[str, Launcher] | None = None,
+) -> Env:
     path = str(tmp_path / "flowstat.db")
     db = open_database(path)
     users = UserService(db)
@@ -68,7 +76,11 @@ def make_env(tmp_path: Path, with_catalogue: bool = True, submit: Submit | None 
         time=lambda: float(next(ticks)),
         sleep=lambda seconds: None,
         new_id=lambda: next(ids),
+        new_token=lambda: "k" * 64,
         submit=submit or (lambda job: job()),  # by default the run is driven before the reply
+        bundles=tmp_path / "bundles",
         workers=2,
+        packager=packager,
+        launchers=launchers or {},
     )
     return Env(TestClient(create_app(config)), config)

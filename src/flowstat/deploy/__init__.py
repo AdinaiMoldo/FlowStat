@@ -1,7 +1,7 @@
 """B5 packaging a workflow as a service. Layer 8.
 
-Jinja2 service template, Docker SDK, fallback to a separate uvicorn process. The generated
-service embeds the engine and its own write-ahead log and ships events to the core by outbox.
-
-Built in I5.
+``package.py`` makes the bundle of a published version (a frozen copy, hashes, a Dockerfile from a
+Jinja2 template); ``launchers.py`` starts it as a process or as a container. This is the only
+place in the code base that touches the operating system (NFR-07). The service itself is the app
+``flowstat.api.service``; this package starts it by module name and does not import it.
 """

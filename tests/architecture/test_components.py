@@ -11,10 +11,10 @@ from tests.architecture.rules import SRC, imports_of, package_of, python_files
 
 # top-level module -> the packages of src/flowstat that may import it
 WHERE: dict[str, set[str]] = {
-    "fastapi": {"api"},
+    "fastapi": {"api", "serve"},
     "starlette": {"api"},
     "pydantic": {"api"},
-    "uvicorn": {"api", "deploy"},
+    "uvicorn": {"api", "serve"},
     "jinja2": {"deploy"},
     "docker": {"deploy"},
     "subprocess": {"deploy"},

@@ -76,3 +76,22 @@ class VersionStore:
             (catalogue, now, name, number),
         )
         return self.get(name, number)
+
+    def import_published(self, version: Version) -> None:
+        """Store a version that was published elsewhere, with its number (a deployed service).
+
+        The row is already published, so it can never be edited; an existing number is refused.
+        """
+        if version.status is not VersionStatus.PUBLISHED or version.published_at is None:
+            raise ValueError("only a published version can be imported")
+        self.db.execute(
+            f"INSERT INTO versions ({_COLUMNS}) VALUES (?, ?, 'published', ?, ?, ?, ?)",
+            (
+                version.name,
+                version.number,
+                version.text,
+                version.catalogue,
+                version.created_at,
+                version.published_at,
+            ),
+        )

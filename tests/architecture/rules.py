@@ -25,6 +25,7 @@ LAYERS: dict[str, int] = {
     "service": 7,
     "api": 8,
     "deploy": 8,
+    "serve": 9,
 }
 
 # C1-C6 packages: no third-party library except the explicit exceptions below.
