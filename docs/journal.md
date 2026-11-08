@@ -286,3 +286,9 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Fixed: the list of runs read the full report of every run. The status needs only the events, so `RunService.status` reads it from them (a test: equal to the full report for four kinds of run). 50 runs: 275 ms to 13 ms.
 - Added to CI: on Linux the container test must pass and may not be skipped, so it cannot go quiet by itself. On Windows it still skips (that daemon runs Windows containers).
 - Left as it was: a report of one run still compiles the plan (8 ms); a cache of the compiled plan of a published version is M8.
+
+## 2026-11-08 The container proved with the full scenario, and a demonstration
+
+- Changed: the process test and the container test are one scenario (`exercise` in `test_us30.py`): deploy v4 for real, start a run, see it wait, a refused approval with the key that starts runs, a given one with the key of the title, the same report as the core, the service's own database and the result database on the host (a bundle is mounted into a container), the stop, and nobody answering afterwards. What is true of one is now checked for the other. On Linux in CI the container test must run, not skip.
+- Added: `scripts/demo.py`, one command that shows the project to a person: users and roles, publication, the API with its refusals (401, 403, 422), a run in the core with its approval, the deployment of the same version as a service (process, or container with `--kind docker`) and the comparison of the two reports. It uses only the standard library for HTTP. A test runs it, so what is shown cannot stop working unnoticed.
+- Found by running it: my first comparison of the two reports in the script left the run id inside the outputs (the batch of `db.write` is the run id); the test had a rule for that, the script did not. Same rule now.

@@ -48,6 +48,23 @@ flowstat user add ada --role admin --db flowstat.db      # prints a token once
 python -m flowstat.serve --db flowstat.db --data forms/ --target results.db
 ```
 
+## Showing the project
+
+One command runs the whole story on synthetic data and prints it (about 5 seconds):
+
+```bash
+python scripts/demo.py                  # the service as a process
+python scripts/demo.py --kind docker    # the service as a container
+```
+
+It makes four users, publishes the example workflow, starts the API, shows that an operator may not
+publish and that only the chief statistician may approve, runs the workflow in the core, deploys the
+same version as a separate service, runs it there with its own keys and compares the two reports
+step by step. `--kind docker` needs Docker with **Linux containers** (on Windows, Docker Desktop in
+its default Linux mode; the first build installs the packages and takes a minute or two).
+To look at the interactive API documentation instead, start the server (above) and open
+`http://127.0.0.1:8000/docs`.
+
 The suite must also pass in a Linux container: `scripts/test-in-linux.sh` (or `.ps1`).
 
 ## Process
