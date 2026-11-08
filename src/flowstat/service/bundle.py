@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 FORMAT = 1
@@ -32,6 +32,8 @@ class Manifest:
     api_key_sha256: str
     created_at: str
     format: int = FORMAT
+    # one key per title that an approval of the workflow names: title -> SHA-256 of its key
+    title_keys_sha256: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)

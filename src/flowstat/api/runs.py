@@ -170,10 +170,7 @@ def answer_run(request: Request, runs: RunService, run_id: str, body: DecisionIn
     """Check an answer to an approval and drive the run on; shared by the core and the service."""
     config, registry, locks = config_of(request), registry_of(request), locks_of(request)
     user: User = request.state.user
-    # An admin, and the key of a deployed service (which exists to serve one workflow), may answer
-    # an approval whatever title it names; anyone else needs the title.
-    anything = user.role == "admin" or getattr(request.app.state, "any_title", False)
-    titles = None if anything else user.titles
+    titles = None if user.role == "admin" else user.titles  # an admin needs no title
 
     def prepare(service: RunService) -> tuple[Launch, list[Command] | None]:
         launch = service.recover(run_id, config.workers, config.time(), registry.is_idempotent)
@@ -218,15 +215,15 @@ def list_runs(runs: RunService, workflow: str | None, status: str | None) -> lis
     for stored in sorted(
         runs.list_runs(workflow), key=lambda r: (r.created_at, r.run_id), reverse=True
     ):
-        report = runs.report(stored.run_id)
-        if status is None or report.status == status:
+        run_status, outcome = runs.status(stored.run_id)
+        if status is None or run_status == status:
             found.append(
                 RunSummary(
                     run_id=stored.run_id,
                     workflow=stored.workflow,
                     version=stored.version,
-                    status=report.status,
-                    outcome=report.outcome.value if report.outcome is not None else None,
+                    status=run_status,
+                    outcome=outcome.value if outcome is not None else None,
                     created_at=stored.created_at,
                 )
             )

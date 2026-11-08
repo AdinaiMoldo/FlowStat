@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.metadata
 import shutil
 import sys
+from collections.abc import Mapping
 from pathlib import Path
 
 import jinja2
@@ -41,7 +42,13 @@ def render_dockerfile(workflow: str, version: int, python: str, requirements: li
 
 
 def build_bundle(
-    root: Path, service_id: str, version: Version, api_key_sha256: str, now: str, kind: str
+    root: Path,
+    service_id: str,
+    version: Version,
+    api_key_sha256: str,
+    title_keys_sha256: Mapping[str, str],
+    now: str,
+    kind: str,
 ) -> Path:
     """Write ``<root>/<service_id>/`` for ``version`` and return it.
 
@@ -63,6 +70,7 @@ def build_bundle(
             catalogue_sha256=sha256_bytes(encode(version.catalogue)),
             api_key_sha256=api_key_sha256,
             created_at=now,
+            title_keys_sha256=dict(title_keys_sha256),
         ),
     )
     if kind == "docker":

@@ -88,7 +88,7 @@ def _ids(prefix: str) -> Any:
 
 def normalised(report: dict[str, Any]) -> dict[str, Any]:
     """What must be equal between the core and a service: no times, no run ids, and not who
-    answered an approval (`by` is a person in the core and the key of the service in a service)."""
+    answered an approval (`by` is a person in the core and the key of a title in a service)."""
     text = str(report["run_id"])
     steps = {}
     for step in report["steps"]:
@@ -138,6 +138,10 @@ class World:
         client = self.launcher.apps[str(self.env.config.bundles / made["id"])]
         return made, client, {"Authorization": f"Bearer {made['api_key']}"}
 
+    @staticmethod
+    def approver(made: dict[str, Any]) -> dict[str, str]:
+        return {"Authorization": f"Bearer {made['title_keys']['chief_statistician']}"}
+
 
 def forms(world: World, made: dict[str, Any], missing: tuple[str, ...]) -> None:
     for root in (world.env.config.data_dir, world.env.config.bundles / made["id"] / "data"):
@@ -172,7 +176,7 @@ def test_the_service_returns_the_same_results_as_the_core(
     core_report = core.call("operator", "GET", f"/runs/{core_id}").json()
     if core_report["status"] == "WAITING":
         core.call("operator", "POST", f"/runs/{core_id}/decisions", json=answer)
-        service.post(f"/runs/{service_id}/decisions", json=answer, headers=key)
+        service.post(f"/runs/{service_id}/decisions", json=answer, headers=world.approver(made))
     core_report = core.call("operator", "GET", f"/runs/{core_id}").json()
     service_report = service.get(f"/runs/{service_id}", headers=key).json()
 
@@ -247,8 +251,16 @@ def test_a_service_started_as_a_process_answers_and_matches_the_core(tmp_path: P
         service_id = started.json()["run_id"]
         service_report = _wait_for(row["endpoint"], key, service_id, "WAITING")
         assert service_report["status"] == "WAITING"
-        decided = httpx2.post(
+        title_key = {"Authorization": f"Bearer {row['title_keys']['chief_statistician']}"}
+        refused = httpx2.post(
             f"{row['endpoint']}/runs/{service_id}/decisions", json=answer, headers=key, timeout=30
+        )
+        assert refused.status_code == 403  # the key that starts runs holds no title
+        decided = httpx2.post(
+            f"{row['endpoint']}/runs/{service_id}/decisions",
+            json=answer,
+            headers=title_key,
+            timeout=30,
         )
         assert decided.status_code == 202
         service_report = _wait_for(row["endpoint"], key, service_id, "FINISHED")

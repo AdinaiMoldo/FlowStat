@@ -14,7 +14,7 @@ from flowstat.api.service import create_service_app, main
 from flowstat.service.bundle import CATALOGUE, WORKFLOW, BundleError, read_bundle
 from tests.unit.actions.helpers import write_all_forms
 from tests.unit.api.helpers import NAME
-from tests.unit.api.service_helpers import KEY, ServiceEnv, make_service
+from tests.unit.api.service_helpers import KEY, TITLE_KEY, ServiceEnv, make_service
 
 INPUTS = {"inputs": {"quarter": "2025Q1"}}
 
@@ -54,7 +54,7 @@ def test_the_schema_lists_the_inputs_and_the_hashes_of_the_frozen_files(svc: Ser
     assert "api_key" not in str(schema) and bundle.manifest.api_key_sha256 not in str(schema)
 
 
-def test_a_run_is_started_followed_and_approved_with_the_one_key(svc: ServiceEnv) -> None:
+def test_a_run_is_started_followed_and_approved_with_the_key_of_the_title(svc: ServiceEnv) -> None:
     started = svc.call(KEY, "POST", "/runs", json=INPUTS)
     assert started.status_code == 202
     assert body(started) == {
@@ -65,10 +65,24 @@ def test_a_run_is_started_followed_and_approved_with_the_one_key(svc: ServiceEnv
     }
     assert body(svc.call(KEY, "GET", "/runs/sr-0001"))["status"] == "WAITING"
     answer = {"step": "approve", "decision": "approved"}
-    assert svc.call(KEY, "POST", "/runs/sr-0001/decisions", json=answer).status_code == 202
+    assert svc.call(TITLE_KEY, "POST", "/runs/sr-0001/decisions", json=answer).status_code == 202
     report = body(svc.call(KEY, "GET", "/runs/sr-0001"))
     assert report["status"] == "FINISHED" and report["outcome"] == "SUCCEEDED"
     assert [r["run_id"] for r in body(svc.call(KEY, "GET", "/runs"))] == ["sr-0001"]
+
+
+def test_the_key_that_starts_runs_cannot_approve_but_the_key_of_the_title_can(
+    svc: ServiceEnv,
+) -> None:
+    """DR-04 holds in a service too: starting a run and answering its approval are two keys."""
+    svc.call(KEY, "POST", "/runs", json=INPUTS)
+    answer = {"step": "approve", "decision": "approved"}
+    refused = svc.call(KEY, "POST", "/runs/sr-0001/decisions", json=answer)
+    assert refused.status_code == 403
+    assert "chief_statistician" in body(refused)["errors"][0]["message"]
+    assert body(svc.call(KEY, "GET", "/runs/sr-0001"))["status"] == "WAITING"
+    done = svc.call(TITLE_KEY, "POST", "/runs/sr-0001/decisions", json=answer)
+    assert done.status_code == 202 and body(done)["by"] == "approver.chief_statistician"
 
 
 def test_invalid_inputs_are_422_with_a_field_error_as_in_the_core(svc: ServiceEnv) -> None:

@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
 
+from flowstat.actions.registry import default_registry
 from flowstat.compiler.catalogue import load_catalogue
 from flowstat.dsl.reader import read_yaml
 from flowstat.model.versions import Version
@@ -15,6 +17,7 @@ from flowstat.repo.versions import VersionNotFoundError
 from flowstat.service.deployments import (
     DeploymentFailedError,
     DeploymentService,
+    Keys,
     KindUnavailableError,
     LaunchError,
     NotRunningError,
@@ -50,7 +53,7 @@ class FakeLauncher:
 
 class Calls:
     def __init__(self) -> None:
-        self.made: list[tuple[str, int, str, str, str]] = []
+        self.made: list[tuple[str, int, str, dict[str, str], str, str]] = []
 
     def __call__(
         self,
@@ -58,10 +61,13 @@ class Calls:
         service_id: str,
         version: Version,
         api_key_sha256: str,
+        title_keys_sha256: Mapping[str, str],
         now: str,
         kind: str,
     ) -> Path:
-        self.made.append((service_id, version.number, api_key_sha256, kind, str(root)))
+        self.made.append(
+            (service_id, version.number, api_key_sha256, dict(title_keys_sha256), kind, str(root))
+        )
         return root / service_id
 
 
@@ -71,7 +77,10 @@ def make(
     launcher = launcher or FakeLauncher()
     calls = Calls()
     db = open_database(":memory:")
-    workflows = WorkflowService(db)
+    registry = default_registry()
+    workflows = WorkflowService(
+        db, known_actions=registry.names(), signatures=registry.signatures()
+    )
     tree, _ = read_yaml((ROOT / "examples" / "catalogue.yaml").read_text(encoding="utf8"))
     assert tree is not None
     catalogue, _ = load_catalogue(tree)
@@ -86,25 +95,28 @@ def make(
 
 def deploy(
     service: DeploymentService, kind: str = "process", number: int = 1
-) -> tuple[Deployment, str]:
+) -> tuple[Deployment, Keys]:
+    tokens = iter(f"{n:064x}" for n in range(1, 10))
     return service.deploy(
-        "quarterly_consolidation", number, kind, lambda: "d-1", lambda: "k" * 64, T
+        "quarterly_consolidation", number, kind, lambda: "d-1", lambda: next(tokens), T
     )
 
 
 def test_a_published_version_is_packaged_started_and_recorded(tmp_path: Path) -> None:
     service, launcher, calls = make(tmp_path)
-    row, key = service.deploy(
-        "quarterly_consolidation", 1, "process", lambda: "d-1", lambda: "k" * 64, T
-    )
-    assert key == "k" * 64
+    row, keys = deploy(service)
+    # one key to start runs, and one for the title that the approval of the example names
+    assert keys.api_key == f"{1:064x}" and keys.title_keys == {"chief_statistician": f"{2:064x}"}
     assert (row.id, row.status, row.endpoint, row.handle) == (
         "d-1",
         "running",
         "http://127.0.0.1:9100",
         "pid-77",
     )
-    assert calls.made == [("d-1", 1, hash_token(key), "process", str(tmp_path))]  # only the hash
+    hashes = {"chief_statistician": hash_token(keys.title_keys["chief_statistician"])}
+    assert calls.made == [  # only the hashes leave this layer
+        ("d-1", 1, hash_token(keys.api_key), hashes, "process", str(tmp_path))
+    ]
     assert launcher.started == [tmp_path / "d-1"]
     assert service.get("d-1") == row and service.all() == [row]
 

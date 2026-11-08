@@ -67,7 +67,7 @@ def deploy(
         body.version if body.version is not None else latest_published(workflows, body.workflow)
     )
     try:
-        row, key = deployments.deploy(
+        row, keys = deployments.deploy(
             body.workflow, number, body.kind, config.new_id, config.new_token, config.clock()
         )
     except VersionNotFoundError:
@@ -80,7 +80,11 @@ def deploy(
         raise fail(409, "E-API-003", f"the service did not start: {error}") from None
     except ValueError as error:
         raise fail(422, "E-API-001", str(error), "kind") from None
-    return DeployedOut(**deployment_out(row).model_dump(), api_key=key)
+    return DeployedOut(
+        **deployment_out(row).model_dump(),
+        api_key=keys.api_key,
+        title_keys=dict(keys.title_keys),
+    )
 
 
 @router.secured("GET", "/deployments", "deployments:read", summary="List deployments")

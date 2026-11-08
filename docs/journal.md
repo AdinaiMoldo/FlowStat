@@ -279,3 +279,10 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 
 - Measured (`benchmarks/bench_api.py`): a request is 2 to 9 ms in the app, a run to its approval 75 ms, a process deployment 0.4 to 0.6 s. Listing runs costs 5.5 ms per stored run (every report compiles the plan again), which is the one figure that is not good; the note names the two changes and they are carried to M8. A pool of four threads is 12% faster than one, not four times, and the note says why and does not claim more.
 - Wrote: `research/api-measurement.md`, the review and the retrospective of M6, the status of the milestone and the backlog.
+
+## 2026-11-08 Before the tag: three things the review left open
+
+- Fixed, a defect and not a limit: a deployed service had one key that could answer every approval, which undid DR-04 inside a service. A deployment now makes one key that starts runs (no title) and one key per title that an approval of the workflow names (read from the plan: the literal `role` of a waiting step). The key that starts runs gets 403 on an approval, which the process test checks; the answer is recorded as `approver.<title>`. The manifest has `title_keys_sha256`.
+- Fixed: the list of runs read the full report of every run. The status needs only the events, so `RunService.status` reads it from them (a test: equal to the full report for four kinds of run). 50 runs: 275 ms to 13 ms.
+- Added to CI: on Linux the container test must pass and may not be skipped, so it cannot go quiet by itself. On Windows it still skips (that daemon runs Windows containers).
+- Left as it was: a report of one run still compiles the plan (8 ms); a cache of the compiled plan of a published version is M8.

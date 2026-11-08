@@ -34,6 +34,7 @@ def make(root: Path, **override: object) -> Manifest:
         "catalogue_sha256": sha256_bytes(encode(CATALOGUE_JSON)),
         "api_key_sha256": "ab" * 32,
         "created_at": "2026-11-08T10:00:00Z",
+        "title_keys_sha256": {"chief_statistician": "cd" * 32},
     } | override
     manifest = Manifest(**fields)  # type: ignore[arg-type]
     write_manifest(root, manifest)

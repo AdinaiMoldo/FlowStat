@@ -42,7 +42,8 @@ from flowstat.service.bundle import Bundle, BundleError, read_bundle
 from flowstat.service.runs import RunService
 from flowstat.service.workflows import WorkflowService
 
-KEY_OWNER = "service"  # the one user of a service: an operator, with the key of the deployment
+KEY_OWNER = "service"  # the user of the key that starts runs: an operator with no title
+APPROVER = "approver."  # + a title: the user of the key that answers the approvals of that title
 
 router = SecuredRouter(tags=["service"])
 
@@ -74,10 +75,12 @@ def seed(db_path: str, bundle: Bundle) -> None:
         else:
             if kept.text != bundle.text or kept.catalogue != bundle.catalogue:
                 raise BundleError("the service database holds another version under this number")
-        with contextlib.suppress(UserExistsError):  # restarted: the key is already there
-            UserStore(db).add(
-                KEY_OWNER, "operator", frozenset(), manifest.api_key_sha256, manifest.created_at
-            )
+        keys = {KEY_OWNER: (frozenset[str](), manifest.api_key_sha256)}
+        for title, key_hash in manifest.title_keys_sha256.items():
+            keys[f"{APPROVER}{title}"] = (frozenset({title}), key_hash)
+        for name, (titles, key_hash) in keys.items():
+            with contextlib.suppress(UserExistsError):  # restarted: the key is already there
+                UserStore(db).add(name, "operator", titles, key_hash, manifest.created_at)
     finally:
         db.close()
 
@@ -156,7 +159,6 @@ def create_service_app(config: AppConfig, bundle: Bundle) -> FastAPI:
     app.state.bundle = bundle
     app.state.registry = default_registry()
     app.state.locks = RunLocks()
-    app.state.any_title = True  # the one key stands for every title the workflow asks
     errors.install(app)
     app.include_router(router)
     app.include_router(runs.shared)

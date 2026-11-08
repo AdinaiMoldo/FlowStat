@@ -157,6 +157,7 @@ class DeploymentOut(BaseModel):
 
 class DeployedOut(DeploymentOut):
     api_key: str  # shown once: only its hash is kept
+    title_keys: dict[str, str]  # one per title an approval names; shown once too
 
 
 class ServiceHealth(BaseModel):

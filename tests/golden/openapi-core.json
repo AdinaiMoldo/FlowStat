@@ -184,6 +184,13 @@
             "title": "Status",
             "type": "string"
           },
+          "title_keys": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Title Keys",
+            "type": "object"
+          },
           "updated_at": {
             "title": "Updated At",
             "type": "string"
@@ -207,7 +214,8 @@
           "detail",
           "created_at",
           "updated_at",
-          "api_key"
+          "api_key",
+          "title_keys"
         ],
         "title": "DeployedOut",
         "type": "object"

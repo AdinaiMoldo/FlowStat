@@ -9,9 +9,12 @@ from __future__ import annotations
 
 import sqlite3
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
+from flowstat.analysis.signatures import Signatures
+from flowstat.compiler.plan import Plan
 from flowstat.model.versions import Version, VersionStatus
 from flowstat.repo.deployments import KINDS, Deployment, DeploymentStore
 from flowstat.service.runs import NotPublishedError
@@ -42,6 +45,7 @@ class Packager(Protocol):
         service_id: str,
         version: Version,
         api_key_sha256: str,
+        title_keys_sha256: Mapping[str, str],
         now: str,
         kind: str,
     ) -> Path:
@@ -55,6 +59,29 @@ class Launcher(Protocol):
         ...
 
     def stop(self, handle: str) -> None: ...
+
+
+@dataclass(frozen=True, slots=True)
+class Keys:
+    """The keys of a service, shown once. ``api_key`` starts runs and reads; it holds no title.
+    ``title_keys`` has one key per title that an approval of the workflow names, and each may
+    answer the approvals of its own title only (DR-04)."""
+
+    api_key: str
+    title_keys: Mapping[str, str]
+
+
+def approval_titles(plan: Plan, signatures: Signatures) -> tuple[str, ...]:
+    """The titles named by the approvals of a plan (the literal ``role`` of a waiting step)."""
+    found: set[str] = set()
+    for step in plan.steps:
+        signature = signatures.get(step.action)
+        if signature is None or not signature.waits:
+            continue
+        for name, parts in step.with_:
+            if name == "role" and len(parts) == 1 and isinstance(parts[0], str):
+                found.add(parts[0])
+    return tuple(sorted(found))
 
 
 class KindUnavailableError(RuntimeError):
@@ -94,10 +121,11 @@ class DeploymentService:
         new_id: Callable[[], str],
         new_token: Callable[[], str],
         now: str,
-    ) -> tuple[Deployment, str]:
-        """Package a published version and start it. Returns the row and the key of the service.
+    ) -> tuple[Deployment, Keys]:
+        """Package a published version and start it. Returns the row and the keys of the service.
 
-        The key is made here and only its hash is kept (in the bundle); the caller shows it once.
+        The keys are made here and only their hashes are kept (in the bundle); the caller shows
+        them once.
         """
         if kind not in KINDS:
             raise ValueError(f"the kind must be one of {', '.join(KINDS)}")
@@ -107,8 +135,15 @@ class DeploymentService:
         launcher = self.launchers.get(kind)
         if launcher is None or self.packager is None:
             raise KindUnavailableError(f"deployments of kind '{kind}' are not available here")
-        service_id, key = new_id(), new_token()
-        bundle = self.packager(self.root, service_id, version, hash_token(key), now, kind)
+        service_id = new_id()
+        titles = approval_titles(
+            self.workflows.get_plan(workflow, number), self.workflows.signatures
+        )
+        keys = Keys(new_token(), {title: new_token() for title in titles})
+        hashes = {title: hash_token(key) for title, key in keys.title_keys.items()}
+        bundle = self.packager(
+            self.root, service_id, version, hash_token(keys.api_key), hashes, now, kind
+        )
         row = Deployment(service_id, workflow, number, kind, "starting", str(bundle), now, now)
         self.store.add(row)
         try:
@@ -120,7 +155,7 @@ class DeploymentService:
             self.store.update(
                 service_id, now, status="running", endpoint=running.endpoint, handle=running.handle
             ),
-            key,
+            keys,
         )
 
     def stop(self, deployment_id: str, now: str) -> Deployment:
