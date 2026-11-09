@@ -12,7 +12,7 @@ The full backlog (34 user stories, 203 SP baseline, 214 SP planned after the rec
 | M5 (I4b). Analysis | 26 + 5 | US-18, US-19, US-21, US-22, US-35 | C1 phase 4 (types), C2, feasible critical path | done (5 Nov) |
 | M6 (I5a). API, roles and deployment | 21 | US-25, US-29, US-30 | REST API, roles, packaging a workflow as a service | done (8 Nov) |
 | M7 (I5b). IDE and service view | 21 | US-26, US-27, US-28, US-31 | Monaco editor, graph preview, completion, runs of deployed services in the core | done (9 Nov) |
-| M8 (I6). Evolution | 24 | US-32 to US-34 | C5 (conformance first, handover second) and statistics | not started |
+| M8 (I6). Evolution | 24 | US-32 to US-34 | C5 (conformance first, handover second) and statistics | in progress |
 | M9. Hardening | not estimated | - | Coverage gate, final diagrams, traceability matrix, report assembly | not started |
 
 The split of I4 and I5 into two milestones each follows the size of the FleetSync sprints (8 to 29 SP). The SP of M4 and M5 exclude the feasible critical path, which became the story US-35 (5 SP) when M5 started. The reference interpreter (the oracle of C2) moved from M4 to M5 in the readiness audit of M4 and is counted with it. M9 is not in the 203 SP baseline.
