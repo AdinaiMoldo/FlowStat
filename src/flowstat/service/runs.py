@@ -18,10 +18,12 @@ from flowstat.compiler.plan import Plan
 from flowstat.engine.scheduler import Command, Scheduler
 from flowstat.model.events import Event
 from flowstat.model.history import RunReport, report_from, status_of
+from flowstat.model.ownership import OwnerState
 from flowstat.model.states import RunOutcome, StepState
 from flowstat.model.versions import VersionStatus
 from flowstat.recovery.saga import compensation_blockers
 from flowstat.recovery.wal import WriteAheadLog
+from flowstat.repo.ownership import OwnershipStore
 from flowstat.repo.runs import RunStore, StoredRun
 from flowstat.service.workflows import WorkflowService
 
@@ -60,6 +62,20 @@ class TitleMissingError(PermissionError):
         self.title = title
 
 
+class RunNotOwnedError(RuntimeError):
+    """This store does not drive the run: it is on its way to another owner, or it went there
+    (US-33). ``owner`` is where commands for the run go now."""
+
+    def __init__(self, run_id: str, owner: str | None, state: str) -> None:
+        where = f"by {owner}" if owner else "elsewhere"
+        super().__init__(
+            f"the run {run_id} is {state.lower().replace('_', ' ')} and driven {where}"
+        )
+        self.run_id = run_id
+        self.owner = owner
+        self.state = state
+
+
 @dataclass(frozen=True, slots=True)
 class Launch:
     """A scheduler for a stored run and the log that keeps its history (write-ahead)."""
@@ -72,6 +88,7 @@ class Launch:
 class RunService:
     def __init__(self, db: sqlite3.Connection, workflows: WorkflowService) -> None:
         self.store = RunStore(db)
+        self.ownership = OwnershipStore(db)
         self.workflows = workflows
 
     def start(
@@ -116,11 +133,22 @@ class RunService:
         UNCERTAIN) are committed by the driver before the first command is dispatched.
         """
         run = self.store.get(run_id)
+        self.require_owner(run_id)
         plan = self.workflows.get_plan(run.workflow, run.version)
         events = self.store.events(run_id)
         scheduler = self._scheduler(plan, run.inputs, workers)
         commands = scheduler.restore(events, now, idempotent)
         return Launch(scheduler, WriteAheadLog(self.store, run_id, stored=len(events)), commands)
+
+    def require_owner(self, run_id: str) -> None:
+        """Only the owner of a run takes commands for it (DR-01): not a store the run is leaving,
+        not one it has left, and not the core for a run that a service drives."""
+        run = self.store.get(run_id)
+        mine = self.ownership.get(run_id)
+        if not mine.owned:
+            raise RunNotOwnedError(run_id, mine.peer, mine.state.value)
+        if run.origin is not None:
+            raise RunNotOwnedError(run_id, run.origin, OwnerState.MIGRATED_OUT.value)
 
     def declared_decisions(self, action: str, args: Mapping[str, object]) -> tuple[str, ...] | None:
         """The decisions a waiting step accepts: its argument ``decisions`` or the default of its

@@ -2,6 +2,11 @@
 
 Run: python benchmarks/bench_migration.py
 
+* Handover: a run that waits for an approval is moved between the core and two services (three
+  in-memory databases, calls in-process). Every call of the protocol is a crash point; each is
+  crashed before and after, and once more during the recovery. After each recovery the stores are
+  asked who owns the run and whether the history is whole. The baseline is "stop and restart": the
+  old run is dropped and a new run of the new version is started with the same inputs.
 * Conformance: the 9-region example is run on the simulated clock; the check is made for the
   history cut at every event (the moment a person might ask), against the same version and
   against a version that adds a step and changes a later one. The figure is the time of one
@@ -58,8 +63,79 @@ def conformance() -> list[str]:
     return lines
 
 
+def handover() -> list[str]:
+    import contextlib
+
+    from tests.crash import test_handover as t
+
+    def sound(w: t.World, source: str, target: str, original: list[t.Event]) -> bool:
+        try:
+            t.assert_sound(w, source, target, original)
+        except AssertionError:
+            return False
+        return True
+
+    lines = [
+        "| Move | one crash | sound | two crashes | sound | median ms |",
+        "| --- | --- | --- | --- | --- | --- |",
+    ]
+    for source, target in t.PAIRS:
+        total = t.count_calls(source, target)
+        one = one_ok = two = two_ok = 0
+        for at, when in t.points(total):
+            w = t.world()
+            original = t.start(w, source)
+            plan = t.plan_for(source, target, original)
+            with contextlib.suppress(t.Crash):
+                t.move(plan, *t.faulty(w, t.Fault(at, when)))
+            t.recover_all(*t.clean(w))
+            one += 1
+            one_ok += sound(w, source, target, original)
+            probe = t.world()
+            t.start(probe, source)
+            with contextlib.suppress(t.Crash):
+                t.move(plan, *t.faulty(probe, t.Fault(at, when)))
+            counter = t.Fault()
+            t.recover_all(*t.faulty(probe, counter))
+            for again, how in t.points(counter.calls):
+                w = t.world()
+                original = t.start(w, source)
+                with contextlib.suppress(t.Crash):
+                    t.move(plan, *t.faulty(w, t.Fault(at, when)))
+                with contextlib.suppress(t.Crash):
+                    t.recover_all(*t.faulty(w, t.Fault(again, how)))
+                t.recover_all(*t.clean(w))
+                two += 1
+                two_ok += sound(w, source, target, original)
+        times = []
+        for _ in range(30):
+            w = t.world()
+            plan = t.plan_for(source, target, t.start(w, source))
+            began = time.perf_counter()
+            t.move(plan, *t.clean(w))
+            times.append((time.perf_counter() - began) * 1000)
+        lines.append(
+            f"| {source} -> {target} | {one} | {one_ok}/{one} | {two} | {two_ok}/{two} | "
+            f"{statistics.median(times):.3f} |"
+        )
+    original = t.waiting_history()
+    fresh = t.simulate(t.new_plan(), t.INPUTS, 1, t.behavior).scheduler.events
+    redone = sum(1 for e in fresh if e.kind is t.K.STEP_STARTED and e.step in {"a", "b"})
+    before = sum(1 for e in original if e.kind is t.K.STEP_FINISHED)
+    lines += [
+        "",
+        "| Method | runs kept | steps finished before | steps done again |",
+        "| --- | --- | --- | --- |",
+        f"| handover | 1/1 | {before} | 0 |",
+        f"| stop and restart | 0/1 | {before} | {redone} |",
+    ]
+    return lines
+
+
 def main() -> None:
     print("\n".join(conformance()))
+    print()
+    print("\n".join(handover()))
 
 
 if __name__ == "__main__":

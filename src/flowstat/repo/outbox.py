@@ -41,6 +41,8 @@ class OutboxStore:
             "FROM runs r LEFT JOIN outbox o ON o.run_id = r.run_id "
             "WHERE EXISTS (SELECT 1 FROM run_events e WHERE e.run_id = r.run_id "
             "AND e.seq > COALESCE(o.shipped_through, -1)) "
+            "AND NOT EXISTS (SELECT 1 FROM ownership w WHERE w.run_id = r.run_id "
+            "AND w.state != 'OWNED') "  # a run that is leaving, or has left, is not ours to ship
             "ORDER BY r.created_at, r.run_id"
         ).fetchall()
         return [_stored(r) for r in rows]

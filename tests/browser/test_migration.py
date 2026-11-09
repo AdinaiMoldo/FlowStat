@@ -81,3 +81,18 @@ def test_a_run_that_cannot_move_shows_every_reason_with_its_code_and_step(
     assert "consolidate" in reason.inner_text() and "ensures" in reason.inner_text()
     assert "cannot move" in page.locator("[data-testid=migration-run]").first.inner_text()
     page.close()
+
+
+def test_a_run_is_moved_from_the_page_and_is_then_on_the_new_version(
+    browser: Browser, server: Server, three_versions: None
+) -> None:
+    page = open_page(browser, server)
+    check(page, "1", "3")
+    page.locator("[data-testid=migration-run] [data-testid=move]").first.click()
+    page.wait_for_function(
+        "document.getElementById('migration-status').textContent.includes('moved to v3')"
+    )
+    page.wait_for_function("document.querySelectorAll('[data-testid=migration-run]').length === 0")
+    runs = server.env.call("operator", "GET", "/runs").json()
+    assert [r["version"] for r in runs if r["workflow"] == OWN] == [3]
+    page.close()

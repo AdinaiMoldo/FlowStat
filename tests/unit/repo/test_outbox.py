@@ -60,3 +60,17 @@ def test_the_events_after_a_position_come_in_order_and_in_chunks() -> None:
     assert [e.seq for e in outbox.events_after("r1", 2, 3)] == [3, 4, 5]
     assert [e.seq for e in outbox.events_after("r1", 5, 3)] == [6]
     assert outbox.events_after("r1", 6, 3) == []
+
+
+def test_a_run_that_is_leaving_or_has_left_is_not_shipped() -> None:
+    from flowstat.repo.ownership import OwnershipStore
+
+    db, runs, outbox = setup()
+    owners = OwnershipStore(db)
+    for run_id in ("r1", "r2", "r3"):
+        runs.create(run_id, "demo", 1, {}, T)
+        runs.append(run_id, history(2))
+    owners.fence("r2", 0, 1, "svc-2", 2)  # leaving
+    owners.fence("r3", 0, 1, "svc-2", 2)
+    owners.release("r3", 1)  # gone
+    assert [r.run_id for r in outbox.pending()] == ["r1"]

@@ -20,7 +20,7 @@ import uvicorn
 from fastapi import Depends, FastAPI, Request
 
 from flowstat.actions.registry import default_registry
-from flowstat.api import errors, runs
+from flowstat.api import errors, handover, runs
 from flowstat.api.config import AppConfig
 from flowstat.api.deps import get_runs, get_workflows
 from flowstat.api.edge import RunPool, Shipper, http_send, real_config
@@ -47,6 +47,7 @@ from flowstat.service.runs import RunService
 from flowstat.service.workflows import WorkflowService
 
 KEY_OWNER = "service"  # the user of the key that starts runs: an operator with no title
+CONTROL = "control"  # the user of the key the core presents to move runs in and out
 APPROVER = "approver."  # + a title: the user of the key that answers the approvals of that title
 
 router = SecuredRouter(tags=["service"])
@@ -86,6 +87,11 @@ def seed(db_path: str, bundle: Bundle) -> None:
         for name, (titles, key_hash) in keys.items():
             with contextlib.suppress(UserExistsError):  # restarted: the key is already there
                 UserStore(db).add(name, "operator", titles, key_hash, manifest.created_at)
+        if manifest.control_key_sha256:  # the core's key to move runs in and out (US-33)
+            with contextlib.suppress(UserExistsError):
+                UserStore(db).add(
+                    CONTROL, "admin", frozenset(), manifest.control_key_sha256, manifest.created_at
+                )
     finally:
         db.close()
 
@@ -177,6 +183,7 @@ def create_service_app(config: AppConfig, bundle: Bundle) -> FastAPI:
     app.include_router(router)
     app.include_router(listing)
     app.include_router(runs.shared)
+    app.include_router(handover.router)
     return app
 
 

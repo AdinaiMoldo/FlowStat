@@ -59,6 +59,7 @@ walks the routes. `public` is the single exception (`GET /health`).
 | `deployments:write` | `POST /deployments`, `DELETE /deployments/{id}` | yes | no | no |
 | `runs:migrate` | `POST /runs/{id}/migrate`, `POST /migrations/recover` | yes | no | yes |
 | `statistics:read` | `GET /statistics` | yes | no | no |
+| `handover:control` | `/migration/{run_id}/...` of a deployed service | yes | no | no |
 | `events:ingest` | `POST /deployments/{id}/events` (the ingest key of that deployment, section 9) | no | no | no |
 
 "Publishing is restricted to designers" (US-29) is read as: the role that writes workflows publishes
@@ -359,29 +360,48 @@ snapshot it froze. It reads the history and changes nothing. A change of `retry`
 (409 otherwise). The check of the previous section is made first; a run that is not migratable is 409
 `E-API-003` with the reasons as error items. Then the handover:
 
-1. **Fence** at the current owner: `OWNED(e)` becomes `MIGRATING(e+1)` in one transaction (nothing
-   else may have changed it, and no step may be running: `E-MIG-002`). From now on every command for
-   the run at that owner is refused with 409 `E-MIG-010`, whose message names the new owner.
-2. **Import** at the new owner, idempotent by (run, epoch): the row, the events, `OWNED(e+1)`, then
-   the event `RUN_MIGRATED` (`attempt` = the epoch, `message` = the old owner). The new owner restores
-   the run with the new plan; the new steps are `PENDING` and start when their turn comes.
-3. **Release** at the old owner: `MIGRATING` becomes `MIGRATED_OUT`. The core sets the run's
-   `origin` to the new owner in the same transaction.
+0. **Journal.** The core writes the intent (the plan: run, both owners, epoch, version, inputs,
+   `last_seq`) before it calls anyone, and removes it when the move is complete.
+1. **Fence** at the current owner, under the run lock: `OWNED(e)` becomes `MIGRATING(e+1)` in one
+   transaction, only if the epoch is `e` and the history still ends at the `last_seq` of the check
+   (otherwise the check was about another history) and no step is being driven. From now on every
+   command for the run at that owner is refused with 409 `E-MIG-010`, whose message names the new
+   owner. A repeated fence for the same plan answers the same.
+2. **Adopt** at the new owner, idempotent by (run, epoch): the row, the events and `OWNED(e+1)` as
+   exported by the old owner, then the event `RUN_MIGRATED` (`attempt` = the epoch, `message` = the
+   old owner), in one transaction. The new owner restores the run with the new plan; the new steps
+   are `PENDING` and start when their turn comes.
+3. **Release** at the old owner: `MIGRATING` becomes `MIGRATED_OUT`; repeatable. The core then
+   updates its own copy of the run (`origin`, version and inputs) and ends the journal entry.
+
+A move inside one store (the core to the core, to a newer version) is a single transaction that
+changes the version and the inputs of the run and bumps the epoch; there is nothing to fence.
 
 The answer is `{"run_id", "from", "to", "owner", "epoch", "status"}`. Ownership is a table in every
 store that can own a run, not an event: the log of the old owner gets no event, so the log keeps its
 key (run, sequence number) and the numbers continue at the new owner. A crash between two of the
 steps leaves one of three states, and `POST /migrations/recover` (`runs:migrate`; also run when the
 core starts) takes each such run forward: no import yet, repeat the import; imported, release. It
-never goes back. An approval that arrives for a run that is `MIGRATING` or `MIGRATED_OUT` is refused,
+never goes back; it reads the two owners, not the journal, to decide what is left. An approval that arrives for a run that is `MIGRATING` or `MIGRATED_OUT` is refused,
 not queued, and is sent again to the new owner.
 
-Between the core and a service the calls are the routes of the service under `/migration/{run_id}/`
-(`fence`, `export`, `import`, `release`, `ownership`), all `runs:migrate`, called with the *control
-key* of the deployment. It is a fourth key made with the others; its hash is in the manifest and in
-the service's database (the user `control`, an admin of the service), and the core keeps the key
+Between the core and a service the calls are the routes of the service under `/migration/{run_id}/`:
+`GET ownership`, `GET export`, `POST fence`, `POST adopt` and `POST release`. They need the
+permission `handover:control`, which only an admin holds, and the only admin of a service is the user
+`control`: the keys that start runs and answer approvals are operators and are refused (403). The
+core presents the *control key* of the deployment. It is a fourth key made with the others; its hash
+is in the manifest (`control_key_sha256`) and in the service's database, and the core keeps the key
 itself in the registry row because it has to present it. It is never shown, never in a listing and
 never in a bundle. Stated limit: a secret at rest in the core's database, no rotation.
+
+Errors of a move: 404 `E-API-002` (no such run or version); 422 `E-API-001` (the run is on that
+version already); 409 `E-API-003` (a version is a draft, the target is not a running deployment of
+the version, a call is in flight, the history changed since the check, another move of the run is in
+flight, or the run cannot move: the reasons follow as further error items, each with its code and
+step); 409 `E-MIG-010` (the store does not own the run: it is moving or has moved, the message names
+the owner); 503 `E-MIG-011` (an owner does not answer; the move is in the journal and
+`POST /migrations/recover` takes it forward). The same `E-MIG-010` answers a decision or a `resume`
+sent to a store that does not own the run.
 
 ### Statistics (US-34)
 

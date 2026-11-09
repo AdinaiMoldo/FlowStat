@@ -6,9 +6,11 @@ versions, each with the catalogue it froze; it stores nothing and changes no run
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 from flowstat.migration.conformance import Verdict, check
+from flowstat.model.events import Event
 from flowstat.model.versions import VersionStatus
 from flowstat.repo.runs import StoredRun
 from flowstat.repo.versions import VersionNotFoundError
@@ -59,15 +61,26 @@ class MigrationService:
 
     def check_run(self, run: StoredRun, target: int, status: str | None = None) -> RunCheck:
         """The verdict for one stored run if it moved to version ``target`` of its workflow."""
-        workflows = self.runs.workflows
         events = self.runs.store.events(run.run_id)
-        verdict = check(
-            workflows.get_plan(run.workflow, run.version),
-            workflows.get_plan(run.workflow, target),
-            events,
-            run.inputs,
-            workflows.signatures,
-            workflows.catalogue_of(run.workflow, target),
-        )
+        verdict = self.verdict(run.workflow, run.version, target, run.inputs, events)
         shown = status if status is not None else self.runs.status(run.run_id)[0]
         return RunCheck(run.run_id, run.origin or "core", shown, verdict)
+
+    def verdict(
+        self,
+        workflow: str,
+        source: int,
+        target: int,
+        inputs: Mapping[str, object],
+        events: Sequence[Event],
+    ) -> Verdict:
+        """Whether a history of version ``source`` can go on under version ``target``."""
+        workflows = self.runs.workflows
+        return check(
+            workflows.get_plan(workflow, source),
+            workflows.get_plan(workflow, target),
+            events,
+            inputs,
+            workflows.signatures,
+            workflows.catalogue_of(workflow, target),
+        )
