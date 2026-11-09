@@ -53,6 +53,32 @@ class Published(BaseModel):
     findings: list[DiagnosticOut]
 
 
+class ReasonOut(BaseModel):
+    code: str
+    step: str | None
+    message: str
+
+
+class MigrationRunOut(BaseModel):
+    run_id: str
+    owner: str  # "core" or the deployment id
+    status: str
+    migratable: bool
+    reasons: list[ReasonOut]
+    kept: list[str]
+    added: list[str]
+    pending: list[str]
+    dropped: list[str]
+
+
+class MigrationOut(BaseModel):
+    workflow: str
+    # `from` is a keyword in Python; the field is written `from` on the wire
+    source: int = Field(serialization_alias="from")
+    target: int = Field(serialization_alias="to")
+    runs: list[MigrationRunOut]
+
+
 class WorkflowSummary(BaseModel):
     name: str
     latest: int

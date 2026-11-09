@@ -23,6 +23,7 @@
     <button type="button" role="tab" id="tab-editor" data-view="editor" aria-selected="true">Editor</button>
     <button type="button" role="tab" id="tab-runs" data-view="runs" aria-selected="false">Runs</button>
     <button type="button" role="tab" id="tab-services" data-view="services" aria-selected="false">Services</button>
+    <button type="button" role="tab" id="tab-migration" data-view="migration" aria-selected="false">Migration</button>
   </nav>
 
   <main class="layout" id="view-editor">
@@ -100,6 +101,27 @@
         <tbody id="services-rows"></tbody>
       </table>
       <p class="muted">Click a service to see the runs it has shipped to this core.</p>
+    </section>
+  </main>
+
+  <main class="ops" id="view-migration" hidden>
+    <section class="panel wide">
+      <div class="row">
+        <h2>Move runs to another version</h2>
+        <label class="muted" for="migration-workflow">Workflow</label>
+        <select id="migration-workflow" aria-label="Workflow"></select>
+        <label class="muted" for="migration-from">from</label>
+        <select id="migration-from" aria-label="Version the runs are on"></select>
+        <label class="muted" for="migration-to">to</label>
+        <select id="migration-to" aria-label="Version to move to"></select>
+        <button type="button" id="migration-check">Check</button>
+        <span id="migration-status" class="muted" aria-live="polite"></span>
+      </div>
+      <table class="table" aria-label="Unfinished runs">
+        <thead><tr><th>Run</th><th>Owner</th><th>Status</th><th>Verdict</th><th>Reasons</th><th>Steps</th></tr></thead>
+        <tbody id="migration-rows"></tbody>
+      </table>
+      <p class="muted">The check reads the history of each run and changes nothing.</p>
     </section>
   </main>
 

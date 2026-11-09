@@ -21,8 +21,8 @@ same layer do not import each other. `tests/architecture/test_layers.py` enforce
 ```text
 layer 9   serve                          the executable of the core: joins api and deploy
 layer 8   api            deploy          B4 / B5
-layer 7   migration        service        C5 / orchestration of repo, compiler and later layers
-layer 6   actions        recovery        B6 / C4
+layer 7   service                        orchestration of repo, compiler and later layers
+layer 6   actions        recovery        migration       B6 / C4 / C5
 layer 5   engine                         C3
 layer 4   analysis                       C2, feasible critical path
 layer 3   compiler                       C1 phases 0-4
@@ -36,7 +36,7 @@ Both HTTP apps are in `api`: the core's (`flowstat.api.app`) and the deployed se
 The engine knows nothing about the IDE, the API, the repository or the actions: it receives them as
 protocols and the higher layers implement them. The thread-pool driver (`engine/runner.py`) takes an
 executor function; the registry of `actions` builds that function, and the command line
-(`service/cli.py`) joins the two. An import from below upwards is an
+(`service/cli.py`) joins the two. Migration (C5) sits beside recovery: it decides from a history and a pair of plans and reaches other owners only through a protocol, which `service` implements. An import from below upwards is an
 architecture bug, not a style issue.
 
 ## Third-party libraries

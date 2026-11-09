@@ -326,28 +326,31 @@ in the core and in the services (the copy the core holds), oldest first:
 ```json
 {"workflow": "quarterly_consolidation", "from": 3, "to": 4,
  "runs": [{"run_id": "r-0007", "owner": "core", "status": "WAITING", "migratable": true,
-           "reasons": [], "kept": ["load[BIS]", "approve"], "pending": ["notify"], "dropped": []}]}
+           "reasons": [], "kept": ["load[BIS]", "approve"], "added": ["notify"],
+           "pending": ["publish", "notify"], "dropped": []}]}
 ```
 
 `owner` is `core` or a deployment id. `kept` are the steps of the history that exist in the new
-version, `pending` the steps of the new version that the history has not reached (a new step, the
-instances of a region that was added), `dropped` the steps of the old version that are not in the new
-one and were never touched. When `migratable` is false `reasons` holds *all* the reasons, each
+version, `added` the steps of the new version that the old one did not have, `pending` the steps of
+the new version that the history has not reached (the added steps, and the old ones that had not
+started; the instances of a region that was added), `dropped` the steps of the old version that are
+not in the new one and were never touched. When `migratable` is false `reasons` holds *all* the reasons, each
 `{"code", "step", "message"}`:
 
 | Code | Reason |
 | --- | --- |
-| `E-MIG-001` NEVER_MIGRATE | the run is compensating or has an uncertain step (C4 owns it) |
+| `E-MIG-001` NEVER_MIGRATE | the run is compensating or has an uncertain step (C4 owns it); it is the only reason given for such a run, because the others would not be about a run that can be changed |
 | `E-MIG-002` RUNNING_STEP | a call is in flight; ask again when it has finished |
 | `E-MIG-003` REMOVED_TOUCHED_STEP | the step has events and the new version does not have it (a rename is a removal plus a new step) |
-| `E-MIG-004` CHANGED_TOUCHED_STEP | the action, `with`, `ensures`, `compensate` or loop binding of a step with events differ |
+| `E-MIG-004` CHANGED_TOUCHED_STEP | the action, `with`, `ensures`, `compensate` or loop binding of a step with events differ (compared as meaning, not as text), or the `on_failure` of a step that failed, whose policy was already applied to the rest of the run |
 | `E-MIG-005` UPSTREAM_CHANGED | a step that started could not start under the join rule of the new version, given what its predecessors did |
 | `E-MIG-006` GUARD_CONTRADICTS_HISTORY | a skipped step whose new guard is true on the recorded values, or a started step whose new guard is false |
-| `E-MIG-007` OUTPUT_INCOMPATIBLE | a recorded output lacks a field a new consumer reads, or is of another type than the argument it goes to |
+| `E-MIG-007` OUTPUT_INCOMPATIBLE | a recorded output lacks a field a step that has not started reads, or is of another type than the argument it goes to |
+| `E-MIG-008` INPUTS_REJECTED | the new version refuses an input of the run (a new required input, another type or pattern); `step` holds the input name. New defaults are added and an input the new version no longer declares is dropped |
 
 The check is made against the compiled plans of the two stored versions, each with the catalogue
-snapshot it froze. It reads the history and changes nothing. A change of `retry` or `on_failure` of a
-step that has finished is allowed.
+snapshot it froze. It reads the history and changes nothing. A change of `retry` is allowed, and of
+`on_failure` too, except for a step that failed; a step that has not started may change in every way.
 
 ### Moving a run (US-33)
 
