@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+from dataclasses import replace
 
 import pytest
 
@@ -58,3 +59,27 @@ def test_a_kind_or_status_the_registry_does_not_know_is_refused_by_the_database(
     store.add(row())
     with pytest.raises(sqlite3.IntegrityError):
         store.update("d-1", T1, status="paused")
+
+
+def test_the_ingest_key_is_kept_as_a_hash_and_found_by_it() -> None:
+    store = DeploymentStore(open_database(":memory:"))
+    store.add(replace(row(), ingest_key_sha256="ab" * 32))
+    store.add(row("d-2"))
+    assert store.get("d-1").ingest_key_sha256 == "ab" * 32
+    assert store.get("d-2").ingest_key_sha256 is None
+    assert store.by_ingest_hash("ab" * 32) is not None
+    assert store.by_ingest_hash("ab" * 32).id == "d-1"  # type: ignore[union-attr]
+    assert store.by_ingest_hash("cd" * 32) is None
+    assert store.by_ingest_hash("") is None
+
+
+def test_the_time_of_the_last_shipped_event_is_kept() -> None:
+    store = DeploymentStore(open_database(":memory:"))
+    store.add(row())
+    assert store.get("d-1").last_event_at is None
+    store.touch("d-1", T1)
+    store.touch("d-1", T2)
+    assert store.get("d-1").last_event_at == T2
+    assert store.update("d-1", T2, status="running").last_event_at == T2
+    with pytest.raises(DeploymentNotFoundError):
+        store.touch("nope", T1)

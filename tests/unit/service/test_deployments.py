@@ -35,14 +35,16 @@ TEXT = (ROOT / "examples" / "quarterly_consolidation.yaml").read_text(encoding="
 class FakeLauncher:
     def __init__(self, fail: str | None = None) -> None:
         self.started: list[Path] = []
+        self.envs: list[dict[str, str]] = []
         self.stopped: list[str] = []
         self.fail = fail
         self.fail_stop = False
 
-    def start(self, bundle: Path) -> Running:
+    def start(self, bundle: Path, env: Mapping[str, str] | None = None) -> Running:
         if self.fail:
             raise LaunchError("it did not start", self.fail)
         self.started.append(bundle)
+        self.envs.append(dict(env or {}))
         return Running("http://127.0.0.1:9100", "pid-77")
 
     def stop(self, handle: str) -> None:
@@ -72,7 +74,10 @@ class Calls:
 
 
 def make(
-    tmp_path: Path, launcher: FakeLauncher | None = None, publish: bool = True
+    tmp_path: Path,
+    launcher: FakeLauncher | None = None,
+    publish: bool = True,
+    ingest_url: str | None = None,
 ) -> tuple[DeploymentService, FakeLauncher, Calls]:
     launcher = launcher or FakeLauncher()
     calls = Calls()
@@ -89,7 +94,7 @@ def make(
     workflows.save_draft("quarterly_consolidation", TEXT, T)
     if publish:
         workflows.publish("quarterly_consolidation", 1, T)
-    service = DeploymentService(db, workflows, calls, {"process": launcher}, tmp_path)
+    service = DeploymentService(db, workflows, calls, {"process": launcher}, tmp_path, ingest_url)
     return service, launcher, calls
 
 
@@ -172,3 +177,34 @@ def test_a_failed_one_cannot_be_stopped_and_a_stop_that_fails_keeps_it_running(
         service.stop("d-1", T)
     row = service.get("d-1")
     assert row.status == "running" and row.detail == "permission denied"
+
+
+def test_a_third_key_is_made_and_only_its_hash_is_kept(tmp_path: Path) -> None:
+    service, _, _ = make(tmp_path)
+    row, keys = deploy(service)
+    assert keys.ingest_key == f"{3:064x}"  # after the key of the run routes and the title keys
+    assert row.ingest_key_sha256 == hash_token(keys.ingest_key)
+    assert keys.ingest_key not in {keys.api_key, *keys.title_keys.values()}
+    assert service.get("d-1").ingest_key_sha256 == hash_token(keys.ingest_key)
+
+
+def test_the_service_gets_the_address_and_the_key_in_its_environment(tmp_path: Path) -> None:
+    service, launcher, calls = make(tmp_path, ingest_url="http://127.0.0.1:8000")
+    _, keys = deploy(service)
+    assert launcher.envs == [
+        {
+            "FLOWSTAT_INGEST_URL": "http://127.0.0.1:8000",
+            "FLOWSTAT_INGEST_KEY": keys.ingest_key,
+            "FLOWSTAT_DEPLOYMENT_ID": "d-1",
+        }
+    ]
+    # the packager is not given the key, so it cannot end up in the bundle
+    assert keys.ingest_key not in repr(calls.made)
+
+
+def test_without_an_address_the_service_gets_no_environment_and_ships_nothing(
+    tmp_path: Path,
+) -> None:
+    service, launcher, _ = make(tmp_path)
+    deploy(service)
+    assert launcher.envs == [{}]

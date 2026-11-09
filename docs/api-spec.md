@@ -57,6 +57,7 @@ walks the routes. `public` is the single exception (`GET /health`).
 | `runs:decide` | `POST /runs/{id}/decisions` (and the title check, section 5) | yes | no | yes |
 | `deployments:read` | `GET /deployments`, `GET /deployments/{id}` | yes | yes | yes |
 | `deployments:write` | `POST /deployments`, `DELETE /deployments/{id}` | yes | no | no |
+| `events:ingest` | `POST /deployments/{id}/events` (the ingest key of that deployment, section 9) | no | no | no |
 
 "Publishing is restricted to designers" (US-29) is read as: the role that writes workflows publishes
 them, and the admin, who has every permission, can too. An operator gets 403.

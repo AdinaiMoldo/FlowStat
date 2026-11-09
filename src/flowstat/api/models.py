@@ -205,6 +205,10 @@ class RunSummary(BaseModel):
     created_at: str
 
 
+class CoreRunSummary(RunSummary):
+    origin: str | None  # null: a run of the core; else the deployment that shipped it
+
+
 class DecisionIn(Request):
     step: str
     decision: str
@@ -233,11 +237,51 @@ class DeploymentOut(BaseModel):
     detail: str | None
     created_at: str
     updated_at: str
+    runs: int  # runs this service has shipped to the core
+    last_event_at: str | None  # when the core last took events from it
 
 
 class DeployedOut(DeploymentOut):
     api_key: str  # shown once: only its hash is kept
     title_keys: dict[str, str]  # one per title an approval names; shown once too
+    ingest_key: str  # lets the service ship its runs to this core; shown once too
+
+
+class EventIn(BaseModel):
+    """One event of a run, as the service stores it (model/events.py)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    seq: int
+    kind: str
+    at: float
+    step: str | None = None
+    state: str | None = None
+    outcome: str | None = None
+    code: str | None = None
+    message: str | None = None
+    output: dict[str, Any] | None = None
+    attempt: int | None = None
+    delay: float | None = None
+    decision: str | None = None
+
+
+class ShippedRun(BaseModel):
+    run_id: str
+    workflow: str
+    version: int
+    inputs: dict[str, Any]
+    created_at: str
+
+
+class IngestIn(BaseModel):
+    run: ShippedRun
+    events: list[EventIn]
+
+
+class Ingested(BaseModel):
+    run_id: str
+    stored_through: int  # the number of the last event the core now has for the run
 
 
 class ServiceHealth(BaseModel):

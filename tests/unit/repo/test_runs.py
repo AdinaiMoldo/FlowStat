@@ -215,3 +215,118 @@ def test_a_database_made_before_recovery_is_upgraded(tmp_path: Path) -> None:
     upgraded = RunStore(open_database(path))
     upgraded.append("r1", [Event(1, EventKind.STEP_RESOLVED, 1.0, step="a", decision="done")])
     assert upgraded.events("r1")[1].decision == "done"
+
+
+# -- the origin of a run (US-31) ----------------------------------------------------------------
+def test_a_run_of_the_core_has_no_origin_and_a_shipped_one_names_its_deployment() -> None:
+    from flowstat.repo.runs import RunConflictError  # noqa: F401  (named here: part of the API)
+
+    s = store()
+    s.create("r1", "demo", 2, {}, T)
+    s.create("r2", "demo", 2, {}, T, origin="d-1")
+    assert s.get("r1").origin is None
+    assert s.get("r2").origin == "d-1"
+    assert [r.run_id for r in s.runs_of_origin("d-1")] == ["r2"]
+    assert [r.run_id for r in s.runs_of_origin(None)] == ["r1"]
+    assert [r.run_id for r in s.runs()] == ["r1", "r2"]
+
+
+def test_the_runs_of_each_origin_are_counted() -> None:
+    s = store()
+    s.create("r1", "demo", 2, {}, T)
+    s.create("r2", "demo", 2, {}, T, origin="d-1")
+    s.create("r3", "demo", 2, {}, T, origin="d-1")
+    assert s.count_by_origin() == {"d-1": 2}
+
+
+def test_ensure_creates_a_run_once_and_a_repeat_changes_nothing() -> None:
+    s = store()
+    assert s.ensure("r1", "demo", 2, {"q": 1}, T, "d-1") is True
+    assert s.ensure("r1", "demo", 2, {"q": 1}, "2030-01-01T00:00:00Z", "d-1") is False
+    assert s.get("r1").created_at == T
+
+
+@pytest.mark.parametrize(
+    ("workflow", "version", "inputs", "origin"),
+    [
+        ("other", 2, {"q": 1}, "d-1"),
+        ("demo", 3, {"q": 1}, "d-1"),
+        ("demo", 2, {"q": 2}, "d-1"),
+        ("demo", 2, {"q": 1}, "d-2"),
+        ("demo", 2, {"q": 1}, None),
+    ],
+)
+def test_ensure_refuses_a_run_that_is_not_the_same_one(
+    workflow: str, version: int, inputs: dict[str, object], origin: str | None
+) -> None:
+    from flowstat.repo.runs import RunConflictError
+
+    s = store()
+    s.ensure("r1", "demo", 2, {"q": 1}, T, "d-1")
+    with pytest.raises(RunConflictError):
+        s.ensure("r1", workflow, version, inputs, T, origin)
+
+
+def test_a_run_of_the_core_is_not_taken_over_by_a_shipped_one() -> None:
+    from flowstat.repo.runs import RunConflictError
+
+    s = store()
+    s.create("r1", "demo", 2, {}, T)
+    with pytest.raises(RunConflictError):
+        s.ensure("r1", "demo", 2, {}, T, "d-1")
+
+
+def test_the_last_event_number_of_a_run_is_told() -> None:
+    s = store()
+    s.create("r1", "demo", 2, {}, T)
+    assert s.last_seq("r1") == -1
+    s.append("r1", events())
+    assert s.last_seq("r1") == 3
+
+
+def test_a_database_of_an_earlier_version_gets_the_origin_column(tmp_path: Path) -> None:
+    path = str(tmp_path / "old.db")
+    old = sqlite3.connect(path)
+    old.execute(
+        "CREATE TABLE runs (run_id TEXT PRIMARY KEY, workflow TEXT NOT NULL, version INTEGER "
+        "NOT NULL, inputs TEXT NOT NULL, created_at TEXT NOT NULL)"
+    )
+    old.execute("INSERT INTO runs VALUES ('r0', 'demo', 1, '{}', 'x')")
+    old.commit()
+    old.close()
+    s = RunStore(open_database(path))
+    assert s.get("r0").origin is None
+    s.create("r1", "demo", 1, {}, T, origin="d-9")
+    assert s.get("r1").origin == "d-9"
+
+
+def test_ingest_makes_the_run_and_stores_its_events_and_a_repeat_changes_nothing() -> None:
+    s = store()
+    last = s.ingest("r1", "demo", 2, {"q": 1}, T, "d-1", events())
+    assert last == 3
+    assert s.get("r1").origin == "d-1" and [e.seq for e in s.events("r1")] == [0, 1, 2, 3]
+    assert s.ingest("r1", "demo", 2, {"q": 1}, T, "d-1", events()) == 3
+    assert len(s.events("r1")) == 4
+    assert s.ingest("r1", "demo", 2, {"q": 1}, T, "d-1", events()[:2]) == 3  # an old prefix
+
+
+def test_a_refused_batch_leaves_no_run_behind() -> None:
+    s = store()
+    with pytest.raises(EventConflictError) as gap:
+        s.ingest("r1", "demo", 2, {}, T, "d-1", events()[2:])  # starts at 2, not 0
+    assert gap.value.expected == 0
+    assert s.runs() == []
+    with pytest.raises(EventConflictError):
+        s.ingest("r2", "demo", 2, {}, T, "d-1", [*events()[:2], events()[3]])
+    assert s.runs() == []
+
+
+def test_a_batch_for_a_run_that_is_not_the_same_one_is_refused_and_changes_nothing() -> None:
+    from flowstat.repo.runs import RunConflictError
+
+    s = store()
+    s.create("r1", "demo", 2, {}, T)
+    s.append("r1", events()[:2])
+    with pytest.raises(RunConflictError):
+        s.ingest("r1", "demo", 2, {}, T, "d-1", events())
+    assert len(s.events("r1")) == 2

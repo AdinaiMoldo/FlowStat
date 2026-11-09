@@ -19,6 +19,7 @@ from flowstat.api.deps import config_of, get_runs, get_workflows
 from flowstat.api.errors import ApiError, ErrorItem, fail
 from flowstat.api.locks import RunLocks
 from flowstat.api.models import (
+    CoreRunSummary,
     Decided,
     DecisionIn,
     RunOut,
@@ -210,24 +211,38 @@ def read_run(runs: RunService, run_id: str) -> RunOut:
         raise fail(404, "E-API-002", f"there is no run {run_id}") from None
 
 
-def list_runs(runs: RunService, workflow: str | None, status: str | None) -> list[RunSummary]:
+def list_runs(
+    runs: RunService,
+    workflow: str | None,
+    status: str | None,
+    deployment: str | None = None,
+) -> list[CoreRunSummary]:
+    """The runs, newest first; ``deployment`` keeps those that service shipped to the core."""
     found = []
     for stored in sorted(
         runs.list_runs(workflow), key=lambda r: (r.created_at, r.run_id), reverse=True
     ):
+        if deployment is not None and stored.origin != deployment:
+            continue
         run_status, outcome = runs.status(stored.run_id)
         if status is None or run_status == status:
             found.append(
-                RunSummary(
+                CoreRunSummary(
                     run_id=stored.run_id,
                     workflow=stored.workflow,
                     version=stored.version,
                     status=run_status,
                     outcome=outcome.value if outcome is not None else None,
                     created_at=stored.created_at,
+                    origin=stored.origin,
                 )
             )
     return found
+
+
+def plain(summary: CoreRunSummary) -> RunSummary:
+    """The summary a deployed service gives: it has no origin to tell."""
+    return RunSummary(**summary.model_dump(exclude={"origin"}))
 
 
 @router.secured(
@@ -247,11 +262,14 @@ def start(
     return start_run(request, workflows, runs, name, body)
 
 
-@shared.secured("GET", "/runs", "runs:read", summary="List runs, newest first")
+@router.secured("GET", "/runs", "runs:read", summary="List runs, newest first")
 def runs_list(
-    workflow: str | None = None, status: str | None = None, runs: RunService = Depends(get_runs)
-) -> list[RunSummary]:
-    return list_runs(runs, workflow, status)
+    workflow: str | None = None,
+    status: str | None = None,
+    deployment: str | None = None,
+    runs: RunService = Depends(get_runs),
+) -> list[CoreRunSummary]:
+    return list_runs(runs, workflow, status, deployment)
 
 
 @shared.secured("GET", "/runs/{run_id}", "runs:read", summary="The report of a run")

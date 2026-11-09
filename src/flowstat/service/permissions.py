@@ -15,6 +15,8 @@ PERMISSIONS: dict[str, frozenset[str]] = {
     "runs:decide": frozenset({"admin", "operator"}),
     "deployments:read": frozenset({"admin", "designer", "operator"}),
     "deployments:write": frozenset({"admin"}),
+    # Held by no role: it belongs to the ingest key of one deployment (api/deps.py).
+    "events:ingest": frozenset(),
 }
 
 

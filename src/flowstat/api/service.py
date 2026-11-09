@@ -27,12 +27,14 @@ from flowstat.api.locks import RunLocks
 from flowstat.api.models import (
     InputOut,
     ManifestOut,
+    RunSummary,
     SchemaOut,
     ServiceHealth,
     ServiceStartIn,
     Started,
     StartIn,
 )
+from flowstat.api.runs import plain
 from flowstat.api.secured import SecuredRouter
 from flowstat.model.versions import Version, VersionStatus
 from flowstat.repo.db import open_database
@@ -46,6 +48,7 @@ KEY_OWNER = "service"  # the user of the key that starts runs: an operator with 
 APPROVER = "approver."  # + a title: the user of the key that answers the approvals of that title
 
 router = SecuredRouter(tags=["service"])
+listing = SecuredRouter(tags=["runs"])  # the same tag as in the core
 
 
 def seed(db_path: str, bundle: Bundle) -> None:
@@ -128,6 +131,15 @@ def schema(request: Request, workflows: WorkflowService = Depends(get_workflows)
     )
 
 
+@listing.secured("GET", "/runs", "runs:read", summary="List runs, newest first")
+def runs_list(
+    workflow: str | None = None,
+    status: str | None = None,
+    service: RunService = Depends(get_runs),
+) -> list[RunSummary]:
+    return [plain(item) for item in runs.list_runs(service, workflow, status)]
+
+
 @router.secured(
     "POST", "/runs", "runs:start", status_code=202, summary="Start a run of the frozen version"
 )
@@ -161,6 +173,7 @@ def create_service_app(config: AppConfig, bundle: Bundle) -> FastAPI:
     app.state.locks = RunLocks()
     errors.install(app)
     app.include_router(router)
+    app.include_router(listing)
     app.include_router(runs.shared)
     return app
 

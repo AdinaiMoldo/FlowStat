@@ -12,6 +12,7 @@ import functools
 import os
 import sqlite3
 import subprocess
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -51,7 +52,7 @@ class InProcessLauncher:
         self.apps: dict[str, TestClient] = {}
         self.submit = submit
 
-    def start(self, bundle: Path) -> Running:
+    def start(self, bundle: Path, env: Mapping[str, str] | None = None) -> Running:
         data = read_bundle(bundle)
         config = AppConfig(
             db_path=str(bundle / "service.db"),
