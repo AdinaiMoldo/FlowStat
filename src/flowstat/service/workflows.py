@@ -18,6 +18,7 @@ from flowstat.model.diagnostics import Diagnostic, Severity
 from flowstat.model.versions import Version, VersionStatus
 from flowstat.repo.catalogue import CatalogueRepo
 from flowstat.repo.versions import VersionStore
+from flowstat.service.completion import Completion, complete
 from flowstat.service.graph import Graph, build_graph
 
 
@@ -147,6 +148,10 @@ class WorkflowService:
         """The errors of a text and, when there are none, its graph; nothing is stored."""
         result = self._compile(text, self.catalogue())
         return result.diagnostics, (build_graph(result.plan) if result.plan else None)
+
+    def complete(self, text: str, line: int, column: int) -> Completion:
+        """What can be written inside ``${`` at the cursor of ``text`` (line and column from 1)."""
+        return complete(text, line, column, self.catalogue(), self.known_actions, self.signatures)
 
     def graph(self, name: str, number: int) -> Graph:
         """The graph of a stored version (InvalidWorkflowError when its text does not compile)."""

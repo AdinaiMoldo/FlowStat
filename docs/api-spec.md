@@ -49,7 +49,7 @@ walks the routes. `public` is the single exception (`GET /health`).
 | Permission | Routes | admin | designer | operator |
 | --- | --- | --- | --- | --- |
 | `workflows:read` | `GET /workflows`, `GET /workflows/{name}/versions`, `GET /workflows/{name}/versions/{n}`, `GET /workflows/{name}/versions/{n}/graph` | yes | yes | yes |
-| `workflows:write` | `POST /validate`, `POST /graph`, `POST /workflows/{name}/versions` | yes | yes | no |
+| `workflows:write` | `POST /validate`, `POST /graph`, `POST /complete`, `POST /workflows/{name}/versions` | yes | yes | no |
 | `workflows:publish` | `POST /workflows/{name}/versions/{n}/publish` | yes | yes | no |
 | `catalogue:write` | `PUT /catalogue/{list}` | yes | no | no |
 | `runs:read` | `GET /runs`, `GET /runs/{id}` | yes | yes | yes |
@@ -229,7 +229,7 @@ falls back to a text area and a list of diagnostics.
 | --- | --- | --- |
 | `POST /graph` | `workflows:write` | body `{"text": ...}`; `{"diagnostics": [...], "graph": {...} or null}`; `graph` is null when the text has errors; stores nothing |
 | `GET /workflows/{name}/versions/{n}/graph` | `workflows:read` | `{"graph": {...}}` of a stored version; 404 for an unknown version; 422 (`E-API-004`) when the stored text does not compile |
-| `POST /complete` | `workflows:write` | body `{"text", "line", "column"}` (both from 1); `{"items": [{"label", "kind", "detail"}], "note": null or text}` |
+| `POST /complete` | `workflows:write` | body `{"text", "line", "column"}` (both from 1); `{"items": [{"label", "kind", "detail"}], "prefix", "from_column", "closed", "note": null or text}`; `from_column` is where the typed reference starts (replace from there to the cursor) and `closed` says whether the line already holds the closing brace (when not, the client writes it) |
 | `POST /deployments/{id}/events` | `events:ingest` | body `{"run": {run_id, workflow, version, inputs, created_at}, "events": [...]}`; `{"run_id", "stored_through"}` |
 
 Changed routes: `GET /runs` takes `?deployment=<id>` and every run says its `origin` (`null` for a
@@ -253,11 +253,20 @@ predecessors.
 
 ### Completion
 
-Inside `${` the answer holds: `inputs.<name>` for every input; the outputs of the steps for which
-`available_at` (C2) says no warning follows, as `step`, `step[*]` (a `foreach` step) or `step[var]`;
-and, after `${step.`, the fields the action of that step declares. The step is the one whose
-source lines contain the cursor. When the text with the unfinished reference cut off does not
-compile, `items` is empty and `note` names the first error; nothing is guessed.
+Inside `${` the answer holds, as whole references (`label` is what is written between `${` and `}`):
+`inputs.<name>` for every input, first; then, in the order of the plan, the fields that the action
+of a step declares, for the steps that `available_at` (C2) says can be read without a warning
+(`approve.decision`); for a `foreach` step the list `step[*].field` when every instance is an
+ancestor of the step (it holds the instances that succeeded, and the analysis warns only about an
+index that needs more elements than the join guarantees), and `step[var].field` when the step is an
+instance of a `foreach` with the same variable and that instance is guaranteed. A step whose action
+declares no fields is offered as the bare name. The step is the one whose source lines contain the
+cursor; outside the steps only the inputs are offered. In the `when` of a step its own condition is
+not assumed (it is being written), so what the condition would justify appears once it is written.
+When the text with the unfinished reference replaced by `true` does not compile, `items` is empty
+and `note` names the first error; nothing is guessed. A cursor outside `${ }` gives no items and a
+note. Columns count UTF-16 units as the editor does; a character outside the Basic Multilingual
+Plane on the same line moves them by one.
 
 ### Events of a service
 

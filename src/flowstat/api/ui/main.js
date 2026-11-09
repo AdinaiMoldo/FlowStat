@@ -243,6 +243,16 @@ async function main() {
       : "The editor is not installed here, so this is a plain text area. Run: python scripts/fetch_ui.py";
   }
   state.editor.onChange(changed);
+  if (state.editor.registerCompletion) {
+    state.editor.registerCompletion(async (text, line, column) => {
+      try {
+        return await call("POST", "/complete", { text, line, column });
+      } catch (error) {
+        say(explain(error));
+        return null;
+      }
+    });
+  }
 
   $("sign-in").addEventListener("submit", (event) => {
     event.preventDefault();
