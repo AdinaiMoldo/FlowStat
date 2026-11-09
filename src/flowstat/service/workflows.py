@@ -18,6 +18,7 @@ from flowstat.model.diagnostics import Diagnostic, Severity
 from flowstat.model.versions import Version, VersionStatus
 from flowstat.repo.catalogue import CatalogueRepo
 from flowstat.repo.versions import VersionStore
+from flowstat.service.graph import Graph, build_graph
 
 
 class InvalidWorkflowError(ValueError):
@@ -141,6 +142,15 @@ class WorkflowService:
         result = self._compile(text, self.catalogue())
         findings = self._findings(result.plan) if result.plan is not None else []
         return result.diagnostics, findings
+
+    def preview(self, text: str) -> tuple[list[Diagnostic], Graph | None]:
+        """The errors of a text and, when there are none, its graph; nothing is stored."""
+        result = self._compile(text, self.catalogue())
+        return result.diagnostics, (build_graph(result.plan) if result.plan else None)
+
+    def graph(self, name: str, number: int) -> Graph:
+        """The graph of a stored version (InvalidWorkflowError when its text does not compile)."""
+        return build_graph(self.get_plan(name, number))
 
     def analyse(self, name: str, number: int) -> tuple[list[Diagnostic], list[Diagnostic]]:
         """The errors and the findings of a stored version, against the catalogue it reads."""

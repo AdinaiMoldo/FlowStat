@@ -33,11 +33,19 @@
         <span id="name" class="name">no workflow</span>
         <span id="state" class="muted"></span>
         <span class="spacer"></span>
+        <button type="button" id="preview" aria-pressed="false">Show graph</button>
         <button type="button" id="save" disabled>Save draft</button>
         <button type="button" id="publish" disabled>Publish</button>
       </div>
       <div id="editor" class="editor"></div>
       <textarea id="plain" class="plain" spellcheck="false" hidden aria-label="Workflow text"></textarea>
+      <div id="graph-pane" class="graph-pane" hidden>
+        <div id="graph" class="graph" aria-label="Graph of the workflow"></div>
+        <p id="graph-note" class="notice" hidden></p>
+        <p class="legend muted">Dashed border: conditional step. Thick blue border: goal.
+          Dotted box: the instances of a fan-out; click it to collapse, click a collapsed one to open it.
+          Click a step to go to it in the text.</p>
+      </div>
       <p id="notice" class="notice" hidden></p>
     </section>
 
@@ -50,6 +58,9 @@
     </section>
   </main>
 
+  <script src="vendor/dagre.min.js"></script>
+  <script src="vendor/cytoscape.min.js"></script>
+  <script src="vendor/cytoscape-dagre.min.js"></script>
   <script src="vendor/monaco/vs/loader.js"></script>
   <script type="module" src="main.js"></script>
 </body>
