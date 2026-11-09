@@ -307,3 +307,13 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Chose: in its own `when` the step's condition is not assumed. Replacing the reference by `true` there could turn `not ${x}` into `false`, which entails everything and would offer outputs that are not guaranteed.
 - Left for later, on purpose: the health probe of a service (M8), the plan cache (M8), live refresh of the run list.
 
+
+## 2026-11-09 US-31: the service ships by cursor, and the core says what it has
+
+- Built: the ingest key (third key of a deployment, to the service by environment, never in the bundle), `POST /deployments/{id}/events`, `RunStore.ingest` (the run and its events in one transaction), the outbox (`service/outbox.py`, a cursor per run in the service's database), the thread that runs it, `--ingest-url` of the core, the views Runs and Services in the page.
+- Chose: `events:ingest` is in the table of permissions with an empty set of roles, and `require()` hands that one permission to its own check. The route walk then proves it with no special case: 401 without a token, 403 for admin, designer and operator. Rejected: a user of a fourth role "service" (a role is more than ingesting, and a service would then have a user to leak).
+- Chose: the core answers a gap with `expected` as a field of the error item, and the service moves back to `expected - 1` once per run per round. A core that keeps asking for what was just sent makes the run skipped, not a loop. A conflict without `expected` also skips the run: the core will not take it and retrying cannot change that.
+- Chose: the idle wait is 1 s and the backoff is 1 s doubling to 30 s; one more round when the service stops. Measured: a batch of 200 costs 6 ms and one event 4 ms, so the cost is the commit, and the outbox sends the pending events of a run in one request.
+- Found by a test: when the network failed in the middle of a run the report said 0 events although 20 had been acknowledged, because the exception left the loop before the count was returned. The failure is now an outcome of the run, not an exception through the round.
+- Found by the browser test: what a service ships is not trusted. A message with `<img onerror>` is shown as characters; the page builds every cell with `textContent`.
+- Measured: `research/m7-measurement.md`.
