@@ -4,6 +4,7 @@ import { PAUSE_MS, createEditor } from "./editor.js";
 import { createGraph } from "./graph.js";
 import { createMigration } from "./migration.js";
 import { createOps } from "./ops.js";
+import { createStatistics } from "./statistics.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -234,7 +235,7 @@ function fresh() {
 }
 
 // -- views -----------------------------------------------------------------------------------
-const VIEWS = ["editor", "runs", "services", "migration"];
+const VIEWS = ["editor", "runs", "services", "migration", "statistics"];
 
 function goTo(view) {
   for (const name of VIEWS) {
@@ -245,12 +246,14 @@ function goTo(view) {
   if (view === "runs") state.ops.loadRuns();
   if (view === "services") state.ops.loadServices();
   if (view === "migration") state.migration.load();
+  if (view === "statistics") state.statistics.load();
 }
 
 // -- start -----------------------------------------------------------------------------------
 async function main() {
   state.ops = createOps({ goTo });
   state.migration = createMigration();
+  state.statistics = createStatistics();
   for (const name of VIEWS) $(`tab-${name}`).addEventListener("click", () => goTo(name));
   const plain = new URLSearchParams(location.search).has("plain");
   state.editor = await createEditor($("editor"), $("plain"), plain);

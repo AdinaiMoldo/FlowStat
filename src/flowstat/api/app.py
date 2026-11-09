@@ -9,7 +9,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from flowstat.actions.registry import default_registry
-from flowstat.api import deployments, errors, migrations, runs, ui, workflows
+from flowstat.api import deployments, errors, migrations, runs, statistics, ui, workflows
 from flowstat.api.config import AppConfig
 from flowstat.api.locks import RunLocks
 
@@ -31,6 +31,7 @@ def create_app(config: AppConfig) -> FastAPI:
     app.include_router(runs.shared)
     app.include_router(deployments.router)
     app.include_router(migrations.router)
+    app.include_router(statistics.router)
     ui.mount(app)
     migrations.recover_on_start(config, app.state.locks)
     return app

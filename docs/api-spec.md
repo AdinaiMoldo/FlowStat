@@ -410,11 +410,13 @@ sent to a store that does not own the run.
 
 ```json
 {"workflows": [{"workflow": "quarterly_consolidation", "runs": 10, "running": 0, "finished": 10,
-                "succeeded": 7, "not_reached": 1, "failed": 2, "failure_rate": 0.2,
-                "average_duration": 41.5, "versions": {"3": {"runs": 4, "failed": 1}}}]}
+                "succeeded": 7, "not_reached": 1, "cancelled": 0, "failed": 2,
+                "failure_rate": 0.2, "average_duration": 41.5,
+                "versions": {"3": {"runs": 4, "failed": 1}}}]}
 ```
 
 A *failure* is an outcome of `FAILED`, `COMPENSATED` or `COMPENSATION_FAILED`; `GOAL_NOT_REACHED` is a
-result and is counted apart (DR-02). `failure_rate` is `failed / finished` (null when nothing has
+result and is counted apart (DR-02); a `CANCELLED` run is finished, counts in `cancelled` and is not a failure.
+`running` is every run that has not finished (created, running or waiting). `failure_rate` is `failed / finished` (null when nothing has
 finished), `average_duration` the mean of `RUN_FINISHED.at - RUN_STARTED.at` over finished runs in
 the unit of the engine's clock (seconds), null when nothing has finished.

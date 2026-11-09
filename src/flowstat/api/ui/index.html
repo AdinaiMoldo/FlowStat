@@ -24,6 +24,7 @@
     <button type="button" role="tab" id="tab-runs" data-view="runs" aria-selected="false">Runs</button>
     <button type="button" role="tab" id="tab-services" data-view="services" aria-selected="false">Services</button>
     <button type="button" role="tab" id="tab-migration" data-view="migration" aria-selected="false">Migration</button>
+    <button type="button" role="tab" id="tab-statistics" data-view="statistics" aria-selected="false">Statistics</button>
   </nav>
 
   <main class="layout" id="view-editor">
@@ -122,6 +123,21 @@
         <tbody id="migration-rows"></tbody>
       </table>
       <p class="muted">The check reads the history of each run and changes nothing. Moving a run sends it to the version and owner chosen; commands for it go to the new owner from then on.</p>
+    </section>
+  </main>
+
+  <main class="ops" id="view-statistics" hidden>
+    <section class="panel wide">
+      <div class="row">
+        <h2>Statistics</h2>
+        <button type="button" id="statistics-refresh">Refresh</button>
+        <span id="statistics-status" class="muted" aria-live="polite"></span>
+      </div>
+      <table class="table" aria-label="Statistics">
+        <thead><tr><th>Workflow</th><th>Runs</th><th>Running</th><th>Finished</th><th>Succeeded</th><th>Goal not reached</th><th>Failed</th><th>Failure rate</th><th>Average duration</th><th>Versions</th></tr></thead>
+        <tbody id="statistics-rows"></tbody>
+      </table>
+      <p class="muted">Counted from the stored events, including the copy of the services' runs, which may lag. A failure is a run that ended FAILED, COMPENSATED or COMPENSATION_FAILED; a goal that is not reached is a result, not a failure. Only an admin may read this page.</p>
     </section>
   </main>
 

@@ -1347,6 +1347,22 @@
         "title": "Started",
         "type": "object"
       },
+      "StatisticsOut": {
+        "properties": {
+          "workflows": {
+            "items": {
+              "$ref": "#/components/schemas/WorkflowStatisticsOut"
+            },
+            "title": "Workflows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "workflows"
+        ],
+        "title": "StatisticsOut",
+        "type": "object"
+      },
       "StepOut": {
         "properties": {
           "attempts": {
@@ -1553,6 +1569,24 @@
         "title": "VersionGraph",
         "type": "object"
       },
+      "VersionStatisticsOut": {
+        "properties": {
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "runs": {
+            "title": "Runs",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "runs",
+          "failed"
+        ],
+        "title": "VersionStatisticsOut",
+        "type": "object"
+      },
       "VersionSummary": {
         "properties": {
           "created_at": {
@@ -1586,6 +1620,86 @@
           "published_at"
         ],
         "title": "VersionSummary",
+        "type": "object"
+      },
+      "WorkflowStatisticsOut": {
+        "properties": {
+          "average_duration": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average Duration"
+          },
+          "cancelled": {
+            "title": "Cancelled",
+            "type": "integer"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "failure_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Rate"
+          },
+          "finished": {
+            "title": "Finished",
+            "type": "integer"
+          },
+          "not_reached": {
+            "title": "Not Reached",
+            "type": "integer"
+          },
+          "running": {
+            "title": "Running",
+            "type": "integer"
+          },
+          "runs": {
+            "title": "Runs",
+            "type": "integer"
+          },
+          "succeeded": {
+            "title": "Succeeded",
+            "type": "integer"
+          },
+          "versions": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/VersionStatisticsOut"
+            },
+            "title": "Versions",
+            "type": "object"
+          },
+          "workflow": {
+            "title": "Workflow",
+            "type": "string"
+          }
+        },
+        "required": [
+          "workflow",
+          "runs",
+          "running",
+          "finished",
+          "succeeded",
+          "not_reached",
+          "cancelled",
+          "failed",
+          "failure_rate",
+          "average_duration",
+          "versions"
+        ],
+        "title": "WorkflowStatisticsOut",
         "type": "object"
       },
       "WorkflowSummary": {
@@ -2799,6 +2913,78 @@
           "migration"
         ],
         "x-permission": "runs:migrate"
+      }
+    },
+    "/statistics": {
+      "get": {
+        "operationId": "statistics_statistics_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatisticsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no valid token (E-AUTH-001)"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the role lacks the permission (E-AUTH-002)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "not found (E-API-002)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "conflict with the state of the resource (E-API-003)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the request is invalid (E-API-001, E-API-004, E-API-005, E-INPUT-*)"
+          }
+        },
+        "summary": "Failure rate and duration per workflow",
+        "tags": [
+          "statistics"
+        ],
+        "x-permission": "statistics:read"
       }
     },
     "/validate": {
