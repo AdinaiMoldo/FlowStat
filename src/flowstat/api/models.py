@@ -5,9 +5,10 @@ from __future__ import annotations
 from dataclasses import asdict
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from flowstat.model.diagnostics import Diagnostic
+from flowstat.service.completion import Completion
 from flowstat.service.graph import Graph
 
 
@@ -109,6 +110,36 @@ class GraphOut(BaseModel):
             nodes=[GraphNodeOut(**asdict(n)) for n in graph.nodes],
             edges=[GraphEdgeOut(**asdict(e)) for e in graph.edges],
             groups=[GraphGroupOut(**asdict(g)) for g in graph.groups],
+        )
+
+
+class CompleteIn(Request):
+    text: str
+    line: int = Field(ge=1)
+    column: int = Field(ge=1)
+
+
+class SuggestionOut(BaseModel):
+    label: str
+    kind: str
+    detail: str
+
+
+class CompletionOut(BaseModel):
+    items: list[SuggestionOut]
+    prefix: str
+    from_column: int
+    note: str | None
+    closed: bool
+
+    @classmethod
+    def of(cls, found: Completion) -> CompletionOut:
+        return cls(
+            items=[SuggestionOut(**asdict(i)) for i in found.items],
+            prefix=found.prefix,
+            from_column=found.from_column,
+            note=found.note,
+            closed=found.closed,
         )
 
 

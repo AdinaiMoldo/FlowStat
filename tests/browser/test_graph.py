@@ -38,6 +38,18 @@ def wait_for_nodes(page: Page, count: int) -> None:
     )
 
 
+def test_the_graph_is_not_on_the_page_until_it_is_asked_for(
+    browser: Browser, server: Server, need_editor: None
+) -> None:
+    page = open_page(browser, server, "designer")
+    assert page.is_hidden("#graph-pane")
+    page.click("#preview")
+    assert page.is_visible("#graph-pane")
+    page.click("#preview")
+    assert page.is_hidden("#graph-pane")
+    page.close()
+
+
 def test_every_step_instance_is_a_node_and_every_dependency_an_arrow(
     browser: Browser, server: Server, need_editor: None
 ) -> None:

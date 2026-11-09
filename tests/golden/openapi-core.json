@@ -63,6 +63,75 @@
         "title": "Checked",
         "type": "object"
       },
+      "CompleteIn": {
+        "additionalProperties": false,
+        "properties": {
+          "column": {
+            "minimum": 1.0,
+            "title": "Column",
+            "type": "integer"
+          },
+          "line": {
+            "minimum": 1.0,
+            "title": "Line",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "line",
+          "column"
+        ],
+        "title": "CompleteIn",
+        "type": "object"
+      },
+      "CompletionOut": {
+        "properties": {
+          "closed": {
+            "title": "Closed",
+            "type": "boolean"
+          },
+          "from_column": {
+            "title": "From Column",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestionOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "prefix": {
+            "title": "Prefix",
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "prefix",
+          "from_column",
+          "note",
+          "closed"
+        ],
+        "title": "CompletionOut",
+        "type": "object"
+      },
       "Decided": {
         "properties": {
           "by": {
@@ -913,6 +982,29 @@
         "title": "StepOut",
         "type": "object"
       },
+      "SuggestionOut": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "kind",
+          "detail"
+        ],
+        "title": "SuggestionOut",
+        "type": "object"
+      },
       "TextIn": {
         "additionalProperties": false,
         "properties": {
@@ -1165,6 +1257,88 @@
           "workflows"
         ],
         "x-permission": "catalogue:write"
+      }
+    },
+    "/complete": {
+      "post": {
+        "operationId": "complete_complete_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompletionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no valid token (E-AUTH-001)"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the role lacks the permission (E-AUTH-002)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "not found (E-API-002)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "conflict with the state of the resource (E-API-003)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the request is invalid (E-API-001, E-API-004, E-API-005, E-INPUT-*)"
+          }
+        },
+        "summary": "What can be written inside ${ at the cursor; stores nothing",
+        "tags": [
+          "workflows"
+        ],
+        "x-permission": "workflows:write"
       }
     },
     "/deployments": {

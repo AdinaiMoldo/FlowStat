@@ -56,7 +56,7 @@ admin (`flowstat user add dina --role designer`):
 python scripts/fetch_ui.py
 ```
 
-Without that step the page still works, in a plain text area.
+Without that step the page still works, in a plain text area (no completion, and the graph is a list of layers). In the editor, type `${` inside a value to get the inputs and the outputs that are available at that step; the button "Show graph" draws the workflow.
 
 ## Showing the project
 

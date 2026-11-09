@@ -11,6 +11,7 @@
   color: var(--ink);
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; } /* a rule with display: flex must not show a hidden box */
 html, body { height: 100%; margin: 0; background: var(--paper); }
 body { display: flex; flex-direction: column; font-size: 14px; }
 h1 { font-size: 18px; margin: 0; }

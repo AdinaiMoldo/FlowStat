@@ -10,6 +10,8 @@ from flowstat.api.models import (
     CatalogueIn,
     CatalogueSaved,
     Checked,
+    CompleteIn,
+    CompletionOut,
     DiagnosticOut,
     DraftSaved,
     GraphOut,
@@ -62,6 +64,18 @@ def preview(body: TextIn, workflows: WorkflowService = Depends(get_workflows)) -
     return Previewed(
         diagnostics=_out(errors), graph=GraphOut.of(graph) if graph is not None else None
     )
+
+
+@router.secured(
+    "POST",
+    "/complete",
+    "workflows:write",
+    summary="What can be written inside ${ at the cursor; stores nothing",
+)
+def complete(
+    body: CompleteIn, workflows: WorkflowService = Depends(get_workflows)
+) -> CompletionOut:
+    return CompletionOut.of(workflows.complete(body.text, body.line, body.column))
 
 
 @router.secured("GET", "/workflows", "workflows:read", summary="List the workflows")

@@ -46,6 +46,8 @@ function monacoEditor(monaco, host) {
     fontSize: 13,
     tabSize: 2,
     insertSpaces: true,
+    wordBasedSuggestions: "off", // the only suggestions are the server's: what is available here
+    quickSuggestions: { other: false, comments: false, strings: false },
   });
   const model = editor.getModel();
   const levels = LEVELS(monaco);
@@ -77,6 +79,39 @@ function monacoEditor(monaco, host) {
         };
       });
       monaco.editor.setModelMarkers(model, "flowstat", marks);
+    },
+    // ask(text, line, column) gives the answer of POST /complete (or null); it is called when the
+    // person types "${", ".", or "[" and on the keys of the suggest command.
+    registerCompletion(ask) {
+      const kinds = {
+        input: monaco.languages.CompletionItemKind.Variable,
+        output: monaco.languages.CompletionItemKind.Field,
+      };
+      monaco.languages.registerCompletionItemProvider("yaml", {
+        triggerCharacters: ["{", ".", "["],
+        async provideCompletionItems(target, position) {
+          if (target !== model) return { suggestions: [] };
+          const found = await ask(target.getValue(), position.lineNumber, position.column);
+          if (!found || found.items.length === 0) return { suggestions: [] };
+          const range = {
+            startLineNumber: position.lineNumber,
+            endLineNumber: position.lineNumber,
+            startColumn: found.from_column,
+            endColumn: position.column,
+          };
+          return {
+            suggestions: found.items.map((item, n) => ({
+              label: item.label,
+              kind: kinds[item.kind],
+              detail: item.detail,
+              insertText: found.closed ? item.label : `${item.label}}`,
+              filterText: item.label,
+              sortText: String(n).padStart(4, "0"),
+              range,
+            })),
+          };
+        },
+      });
     },
     reveal(line, column) {
       editor.revealLineInCenter(line);
