@@ -129,10 +129,10 @@ def world() -> World:
 def start(w: World, owner: str) -> list[Event]:
     """The run waits at ``owner``; the core has a copy that lags by one event if it is a service."""
     events = waiting_history()
-    w.stores[owner].create(RUN, "demo", 1, INPUTS, "t", origin=None)
+    w.stores[owner].create(RUN, "demo", 1, dict(INPUTS), "t", origin=None)
     w.stores[owner].append(RUN, events)
     if owner != "core":
-        w.stores["core"].create(RUN, "demo", 1, INPUTS, "t", origin=owner)
+        w.stores["core"].create(RUN, "demo", 1, dict(INPUTS), "t", origin=owner)
         w.stores["core"].append(RUN, events[:-1])
     return events
 
@@ -147,7 +147,7 @@ def faulty(w: World, fault: Fault) -> tuple[dict[str, Owner], Journal, Mirror]:
 
 
 def clean(w: World) -> tuple[dict[str, Owner], Journal, Mirror]:
-    return dict(w.owners), w.journal, w.mirror  # type: ignore[return-value]
+    return dict(w.owners), w.journal, w.mirror
 
 
 def owner_of(w: World) -> tuple[str, Ownership]:

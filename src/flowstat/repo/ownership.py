@@ -8,6 +8,7 @@ released in one transaction with a check of the state it replaces.
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Callable
 
 from flowstat.model.ownership import Ownership, OwnerState
 
@@ -104,7 +105,7 @@ class OwnershipStore:
         write(self.db, released)
         return released
 
-    def _atomically(self, work):  # type: ignore[no-untyped-def]
+    def _atomically(self, work: Callable[[], Ownership]) -> Ownership:
         self.db.execute("BEGIN IMMEDIATE")
         try:
             done = work()
