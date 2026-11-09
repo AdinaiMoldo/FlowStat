@@ -68,11 +68,14 @@ def launcher(
     clock: Clock,
     log_text: str = "",
     seen: list[Any] | None = None,
+    options_seen: list[dict[str, Any]] | None = None,
 ) -> ProcessLauncher:
     def popen(command: list[str], **options: Any) -> FakeProcess:
         options["stdout"].write(log_text.encode())
         if seen is not None:
             seen.append(command)
+        if options_seen is not None:
+            options_seen.append(options)
         return process
 
     return ProcessLauncher(
@@ -336,3 +339,47 @@ def test_stop_removes_the_container_and_an_unknown_one_is_an_error() -> None:
     assert container.stopped and container.removed
     with pytest.raises(LaunchError, match="cannot stop container nope"):
         launcher_.stop("nope")
+
+
+def test_the_environment_is_given_to_the_process_on_top_of_the_current_one(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("FLOWSTAT_TEST_KEEP", "yes")
+    options: list[dict[str, Any]] = []
+    started = launcher(FakeProcess([None]), lambda e: True, Clock(), options_seen=options)
+    started.start(tmp_path, {"FLOWSTAT_INGEST_KEY": "secret"})
+    env = options[0]["env"]
+    assert env["FLOWSTAT_INGEST_KEY"] == "secret" and env["FLOWSTAT_TEST_KEEP"] == "yes"
+    assert "secret" not in (tmp_path / "service.log").read_text()  # not on the command line
+
+
+def test_a_process_without_extra_environment_inherits_it_unchanged(tmp_path: Path) -> None:
+    options: list[dict[str, Any]] = []
+    launcher(FakeProcess([None]), lambda e: True, Clock(), options_seen=options).start(tmp_path)
+    assert "env" not in options[0]
+
+
+def test_a_container_reaches_the_core_through_the_host_not_through_its_own_loopback(
+    tmp_path: Path,
+) -> None:
+    clock, container = Clock(), FakeContainer(["running"])
+    client = FakeClient(container)
+    env = {
+        "FLOWSTAT_INGEST_URL": "http://127.0.0.1:8000/x",
+        "FLOWSTAT_INGEST_KEY": "secret",
+        "FLOWSTAT_DEPLOYMENT_ID": "d-1",
+    }
+    docker(client, clock, lambda e: True).start(tmp_path / "s", env)
+    [(_, options)] = client.ran
+    assert options["environment"]["FLOWSTAT_INGEST_URL"] == "http://host.docker.internal:8000/x"
+    assert options["environment"]["FLOWSTAT_INGEST_KEY"] == "secret"
+    assert options["extra_hosts"] == {"host.docker.internal": "host-gateway"}
+
+
+def test_an_address_that_is_not_loopback_is_left_as_it_is_for_a_container(tmp_path: Path) -> None:
+    clock, container = Clock(), FakeContainer(["running"])
+    client = FakeClient(container)
+    docker(client, clock, lambda e: True).start(
+        tmp_path / "s", {"FLOWSTAT_INGEST_URL": "http://core.office:8000"}
+    )
+    assert client.ran[0][1]["environment"] == {"FLOWSTAT_INGEST_URL": "http://core.office:8000"}

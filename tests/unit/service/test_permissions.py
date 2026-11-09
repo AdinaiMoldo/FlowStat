@@ -30,8 +30,13 @@ def test_the_code_and_the_spec_give_the_same_permissions() -> None:
     assert {p: set(roles) for p, roles in PERMISSIONS.items()} == from_spec
 
 
-def test_the_admin_has_every_permission() -> None:
-    assert all("admin" in roles for roles in PERMISSIONS.values())
+def test_the_admin_has_every_permission_that_a_role_can_have() -> None:
+    assert all("admin" in roles for roles in PERMISSIONS.values() if roles)
+
+
+def test_the_ingest_permission_belongs_to_no_role() -> None:
+    assert PERMISSIONS["events:ingest"] == frozenset()
+    assert not any(allowed(role, "events:ingest") for role in ROLES)
 
 
 def test_an_operator_cannot_write_or_publish_a_workflow() -> None:

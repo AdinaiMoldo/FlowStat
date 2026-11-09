@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -18,13 +19,15 @@ from tests.unit.api.helpers import EXAMPLE, NAME, Env, make_env
 class FakeLauncher:
     def __init__(self) -> None:
         self.started: list[Path] = []
+        self.envs: list[dict[str, str]] = []
         self.stopped: list[str] = []
         self.fail: str | None = None
 
-    def start(self, bundle: Path) -> Running:
+    def start(self, bundle: Path, env: Mapping[str, str] | None = None) -> Running:
         if self.fail:
             raise LaunchError("did not start", self.fail)
         self.started.append(bundle)
+        self.envs.append(dict(env or {}))
         return Running("http://127.0.0.1:9100", "pid-1")
 
     def stop(self, handle: str) -> None:

@@ -71,6 +71,17 @@ def http(method: str, url: str, token: str | None = None, body: Any = None) -> t
         return error.code, json.loads(error.read() or b"null")
 
 
+def decide(url: str, token: str, body: Any, limit: float = 10.0) -> tuple[int, Any]:
+    """Answer an approval. A run that has just reached WAITING may still be held by the thread that
+    drove it for a moment; the core says 409 then, and the answer is sent again."""
+    deadline = time.monotonic() + limit
+    while True:
+        status, reply = http("POST", url, token, body)
+        if status != 409 or time.monotonic() > deadline:
+            return status, reply
+        time.sleep(0.05)
+
+
 def expect(status: int, wanted: int, what: str, body: Any = None) -> None:
     if status != wanted:
         raise DemoError(f"{what}: expected {wanted}, got {status} {body}")
@@ -199,10 +210,10 @@ def demo(work: Path, kind: str) -> None:
             "    invalid input: 422 " + body["errors"][0]["field"] + " " + body["errors"][0]["code"]
         )
         show(wait_for(f"{base}/runs/{core_id}", clerk, "WAITING"))
-        status, body = http("POST", f"{base}/runs/{core_id}/decisions", clerk, ANSWER)
+        status, body = decide(f"{base}/runs/{core_id}/decisions", clerk, ANSWER)
         expect(status, 403, "a clerk approving", body)
         say("    a clerk who approves: 403 " + body["errors"][0]["message"])
-        status, body = http("POST", f"{base}/runs/{core_id}/decisions", chief, ANSWER)
+        status, body = decide(f"{base}/runs/{core_id}/decisions", chief, ANSWER)
         expect(status, 202, "the chief statistician approving", body)
         say(f"    approved by {body['by']}")
         core_report = wait_for(f"{base}/runs/{core_id}", clerk, "FINISHED")
@@ -222,13 +233,11 @@ def demo(work: Path, kind: str) -> None:
             expect(status, 202, "start in the service", started)
             run = started["run_id"]
             wait_for(f"{endpoint}/runs/{run}", body["api_key"], "WAITING")
-            status, refused = http(
-                "POST", f"{endpoint}/runs/{run}/decisions", body["api_key"], ANSWER
-            )
+            status, refused = decide(f"{endpoint}/runs/{run}/decisions", body["api_key"], ANSWER)
             expect(status, 403, "the run key approving", refused)
             say("    the key that starts runs may not approve: 403")
             title_key = body["title_keys"]["chief_statistician"]
-            status, done = http("POST", f"{endpoint}/runs/{run}/decisions", title_key, ANSWER)
+            status, done = decide(f"{endpoint}/runs/{run}/decisions", title_key, ANSWER)
             expect(status, 202, "the title key approving", done)
             service_report = wait_for(f"{endpoint}/runs/{run}", body["api_key"], "FINISHED")
             show(service_report)

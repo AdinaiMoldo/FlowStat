@@ -81,6 +81,17 @@
             ],
             "title": "Column"
           },
+          "expected": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected"
+          },
           "field": {
             "anyOf": [
               {

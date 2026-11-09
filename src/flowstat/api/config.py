@@ -33,3 +33,4 @@ class AppConfig:
     workers: int = 4  # steps of one run that may run at the same time
     packager: Packager | None = None  # makes a bundle (deploy/package.py)
     launchers: Mapping[str, Launcher] = field(default_factory=dict)  # kind -> how to start it
+    ingest_url: str | None = None  # where services ship their runs (the address of this core)

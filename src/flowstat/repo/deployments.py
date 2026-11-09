@@ -26,10 +26,13 @@ class Deployment:
     endpoint: str | None = None  # the base URL of the service once it runs
     handle: str | None = None  # the pid of the process or the id of the container
     detail: str | None = None  # why it failed (the end of the log)
+    ingest_key_sha256: str | None = None  # the key of the service for shipping its events
+    last_event_at: str | None = None  # when the core last stored events from this service
 
 
 _COLUMNS = (
-    "id, workflow, version, kind, status, bundle, created_at, updated_at, endpoint, handle, detail"
+    "id, workflow, version, kind, status, bundle, created_at, updated_at, endpoint, handle, "
+    "detail, ingest_key_sha256, last_event_at"
 )
 
 
@@ -43,7 +46,7 @@ class DeploymentStore:
 
     def add(self, deployment: Deployment) -> None:
         self.db.execute(
-            f"INSERT INTO deployments ({_COLUMNS}) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            f"INSERT INTO deployments ({_COLUMNS}) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (
                 deployment.id,
                 deployment.workflow,
@@ -56,6 +59,8 @@ class DeploymentStore:
                 deployment.endpoint,
                 deployment.handle,
                 deployment.detail,
+                deployment.ingest_key_sha256,
+                deployment.last_event_at,
             ),
         )
 
@@ -66,6 +71,22 @@ class DeploymentStore:
         if row is None:
             raise DeploymentNotFoundError(deployment_id)
         return _row(row)
+
+    def by_ingest_hash(self, key_sha256: str) -> Deployment | None:
+        """The deployment whose ingest key has this hash, or None."""
+        if not key_sha256:
+            return None
+        row = self.db.execute(
+            f"SELECT {_COLUMNS} FROM deployments WHERE ingest_key_sha256 = ?", (key_sha256,)
+        ).fetchone()
+        return _row(row) if row is not None else None
+
+    def touch(self, deployment_id: str, at: str) -> None:
+        """Note when events of this service were last stored."""
+        self.get(deployment_id)
+        self.db.execute(
+            "UPDATE deployments SET last_event_at = ? WHERE id = ?", (at, deployment_id)
+        )
 
     def all(self) -> list[Deployment]:
         rows = self.db.execute(

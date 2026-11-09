@@ -57,6 +57,7 @@ walks the routes. `public` is the single exception (`GET /health`).
 | `runs:decide` | `POST /runs/{id}/decisions` (and the title check, section 5) | yes | no | yes |
 | `deployments:read` | `GET /deployments`, `GET /deployments/{id}` | yes | yes | yes |
 | `deployments:write` | `POST /deployments`, `DELETE /deployments/{id}` | yes | no | no |
+| `events:ingest` | `POST /deployments/{id}/events` (the ingest key of that deployment, section 9) | no | no | no |
 
 "Publishing is restricted to designers" (US-29) is read as: the role that writes workflows publishes
 them, and the admin, who has every permission, can too. An operator gets 403.
@@ -202,15 +203,17 @@ launchers; the bundles are made under `--bundles`.
 
 The registry row has: id, workflow, version, kind, endpoint, status (`starting`, `running`,
 `failed`, `stopped`), the bundle path, the pid or container id, and the times. The events of the
-service's runs reach the core by the outbox of M7 (US-31); the log of the service is already the
-source of truth for them, and nothing in M6 assumes the core sees them.
+service's runs reach the core by the outbox of M7 (US-31, section 9); the log of the service is the
+source of truth for them, and the core's copy may lag. `POST /deployments` also shows the third
+key, `ingest_key`; it is passed to the service by environment and its hash is in the registry row.
 
-## 8. What is not in M6
+## 8. What is not in M6 or M7
 
-User management endpoints; passwords and a login page; TLS (terminate it in front of the server);
-CORS (not needed, see section 9); rate limiting; token rotation; resuming runs when the app starts (M8);
-the outbox and the ingest of events in the core (M7); the epoch fence and migration (M8); more than
-one core process (the database is SQLite).
+User management endpoints; passwords and a login page; TLS (terminate it in front of the server,
+which matters more now that services send a key over the network); CORS (not needed, see section 9);
+rate limiting; token and key rotation; resuming runs when the app starts (M8); the epoch fence and
+migration (M8); a health probe of the services from the registry (M8); a live refresh of the run list;
+more than one core process (the database is SQLite).
 
 ## 9. M7: the editor, the graph, completion and the events of services
 
@@ -232,10 +235,13 @@ falls back to a text area and a list of diagnostics.
 | `POST /complete` | `workflows:write` | body `{"text", "line", "column"}` (both from 1); `{"items": [{"label", "kind", "detail"}], "prefix", "from_column", "closed", "note": null or text}`; `from_column` is where the typed reference starts (replace from there to the cursor) and `closed` says whether the line already holds the closing brace (when not, the client writes it) |
 | `POST /deployments/{id}/events` | `events:ingest` | body `{"run": {run_id, workflow, version, inputs, created_at}, "events": [...]}`; `{"run_id", "stored_through"}` |
 
-Changed routes: `GET /runs` takes `?deployment=<id>` and every run says its `origin` (`null` for a
-run of the core, the deployment id for a run shipped by a service); `GET /deployments` and
+Changed routes: `GET /runs` of the core takes `?deployment=<id>` and every run says its `origin`
+(`null` for a run of the core, the deployment id for a run shipped by a service); the `GET /runs` of
+a deployed service is as it was (a service has no origin to tell). `GET /deployments` and
 `GET /deployments/{id}` also give `runs` (how many runs the service has shipped) and
-`last_event_at`. `POST /deployments` shows a third key, `ingest_key`, once.
+`last_event_at` (the time of the last batch the core took from it, `null` before the first).
+`POST /deployments` shows a third key, `ingest_key`, once. An error item may carry `expected` (an
+integer), which only a refused batch with a gap uses.
 
 ### The graph
 
@@ -274,13 +280,34 @@ The service ships its events to the core in order and at least once:
 
 - The core stores them with the rule of `RunStore.append`: an event already stored and identical is
   ignored, a different event with a used number or a gap refuses the whole batch and stores nothing
-  (409 `E-API-003`, with `expected` in the message). The pair (run, sequence number) is the key.
-- Authentication: the ingest key of the deployment (the third key, shown once). The key of another
-  deployment, a key of a user, and no key are refused (403, 403, 401). A batch with a workflow or a
-  version other than the deployment's is 422 `E-API-001`; a run id that belongs to the core is 409.
+  (409 `E-API-003`). For a gap the error item has `expected`, the number of the event the core needs
+  next; for a different event it has none. The run and its events are stored in one transaction, so
+  a refused first batch leaves no run behind. The pair (run, sequence number) is the key.
+- Authentication: the ingest key of the deployment named in the path (the third key, shown once; only
+  its SHA-256 is kept). No key, or a key that is nobody's, is 401. The key of another deployment, or
+  of a deployment that does not exist, and the token of a user of any role are 403 `E-AUTH-002`: the
+  permission `events:ingest` is held by no role. The ingest key opens no other route (401). A batch
+  with a workflow or a version other than the deployment's is 422 `E-API-001`; so are an empty batch,
+  one of more than 200 events, an unknown field and an unknown kind of event. A run id that belongs
+  to the core, or to another deployment, is 409.
 - At most 200 events in a batch. The service keeps a cursor per run (`outbox`, in its own database)
   that moves only after the core acknowledged; when the core answers with a gap, the cursor goes back
-  to what the core has.
+  to `expected - 1` (once per run in a round, so a core that keeps asking for what was just sent does
+  not make a loop; that run is left out of the round).
+- The service gets the address, the key and its own id in its environment (`FLOWSTAT_INGEST_URL`,
+  `FLOWSTAT_INGEST_KEY`, `FLOWSTAT_DEPLOYMENT_ID`), never in the bundle or on a command line. A
+  thread of the service makes a round when it starts and then every second; after a round that could
+  not reach the core (no answer, 5xx, a refused key) it waits 1 s, 2 s, 4 s, up to 30 s, and a good
+  round starts again at 1 s. When the service stops it makes one more round, so what the last run
+  wrote is not left behind (a limit of `--stop-limit` seconds). A run that the core will not take
+  (409 without `expected`, 422, 404) is logged and left out; the others go on.
+- The core tells services its own address with `--ingest-url` (default `http://HOST:PORT`, with
+  `0.0.0.0` read as `127.0.0.1`). A service in a container reaches the host as
+  `host.docker.internal`: the launcher rewrites a loopback address and adds the `host-gateway`
+  entry, and the core has to listen where the container can reach it (`--host 0.0.0.0`). Without an
+  address (`ingest_url` unset) the keys are made and the service ships nothing.
+- Everything a service ships is data from outside the core: the page puts it into the DOM as text and
+  never as markup (a test ships a message holding an `<img onerror>` and finds no element).
 - The core reads a shipped run like its own: `GET /runs/{id}` gives the same report (the core holds the
   version that was deployed), `GET /runs?deployment=<id>` lists them. Shipped history may lag; the
   log of the service is the source of truth.

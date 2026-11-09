@@ -10,8 +10,9 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import os
 import sys
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import replace
 from pathlib import Path
 
@@ -22,23 +23,26 @@ from flowstat.actions.registry import default_registry
 from flowstat.api import errors, runs
 from flowstat.api.config import AppConfig
 from flowstat.api.deps import get_runs, get_workflows
-from flowstat.api.edge import RunPool, real_config
+from flowstat.api.edge import RunPool, Shipper, http_send, real_config
 from flowstat.api.locks import RunLocks
 from flowstat.api.models import (
     InputOut,
     ManifestOut,
+    RunSummary,
     SchemaOut,
     ServiceHealth,
     ServiceStartIn,
     Started,
     StartIn,
 )
+from flowstat.api.runs import plain
 from flowstat.api.secured import SecuredRouter
 from flowstat.model.versions import Version, VersionStatus
 from flowstat.repo.db import open_database
 from flowstat.repo.users import UserExistsError, UserStore
 from flowstat.repo.versions import VersionNotFoundError, VersionStore
 from flowstat.service.bundle import Bundle, BundleError, read_bundle
+from flowstat.service.deployments import DEPLOYMENT_ID, INGEST_KEY, INGEST_URL
 from flowstat.service.runs import RunService
 from flowstat.service.workflows import WorkflowService
 
@@ -46,6 +50,7 @@ KEY_OWNER = "service"  # the user of the key that starts runs: an operator with 
 APPROVER = "approver."  # + a title: the user of the key that answers the approvals of that title
 
 router = SecuredRouter(tags=["service"])
+listing = SecuredRouter(tags=["runs"])  # the same tag as in the core
 
 
 def seed(db_path: str, bundle: Bundle) -> None:
@@ -128,6 +133,15 @@ def schema(request: Request, workflows: WorkflowService = Depends(get_workflows)
     )
 
 
+@listing.secured("GET", "/runs", "runs:read", summary="List runs, newest first")
+def runs_list(
+    workflow: str | None = None,
+    status: str | None = None,
+    service: RunService = Depends(get_runs),
+) -> list[RunSummary]:
+    return [plain(item) for item in runs.list_runs(service, workflow, status)]
+
+
 @router.secured(
     "POST", "/runs", "runs:start", status_code=202, summary="Start a run of the frozen version"
 )
@@ -161,6 +175,7 @@ def create_service_app(config: AppConfig, bundle: Bundle) -> FastAPI:
     app.state.locks = RunLocks()
     errors.install(app)
     app.include_router(router)
+    app.include_router(listing)
     app.include_router(runs.shared)
     return app
 
@@ -178,9 +193,18 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
+def shipper_from(env: Mapping[str, str], db_path: str) -> Shipper | None:
+    """The shipper the environment asks for: all three variables, or none (no shipping)."""
+    url, key, who = env.get(INGEST_URL), env.get(INGEST_KEY), env.get(DEPLOYMENT_ID)
+    if not (url and key and who):
+        return None
+    return Shipper(db_path, http_send(url, key, who))
+
+
 def main(
     argv: Sequence[str] | None = None,
     serve: Callable[[FastAPI, str, int], None] | None = None,
+    env: Mapping[str, str] | None = None,
 ) -> int:
     args = _parser().parse_args(argv)
     root = Path(args.bundle)
@@ -199,10 +223,15 @@ def main(
         print(f"the bundle is not usable: {error}", file=sys.stderr)
         return 2
     run = serve or (lambda a, host, port: uvicorn.run(a, host=host, port=port))
+    shipper = shipper_from(os.environ if env is None else env, config.db_path)
+    if shipper is not None:
+        shipper.start()
     try:
         run(app, args.host, args.port)
     finally:
         left = pool.stop(args.stop_limit)
+        if shipper is not None and not shipper.stop(args.stop_limit):
+            print("the last events were not shipped to the core", file=sys.stderr)
         if left:
             print(
                 f"{left} run(s) were still going; take them up with 'flowstat resume'",

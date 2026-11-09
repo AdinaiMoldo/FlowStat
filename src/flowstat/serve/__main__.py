@@ -32,10 +32,20 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--bundles", help="where deployments are made (default: next to --db)")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument(
+        "--ingest-url",
+        help="the address deployed services use to reach this core "
+        "(default: http://HOST:PORT; with Docker, services reach the host as host.docker.internal)",
+    )
     parser.add_argument("--workers", type=int, default=4, help="steps of one run at the same time")
     parser.add_argument("--max-runs", type=int, default=4, help="runs driven at the same time")
     parser.add_argument("--stop-limit", type=float, default=30.0, help="seconds to wait at stop")
     return parser
+
+
+def _reachable(host: str) -> str:
+    """The host as a client here can use it (0.0.0.0 listens everywhere but nobody calls it)."""
+    return "127.0.0.1" if host in ("0.0.0.0", "::", "") else host
 
 
 def main(
@@ -47,7 +57,10 @@ def main(
     pool = RunPool(args.max_runs)
     bundles = Path(args.bundles) if args.bundles else Path(args.db).resolve().parent / "deployments"
     config = real_config(args.db, Path(args.data), args.target, args.workers, pool, bundles)
-    config = replace(config, packager=build_bundle, launchers=launchers_for())
+    ingest_url = args.ingest_url or f"http://{_reachable(args.host)}:{args.port}"
+    config = replace(
+        config, packager=build_bundle, launchers=launchers_for(), ingest_url=ingest_url
+    )
     app = create_app(config)
     run = serve or (lambda a, host, port: uvicorn.run(a, host=host, port=port))
     try:

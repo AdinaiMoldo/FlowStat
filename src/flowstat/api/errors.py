@@ -20,6 +20,7 @@ class ErrorItem(BaseModel):
     field: str | None = None
     line: int | None = None
     column: int | None = None
+    expected: int | None = None  # a refused batch with a gap: the event number the core needs next
 
 
 class ErrorBody(BaseModel):

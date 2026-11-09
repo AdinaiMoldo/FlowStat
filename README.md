@@ -56,6 +56,8 @@ admin (`flowstat user add dina --role designer`):
 python scripts/fetch_ui.py
 ```
 
+The page has three views. Editor: the text with live diagnostics, completion and the graph. Runs: the runs of the core and the runs that deployed services have shipped to it (`GET /runs?deployment=<id>`). Services: what is deployed, which version, where, its status, how many runs it has shipped and when it last sent something; a click shows its runs. A deployed service sends the history of its runs to the core by itself, with a key of its own; `python -m flowstat.serve` tells services where the core is (`--ingest-url`, by default its own address).
+
 Without that step the page still works, in a plain text area (no completion, and the graph is a list of layers). In the editor, type `${` inside a value to get the inputs and the outputs that are available at that step; the button "Show graph" draws the workflow.
 
 ## Showing the project

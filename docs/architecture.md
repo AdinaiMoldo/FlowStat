@@ -7,7 +7,11 @@ service is a container with the same engine, a frozen plan of one version (the c
 snapshot of the catalogue) and its own write-ahead event log. That log is the source of truth for
 the runs the service owns. An outbox delivers events to the core at least once; the core stores them
 idempotently by the pair (run, sequence number). History and statistics are read from that copy and
-may lag. A run changes owner only through migration (C5), behind an epoch fence.
+may lag. The delivery is by cursor: the service keeps, per run, the number of the last event the
+core acknowledged (`outbox`), sends what lies beyond in batches of at most 200, and moves the cursor
+back when the core says it has less. The log stays the only record; the cursor is a position in it.
+The service proves itself to the core with an ingest key of its deployment, which is not a user and
+has no role. A run changes owner only through migration (C5), behind an epoch fence.
 
 ## Layers
 

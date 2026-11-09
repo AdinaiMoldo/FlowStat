@@ -42,7 +42,13 @@ CREATE TABLE IF NOT EXISTS runs (
     workflow   TEXT    NOT NULL,
     version    INTEGER NOT NULL,
     inputs     TEXT    NOT NULL,
-    created_at TEXT    NOT NULL
+    created_at TEXT    NOT NULL,
+    origin     TEXT
+);
+
+CREATE TABLE IF NOT EXISTS outbox (
+    run_id          TEXT    PRIMARY KEY,
+    shipped_through INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS run_events (
@@ -82,7 +88,9 @@ CREATE TABLE IF NOT EXISTS deployments (
     handle     TEXT,
     detail     TEXT,
     created_at TEXT    NOT NULL,
-    updated_at TEXT    NOT NULL
+    updated_at TEXT    NOT NULL,
+    ingest_key_sha256 TEXT,
+    last_event_at     TEXT
 );
 
 CREATE TRIGGER IF NOT EXISTS run_events_no_update
@@ -123,6 +131,9 @@ _LATER_COLUMNS = [
     ("run_events", "attempt", "INTEGER"),
     ("run_events", "delay", "REAL"),
     ("run_events", "decision", "TEXT"),
+    ("runs", "origin", "TEXT"),
+    ("deployments", "ingest_key_sha256", "TEXT"),
+    ("deployments", "last_event_at", "TEXT"),
 ]
 
 

@@ -158,3 +158,38 @@ def test_main_refuses_a_directory_that_is_not_a_bundle(
 ) -> None:
     assert main(["--bundle", str(tmp_path)]) == 2
     assert "no manifest.json" in capsys.readouterr().err
+
+
+def test_main_ships_only_when_the_environment_gives_the_address_the_key_and_the_name(
+    tmp_path: Path,
+) -> None:
+    from flowstat.api.edge import Shipper
+    from flowstat.api.service import shipper_from
+
+    env = {
+        "FLOWSTAT_INGEST_URL": "http://127.0.0.1:8000",
+        "FLOWSTAT_INGEST_KEY": "k",
+        "FLOWSTAT_DEPLOYMENT_ID": "d-1",
+    }
+    assert isinstance(shipper_from(env, str(tmp_path / "s.db")), Shipper)
+    assert shipper_from({}, "s.db") is None
+    for missing in env:
+        assert shipper_from({k: v for k, v in env.items() if k != missing}, "s.db") is None
+
+
+def test_main_with_a_shipper_that_cannot_reach_the_core_still_serves_and_ends(
+    tmp_path: Path,
+) -> None:
+    env = make_service(tmp_path)
+    order: list[str] = []
+    settings = {
+        "FLOWSTAT_INGEST_URL": "http://127.0.0.1:1",  # nobody listens: rounds fail, nothing breaks
+        "FLOWSTAT_INGEST_KEY": "k",
+        "FLOWSTAT_DEPLOYMENT_ID": "d-1",
+    }
+    code = main(
+        ["--bundle", str(env.bundle), "--stop-limit", "5"],
+        serve=lambda app, host, port: order.append("served"),
+        env=settings,
+    )
+    assert code == 0 and order == ["served"]

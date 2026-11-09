@@ -2,6 +2,7 @@
 import { ApiError, call, session } from "./api.js";
 import { PAUSE_MS, createEditor } from "./editor.js";
 import { createGraph } from "./graph.js";
+import { createOps } from "./ops.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -231,8 +232,23 @@ function fresh() {
   check();
 }
 
+// -- views -----------------------------------------------------------------------------------
+const VIEWS = ["editor", "runs", "services"];
+
+function goTo(view) {
+  for (const name of VIEWS) {
+    $(`view-${name}`).hidden = name !== view;
+    $(`tab-${name}`).setAttribute("aria-selected", String(name === view));
+  }
+  document.body.dataset.view = view;
+  if (view === "runs") state.ops.loadRuns();
+  if (view === "services") state.ops.loadServices();
+}
+
 // -- start -----------------------------------------------------------------------------------
 async function main() {
+  state.ops = createOps({ goTo });
+  for (const name of VIEWS) $(`tab-${name}`).addEventListener("click", () => goTo(name));
   const plain = new URLSearchParams(location.search).has("plain");
   state.editor = await createEditor($("editor"), $("plain"), plain);
   if (state.editor.kind === "plain") {

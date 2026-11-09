@@ -17,6 +17,7 @@ from flowstat.analysis.signatures import Signatures
 from flowstat.compiler.plan import Plan
 from flowstat.model.versions import Version, VersionStatus
 from flowstat.repo.deployments import KINDS, Deployment, DeploymentStore
+from flowstat.repo.runs import RunStore
 from flowstat.service.runs import NotPublishedError
 from flowstat.service.users import hash_token
 from flowstat.service.workflows import WorkflowService
@@ -53,9 +54,15 @@ class Packager(Protocol):
         ...
 
 
+INGEST_URL = "FLOWSTAT_INGEST_URL"  # where the service ships the history of its runs
+INGEST_KEY = "FLOWSTAT_INGEST_KEY"  # the key that lets it (and nothing else) ship to the core
+DEPLOYMENT_ID = "FLOWSTAT_DEPLOYMENT_ID"  # who it says it is
+
+
 class Launcher(Protocol):
-    def start(self, bundle: Path) -> Running:
-        """Start the service of a bundle and return once it answers. Raises ``LaunchError``."""
+    def start(self, bundle: Path, env: Mapping[str, str] | None = None) -> Running:
+        """Start the service of a bundle and return once it answers. Raises ``LaunchError``.
+        ``env`` is added to the environment of the service; secrets go there, never into files."""
         ...
 
     def stop(self, handle: str) -> None: ...
@@ -65,10 +72,12 @@ class Launcher(Protocol):
 class Keys:
     """The keys of a service, shown once. ``api_key`` starts runs and reads; it holds no title.
     ``title_keys`` has one key per title that an approval of the workflow names, and each may
-    answer the approvals of its own title only (DR-04)."""
+    answer the approvals of its own title only (DR-04). ``ingest_key`` lets the service ship its
+    runs to this core and does nothing else; the service gets it in its environment."""
 
     api_key: str
     title_keys: Mapping[str, str]
+    ingest_key: str = ""
 
 
 def approval_titles(plan: Plan, signatures: Signatures) -> tuple[str, ...]:
@@ -106,12 +115,15 @@ class DeploymentService:
         packager: Packager | None,
         launchers: Mapping[str, Launcher],
         root: Path,
+        ingest_url: str | None = None,
     ) -> None:
         self.store = DeploymentStore(db)
+        self.runs = RunStore(db)
         self.workflows = workflows
         self.packager = packager
         self.launchers = launchers
         self.root = root
+        self.ingest_url = ingest_url  # where services ship their runs; None: they do not
 
     def deploy(
         self,
@@ -139,15 +151,25 @@ class DeploymentService:
         titles = approval_titles(
             self.workflows.get_plan(workflow, number), self.workflows.signatures
         )
-        keys = Keys(new_token(), {title: new_token() for title in titles})
+        api_key = new_token()
+        title_keys = {title: new_token() for title in titles}
+        keys = Keys(api_key, title_keys, new_token())
         hashes = {title: hash_token(key) for title, key in keys.title_keys.items()}
         bundle = self.packager(
             self.root, service_id, version, hash_token(keys.api_key), hashes, now, kind
         )
-        row = Deployment(service_id, workflow, number, kind, "starting", str(bundle), now, now)
+        row = Deployment(
+            service_id, workflow, number, kind, "starting", str(bundle), now, now,
+            ingest_key_sha256=hash_token(keys.ingest_key),
+        )  # fmt: skip
         self.store.add(row)
+        env = (
+            {INGEST_URL: self.ingest_url, INGEST_KEY: keys.ingest_key, DEPLOYMENT_ID: service_id}
+            if self.ingest_url
+            else {}
+        )
         try:
-            running = launcher.start(bundle)
+            running = launcher.start(bundle, env)
         except LaunchError as error:
             failed = self.store.update(service_id, now, status="failed", detail=error.detail)
             raise DeploymentFailedError(failed) from error
@@ -171,6 +193,10 @@ class DeploymentService:
             self.store.update(deployment_id, now, status="running", detail=error.detail)
             raise
         return self.store.update(deployment_id, now, status="stopped")
+
+    def shipped(self) -> dict[str, int]:
+        """How many runs each deployment has shipped to this core."""
+        return self.runs.count_by_origin()
 
     def get(self, deployment_id: str) -> Deployment:
         return self.store.get(deployment_id)

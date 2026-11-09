@@ -24,6 +24,7 @@ from flowstat.service.deployments import Launcher, LaunchError, Running
 READY_LIMIT = 20.0  # seconds a process has to answer /health
 CONTAINER_READY_LIMIT = 90.0  # an image may have to be built and its packages installed first
 LOG = "service.log"
+HOST_NAME = "host.docker.internal"  # the machine that runs the core, seen from a container
 
 
 def free_port() -> int:
@@ -68,15 +69,16 @@ class ProcessLauncher:
         self.limit, self.interval = limit, interval
         self._started: dict[str, Any] = {}
 
-    def start(self, bundle: Path) -> Running:
+    def start(self, bundle: Path, env: Mapping[str, str] | None = None) -> Running:
         number = self.port()
+        options: dict[str, Any] = {"env": {**os.environ, **env}} if env else {}
         command = [
             self.python, "-m", "flowstat.api.service",
             "--bundle", str(bundle), "--port", str(number),
         ]  # fmt: skip
         with open(bundle / LOG, "wb") as log:
             process = self.popen(
-                command, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT
+                command, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT, **options
             )
         endpoint = f"http://127.0.0.1:{number}"
         try:
@@ -141,7 +143,7 @@ class DockerLauncher:
         self.clock, self.sleep = clock, sleep
         self.limit, self.interval = limit, interval
 
-    def start(self, bundle: Path) -> Running:
+    def start(self, bundle: Path, env: Mapping[str, str] | None = None) -> Running:
         try:
             client = self.client()
             client.ping()
@@ -151,6 +153,7 @@ class DockerLauncher:
             ) from error
         tag = f"flowstat-service-{bundle.name}".lower()
         number = self.port()
+        inside = {k: _from_container(v) for k, v in (env or {}).items()}
         try:
             client.images.build(path=str(bundle), tag=tag, rm=True)
             container = client.containers.run(
@@ -159,6 +162,8 @@ class DockerLauncher:
                 name=tag,
                 ports={"8000/tcp": ("127.0.0.1", number)},
                 volumes={str(bundle): {"bind": "/service/bundle", "mode": "rw"}},
+                environment=inside,
+                extra_hosts={HOST_NAME: "host-gateway"},
             )
         except Exception as error:
             raise LaunchError("the container could not be built or started", str(error)) from error
@@ -188,6 +193,13 @@ class DockerLauncher:
     def _remove(container: Any) -> None:
         container.stop(timeout=10)
         container.remove()
+
+
+def _from_container(value: str) -> str:
+    """A loopback address means the container itself; to reach the core it has to name the host."""
+    for loopback in ("127.0.0.1", "localhost"):
+        value = value.replace(f"//{loopback}", f"//{HOST_NAME}")
+    return value
 
 
 def _docker_client() -> Any:

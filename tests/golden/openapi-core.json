@@ -132,6 +132,63 @@
         "title": "CompletionOut",
         "type": "object"
       },
+      "CoreRunSummary": {
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "origin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Origin"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          },
+          "workflow": {
+            "title": "Workflow",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "workflow",
+          "version",
+          "status",
+          "outcome",
+          "created_at",
+          "origin"
+        ],
+        "title": "CoreRunSummary",
+        "type": "object"
+      },
       "Decided": {
         "properties": {
           "by": {
@@ -245,9 +302,28 @@
             "title": "Id",
             "type": "string"
           },
+          "ingest_key": {
+            "title": "Ingest Key",
+            "type": "string"
+          },
           "kind": {
             "title": "Kind",
             "type": "string"
+          },
+          "last_event_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Event At"
+          },
+          "runs": {
+            "title": "Runs",
+            "type": "integer"
           },
           "status": {
             "title": "Status",
@@ -283,8 +359,11 @@
           "detail",
           "created_at",
           "updated_at",
+          "runs",
+          "last_event_at",
           "api_key",
-          "title_keys"
+          "title_keys",
+          "ingest_key"
         ],
         "title": "DeployedOut",
         "type": "object"
@@ -325,6 +404,21 @@
             "title": "Kind",
             "type": "string"
           },
+          "last_event_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Event At"
+          },
+          "runs": {
+            "title": "Runs",
+            "type": "integer"
+          },
           "status": {
             "title": "Status",
             "type": "string"
@@ -351,7 +445,9 @@
           "endpoint",
           "detail",
           "created_at",
-          "updated_at"
+          "updated_at",
+          "runs",
+          "last_event_at"
         ],
         "title": "DeploymentOut",
         "type": "object"
@@ -461,6 +557,17 @@
             ],
             "title": "Column"
           },
+          "expected": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected"
+          },
           "field": {
             "anyOf": [
               {
@@ -493,6 +600,131 @@
           "message"
         ],
         "title": "ErrorItem",
+        "type": "object"
+      },
+      "EventIn": {
+        "additionalProperties": false,
+        "description": "One event of a run, as the service stores it (model/events.py).",
+        "properties": {
+          "at": {
+            "title": "At",
+            "type": "number"
+          },
+          "attempt": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attempt"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
+          "decision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision"
+          },
+          "delay": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delay"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
+          },
+          "output": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State"
+          },
+          "step": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step"
+          }
+        },
+        "required": [
+          "seq",
+          "kind",
+          "at"
+        ],
+        "title": "EventIn",
         "type": "object"
       },
       "GraphEdgeOut": {
@@ -647,6 +879,44 @@
         "title": "GraphOut",
         "type": "object"
       },
+      "IngestIn": {
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/EventIn"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "run": {
+            "$ref": "#/components/schemas/ShippedRun"
+          }
+        },
+        "required": [
+          "run",
+          "events"
+        ],
+        "title": "IngestIn",
+        "type": "object"
+      },
+      "Ingested": {
+        "properties": {
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "stored_through": {
+            "title": "Stored Through",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "run_id",
+          "stored_through"
+        ],
+        "title": "Ingested",
+        "type": "object"
+      },
       "Previewed": {
         "properties": {
           "diagnostics": {
@@ -789,29 +1059,19 @@
         "title": "RunOut",
         "type": "object"
       },
-      "RunSummary": {
+      "ShippedRun": {
         "properties": {
           "created_at": {
             "title": "Created At",
             "type": "string"
           },
-          "outcome": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Outcome"
+          "inputs": {
+            "additionalProperties": true,
+            "title": "Inputs",
+            "type": "object"
           },
           "run_id": {
             "title": "Run Id",
-            "type": "string"
-          },
-          "status": {
-            "title": "Status",
             "type": "string"
           },
           "version": {
@@ -827,11 +1087,10 @@
           "run_id",
           "workflow",
           "version",
-          "status",
-          "outcome",
+          "inputs",
           "created_at"
         ],
-        "title": "RunSummary",
+        "title": "ShippedRun",
         "type": "object"
       },
       "StartIn": {
@@ -1661,6 +1920,100 @@
         "x-permission": "deployments:read"
       }
     },
+    "/deployments/{deployment_id}/events": {
+      "post": {
+        "description": "Authenticated by the ingest key of this deployment (not by a user's token). At least once:\nevents the core already has are ignored, a gap or a different event refuses the batch.",
+        "operationId": "ingest_events_deployments__deployment_id__events_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "deployment_id",
+            "required": true,
+            "schema": {
+              "title": "Deployment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ingested"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no valid token (E-AUTH-001)"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the role lacks the permission (E-AUTH-002)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "not found (E-API-002)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "conflict with the state of the resource (E-API-003)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the request is invalid (E-API-001, E-API-004, E-API-005, E-INPUT-*)"
+          }
+        },
+        "summary": "A deployed service ships the events of a run",
+        "tags": [
+          "deployments"
+        ],
+        "x-permission": "events:ingest"
+      }
+    },
     "/graph": {
       "post": {
         "operationId": "preview_graph_post",
@@ -1804,6 +2157,22 @@
               ],
               "title": "Status"
             }
+          },
+          {
+            "in": "query",
+            "name": "deployment",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Deployment"
+            }
           }
         ],
         "responses": {
@@ -1812,7 +2181,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/RunSummary"
+                    "$ref": "#/components/schemas/CoreRunSummary"
                   },
                   "title": "Response Runs List Runs Get",
                   "type": "array"

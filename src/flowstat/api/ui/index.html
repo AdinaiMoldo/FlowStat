@@ -19,7 +19,13 @@
     <span id="who" class="muted" aria-live="polite"></span>
   </header>
 
-  <main class="layout">
+  <nav class="tabs" role="tablist" aria-label="Views">
+    <button type="button" role="tab" id="tab-editor" data-view="editor" aria-selected="true">Editor</button>
+    <button type="button" role="tab" id="tab-runs" data-view="runs" aria-selected="false">Runs</button>
+    <button type="button" role="tab" id="tab-services" data-view="services" aria-selected="false">Services</button>
+  </nav>
+
+  <main class="layout" id="view-editor">
     <aside class="side">
       <div class="row">
         <h2>Workflows</h2>
@@ -55,6 +61,45 @@
         <span id="status" class="muted" aria-live="polite"></span>
       </div>
       <ul id="problems" class="list"></ul>
+    </section>
+  </main>
+
+  <main class="ops" id="view-runs" hidden>
+    <section class="panel">
+      <div class="row">
+        <h2>Runs</h2>
+        <label class="muted" for="runs-from">Shown from</label>
+        <select id="runs-from" aria-label="Where the runs were made"></select>
+        <button type="button" id="runs-refresh">Refresh</button>
+        <span id="runs-status" class="muted" aria-live="polite"></span>
+      </div>
+      <table class="table" aria-label="Runs">
+        <thead><tr><th>Run</th><th>Workflow</th><th>Status</th><th>From</th><th>Created</th></tr></thead>
+        <tbody id="runs-rows"></tbody>
+      </table>
+    </section>
+    <section class="panel">
+      <div class="row"><h2 id="run-title">Run</h2><span id="run-summary" class="muted"></span></div>
+      <table class="table" aria-label="Steps of the run">
+        <thead><tr><th>Step</th><th>State</th><th>Attempts</th><th>Error</th></tr></thead>
+        <tbody id="run-steps"></tbody>
+      </table>
+      <p id="run-empty" class="muted">Choose a run.</p>
+    </section>
+  </main>
+
+  <main class="ops" id="view-services" hidden>
+    <section class="panel wide">
+      <div class="row">
+        <h2>Services</h2>
+        <button type="button" id="services-refresh">Refresh</button>
+        <span id="services-status" class="muted" aria-live="polite"></span>
+      </div>
+      <table class="table" aria-label="Services">
+        <thead><tr><th>Service</th><th>Workflow</th><th>Kind</th><th>Status</th><th>Endpoint</th><th>Runs</th><th>Last event</th></tr></thead>
+        <tbody id="services-rows"></tbody>
+      </table>
+      <p class="muted">Click a service to see the runs it has shipped to this core.</p>
     </section>
   </main>
 
