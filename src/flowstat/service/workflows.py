@@ -182,6 +182,10 @@ class WorkflowService:
             return snapshot_from_json(version.catalogue)
         return self.catalogue()
 
+    def catalogue_of(self, name: str, number: int) -> Catalogue:
+        """The catalogue the stored version reads (its snapshot once it is published)."""
+        return self._catalogue_for(self.versions_store.get(name, number))
+
     def get_plan(self, name: str, number: int) -> Plan:
         version = self.versions_store.get(name, number)
         result = self._compile(version.text, self._catalogue_for(version))

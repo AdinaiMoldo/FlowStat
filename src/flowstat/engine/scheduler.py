@@ -51,7 +51,7 @@ DEFAULT_UNDO_RETRY = RetrySpec(3, "exponential", 1.0)
 _FAILED_LIKE = frozenset({StepState.FAILED, StepState.UPSTREAM_FAILED, StepState.CANCELLED})
 
 
-def _join_verdict(join: JoinSpec, states: list[StepState]) -> StepState | None:
+def join_verdict(join: JoinSpec, states: list[StepState]) -> StepState | None:
     """None when the step may run, else the terminal state it takes: SKIPPED or UPSTREAM_FAILED."""
     if not states or join.kind == "all_done":
         return None
@@ -567,7 +567,7 @@ class Scheduler:
         step = self.plan.steps[i]
         if self.states[step.id] is not StepState.PENDING:
             return
-        verdict = _join_verdict(
+        verdict = join_verdict(
             step.join, [self.states[self.plan.steps[j].id] for j in self._preds[i]]
         )
         if verdict is not None:

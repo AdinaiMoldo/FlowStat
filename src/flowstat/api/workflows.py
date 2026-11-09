@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from fastapi import Depends, Request
+from fastapi import Depends, Query, Request
 
-from flowstat.api.deps import config_of, get_workflows
+from flowstat.api.deps import config_of, get_runs, get_workflows
 from flowstat.api.errors import ApiError, ErrorItem, fail
 from flowstat.api.models import (
     CatalogueIn,
@@ -15,8 +15,11 @@ from flowstat.api.models import (
     DiagnosticOut,
     DraftSaved,
     GraphOut,
+    MigrationOut,
+    MigrationRunOut,
     Previewed,
     Published,
+    ReasonOut,
     TextIn,
     VersionDetail,
     VersionGraph,
@@ -27,7 +30,9 @@ from flowstat.api.secured import SecuredRouter
 from flowstat.model.diagnostics import Diagnostic
 from flowstat.model.versions import VersionStatus
 from flowstat.repo.versions import AlreadyPublishedError, VersionNotFoundError
+from flowstat.service.migration import MigrationService, SameVersionError
 from flowstat.service.permissions import PUBLIC
+from flowstat.service.runs import NotPublishedError, RunService
 from flowstat.service.workflows import InvalidWorkflowError, PublishError, WorkflowService
 
 router = SecuredRouter(tags=["workflows"])
@@ -236,3 +241,48 @@ def put_catalogue(
         raise fail(422, "E-API-001", "the codes of the items must be different", "items")
     workflows.set_catalogue_list(list_name, body.items)
     return CatalogueSaved(list=list_name, count=len(body.items))
+
+
+@router.secured(
+    "GET",
+    "/workflows/{name}/migration",
+    "runs:read",
+    response_model_by_alias=True,
+    summary="Which unfinished runs of one version can move to another",
+)
+def migration(
+    name: str,
+    source: int = Query(alias="from"),
+    target: int = Query(alias="to"),
+    runs: RunService = Depends(get_runs),
+) -> MigrationOut:
+    try:
+        checks = MigrationService(runs).report(name, source, target)
+    except SameVersionError as error:
+        raise fail(422, "E-API-001", str(error), "to") from None
+    except VersionNotFoundError as error:
+        raise fail(404, "E-API-002", f"there is no {error}") from None
+    except NotPublishedError as error:
+        raise fail(409, "E-API-003", str(error)) from None
+    return MigrationOut(
+        workflow=name,
+        source=source,
+        target=target,
+        runs=[
+            MigrationRunOut(
+                run_id=c.run_id,
+                owner=c.owner,
+                status=c.status,
+                migratable=c.verdict.migratable,
+                reasons=[
+                    ReasonOut(code=r.code, step=r.step, message=r.message)
+                    for r in c.verdict.reasons
+                ],
+                kept=list(c.verdict.kept),
+                added=list(c.verdict.added),
+                pending=list(c.verdict.pending),
+                dropped=list(c.verdict.dropped),
+            )
+            for c in checks
+        ],
+    )

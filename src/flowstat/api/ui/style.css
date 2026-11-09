@@ -85,3 +85,5 @@ input { font: inherit; padding: 5px 8px; border: 1px solid var(--line); border-r
 .badge.bad { color: var(--error); border-color: #fda29b; background: #fef3f2; }
 .badge.wait { color: var(--warning); border-color: #fedf89; background: #fffaeb; }
 @media (max-width: 1000px) { .ops { grid-template-columns: 1fr; overflow: auto; } }
+.reasons { margin: 0; padding-left: 16px; }
+.reasons li { margin: 2px 0; }

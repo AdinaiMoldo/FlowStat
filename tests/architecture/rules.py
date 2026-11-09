@@ -21,7 +21,7 @@ LAYERS: dict[str, int] = {
     "engine": 5,
     "actions": 6,
     "recovery": 6,
-    "migration": 7,
+    "migration": 6,
     "service": 7,
     "api": 8,
     "deploy": 8,
