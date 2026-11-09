@@ -57,6 +57,8 @@ walks the routes. `public` is the single exception (`GET /health`).
 | `runs:decide` | `POST /runs/{id}/decisions` (and the title check, section 5) | yes | no | yes |
 | `deployments:read` | `GET /deployments`, `GET /deployments/{id}` | yes | yes | yes |
 | `deployments:write` | `POST /deployments`, `DELETE /deployments/{id}` | yes | no | no |
+| `runs:migrate` | `POST /runs/{id}/migrate`, `POST /migrations/recover` | yes | no | yes |
+| `statistics:read` | `GET /statistics` | yes | no | no |
 | `events:ingest` | `POST /deployments/{id}/events` (the ingest key of that deployment, section 9) | no | no | no |
 
 "Publishing is restricted to designers" (US-29) is read as: the role that writes workflows publishes
@@ -311,3 +313,85 @@ The service ships its events to the core in order and at least once:
 - The core reads a shipped run like its own: `GET /runs/{id}` gives the same report (the core holds the
   version that was deployed), `GET /runs?deployment=<id>` lists them. Shipped history may lag; the
   log of the service is the source of truth.
+
+
+## 10. M8: moving runs to a new version, and statistics
+
+### Which runs can move (US-32)
+
+`GET /workflows/{name}/migration?from=3&to=4` (`runs:read`). Both versions must be published (409
+otherwise) and different (422). The answer is about the runs of version `from` that have not finished,
+in the core and in the services (the copy the core holds), oldest first:
+
+```json
+{"workflow": "quarterly_consolidation", "from": 3, "to": 4,
+ "runs": [{"run_id": "r-0007", "owner": "core", "status": "WAITING", "migratable": true,
+           "reasons": [], "kept": ["load[BIS]", "approve"], "pending": ["notify"], "dropped": []}]}
+```
+
+`owner` is `core` or a deployment id. `kept` are the steps of the history that exist in the new
+version, `pending` the steps of the new version that the history has not reached (a new step, the
+instances of a region that was added), `dropped` the steps of the old version that are not in the new
+one and were never touched. When `migratable` is false `reasons` holds *all* the reasons, each
+`{"code", "step", "message"}`:
+
+| Code | Reason |
+| --- | --- |
+| `E-MIG-001` NEVER_MIGRATE | the run is compensating or has an uncertain step (C4 owns it) |
+| `E-MIG-002` RUNNING_STEP | a call is in flight; ask again when it has finished |
+| `E-MIG-003` REMOVED_TOUCHED_STEP | the step has events and the new version does not have it (a rename is a removal plus a new step) |
+| `E-MIG-004` CHANGED_TOUCHED_STEP | the action, `with`, `ensures`, `compensate` or loop binding of a step with events differ |
+| `E-MIG-005` UPSTREAM_CHANGED | a step that started could not start under the join rule of the new version, given what its predecessors did |
+| `E-MIG-006` GUARD_CONTRADICTS_HISTORY | a skipped step whose new guard is true on the recorded values, or a started step whose new guard is false |
+| `E-MIG-007` OUTPUT_INCOMPATIBLE | a recorded output lacks a field a new consumer reads, or is of another type than the argument it goes to |
+
+The check is made against the compiled plans of the two stored versions, each with the catalogue
+snapshot it froze. It reads the history and changes nothing. A change of `retry` or `on_failure` of a
+step that has finished is allowed.
+
+### Moving a run (US-33)
+
+`POST /runs/{id}/migrate` (`runs:migrate`), body `{"to": 4, "owner": "core" | "<deployment id>"}`.
+`owner` is where the run goes: the core, or a deployment that is `running` and serves version `to`
+(409 otherwise). The check of the previous section is made first; a run that is not migratable is 409
+`E-API-003` with the reasons as error items. Then the handover:
+
+1. **Fence** at the current owner: `OWNED(e)` becomes `MIGRATING(e+1)` in one transaction (nothing
+   else may have changed it, and no step may be running: `E-MIG-002`). From now on every command for
+   the run at that owner is refused with 409 `E-MIG-010`, whose message names the new owner.
+2. **Import** at the new owner, idempotent by (run, epoch): the row, the events, `OWNED(e+1)`, then
+   the event `RUN_MIGRATED` (`attempt` = the epoch, `message` = the old owner). The new owner restores
+   the run with the new plan; the new steps are `PENDING` and start when their turn comes.
+3. **Release** at the old owner: `MIGRATING` becomes `MIGRATED_OUT`. The core sets the run's
+   `origin` to the new owner in the same transaction.
+
+The answer is `{"run_id", "from", "to", "owner", "epoch", "status"}`. Ownership is a table in every
+store that can own a run, not an event: the log of the old owner gets no event, so the log keeps its
+key (run, sequence number) and the numbers continue at the new owner. A crash between two of the
+steps leaves one of three states, and `POST /migrations/recover` (`runs:migrate`; also run when the
+core starts) takes each such run forward: no import yet, repeat the import; imported, release. It
+never goes back. An approval that arrives for a run that is `MIGRATING` or `MIGRATED_OUT` is refused,
+not queued, and is sent again to the new owner.
+
+Between the core and a service the calls are the routes of the service under `/migration/{run_id}/`
+(`fence`, `export`, `import`, `release`, `ownership`), all `runs:migrate`, called with the *control
+key* of the deployment. It is a fourth key made with the others; its hash is in the manifest and in
+the service's database (the user `control`, an admin of the service), and the core keeps the key
+itself in the registry row because it has to present it. It is never shown, never in a listing and
+never in a bundle. Stated limit: a secret at rest in the core's database, no rotation.
+
+### Statistics (US-34)
+
+`GET /statistics` (`statistics:read`, admin). For every workflow that has runs, from the stored events
+(including the copy of the services' runs, which may lag):
+
+```json
+{"workflows": [{"workflow": "quarterly_consolidation", "runs": 10, "running": 0, "finished": 10,
+                "succeeded": 7, "not_reached": 1, "failed": 2, "failure_rate": 0.2,
+                "average_duration": 41.5, "versions": {"3": {"runs": 4, "failed": 1}}}]}
+```
+
+A *failure* is an outcome of `FAILED`, `COMPENSATED` or `COMPENSATION_FAILED`; `GOAL_NOT_REACHED` is a
+result and is counted apart (DR-02). `failure_rate` is `failed / finished` (null when nothing has
+finished), `average_duration` the mean of `RUN_FINISHED.at - RUN_STARTED.at` over finished runs in
+the unit of the engine's clock (seconds), null when nothing has finished.
