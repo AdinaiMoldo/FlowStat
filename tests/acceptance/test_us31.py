@@ -27,7 +27,7 @@ from flowstat.deploy.launchers import ProcessLauncher
 from flowstat.deploy.package import build_bundle
 from flowstat.model.events import event_to_dict
 from flowstat.repo.runs import RunStore
-from tests.acceptance.test_us30 import QUARTER, ROOT, _wait_for, publish_four
+from tests.acceptance.test_us30 import QUARTER, ROOT, _wait_for, decide, publish_four
 from tests.unit.actions.helpers import write_all_forms
 from tests.unit.api.helpers import NAME, Env, make_env
 
@@ -105,9 +105,7 @@ def run_to_the_end(row: dict[str, Any]) -> str:
     run_id: str = started.json()["run_id"]
     _wait_for(row["endpoint"], key, run_id, "WAITING")
     title = {"Authorization": f"Bearer {row['title_keys']['chief_statistician']}"}
-    decided = httpx2.post(
-        f"{row['endpoint']}/runs/{run_id}/decisions", json=ANSWER, headers=title, timeout=30
-    )
+    decided = decide(f"{row['endpoint']}/runs/{run_id}/decisions", ANSWER, title)
     assert decided.status_code == 202
     _wait_for(row["endpoint"], key, run_id, "FINISHED")
     return run_id

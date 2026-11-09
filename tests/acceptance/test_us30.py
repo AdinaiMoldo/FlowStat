@@ -256,16 +256,9 @@ def exercise(tmp_path: Path, kind: str, launcher: Launcher) -> None:
         waiting = _wait_for(row["endpoint"], key, service_id, "WAITING")
         assert waiting["status"] == "WAITING"
         title_key = {"Authorization": f"Bearer {row['title_keys']['chief_statistician']}"}
-        refused = httpx2.post(
-            f"{row['endpoint']}/runs/{service_id}/decisions", json=answer, headers=key, timeout=30
-        )
+        refused = decide(f"{row['endpoint']}/runs/{service_id}/decisions", answer, key)
         assert refused.status_code == 403  # the key that starts runs holds no title
-        decided = httpx2.post(
-            f"{row['endpoint']}/runs/{service_id}/decisions",
-            json=answer,
-            headers=title_key,
-            timeout=30,
-        )
+        decided = decide(f"{row['endpoint']}/runs/{service_id}/decisions", answer, title_key)
         assert decided.status_code == 202
         service_report = _wait_for(row["endpoint"], key, service_id, "FINISHED")
         core_report = env.call("operator", "GET", f"/runs/{core_id}").json()
@@ -295,6 +288,19 @@ def test_a_service_started_as_a_process_answers_and_matches_the_core(tmp_path: P
         "process",
         ProcessLauncher(popen=functools.partial(subprocess.Popen, env=environment), limit=60.0),
     )
+
+
+def decide(url: str, answer: dict[str, str], headers: dict[str, str]) -> httpx2.Response:
+    """Answer an approval; a run that has just reached WAITING may still be held by the thread that
+    drove it, which is a 409 and is retried for a moment."""
+    import time
+
+    deadline = time.monotonic() + 10
+    while True:
+        reply = httpx2.post(url, json=answer, headers=headers, timeout=30)
+        if reply.status_code != 409 or time.monotonic() > deadline:
+            return reply
+        time.sleep(0.05)
 
 
 def _wait_for(endpoint: str, key: dict[str, str], run_id: str, status: str) -> dict[str, Any]:
