@@ -56,6 +56,7 @@ class FakeLauncher:
 class Calls:
     def __init__(self) -> None:
         self.made: list[tuple[str, int, str, dict[str, str], str, str]] = []
+        self.controls: list[str] = []
 
     def __call__(
         self,
@@ -66,10 +67,12 @@ class Calls:
         title_keys_sha256: Mapping[str, str],
         now: str,
         kind: str,
+        control_key_sha256: str = "",
     ) -> Path:
         self.made.append(
             (service_id, version.number, api_key_sha256, dict(title_keys_sha256), kind, str(root))
         )
+        self.controls.append(control_key_sha256)
         return root / service_id
 
 
@@ -208,3 +211,15 @@ def test_without_an_address_the_service_gets_no_environment_and_ships_nothing(
     service, launcher, _ = make(tmp_path)
     deploy(service)
     assert launcher.envs == [{}]
+
+
+def test_a_fourth_key_is_made_its_hash_goes_into_the_bundle_and_the_core_keeps_the_key(
+    tmp_path: Path,
+) -> None:
+    service, _, calls = make(tmp_path)
+    row, keys = deploy(service)
+    assert keys.control_key == f"{4:064x}"  # after the ingest key
+    assert keys.control_key not in {keys.api_key, keys.ingest_key, *keys.title_keys.values()}
+    assert calls.controls == [hash_token(keys.control_key)]
+    assert row.control_key == keys.control_key  # the core has to present it, so it is kept
+    assert service.get("d-1").control_key == keys.control_key

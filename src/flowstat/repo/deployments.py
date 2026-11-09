@@ -28,11 +28,14 @@ class Deployment:
     detail: str | None = None  # why it failed (the end of the log)
     ingest_key_sha256: str | None = None  # the key of the service for shipping its events
     last_event_at: str | None = None  # when the core last stored events from this service
+    # The fourth key, which lets the core move runs in and out of the service (US-33). The core
+    # has to present it, so it is kept as it is, here and nowhere else; it is never listed.
+    control_key: str | None = None
 
 
 _COLUMNS = (
     "id, workflow, version, kind, status, bundle, created_at, updated_at, endpoint, handle, "
-    "detail, ingest_key_sha256, last_event_at"
+    "detail, ingest_key_sha256, last_event_at, control_key"
 )
 
 
@@ -46,7 +49,7 @@ class DeploymentStore:
 
     def add(self, deployment: Deployment) -> None:
         self.db.execute(
-            f"INSERT INTO deployments ({_COLUMNS}) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            f"INSERT INTO deployments ({_COLUMNS}) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (
                 deployment.id,
                 deployment.workflow,
@@ -61,6 +64,7 @@ class DeploymentStore:
                 deployment.detail,
                 deployment.ingest_key_sha256,
                 deployment.last_event_at,
+                deployment.control_key,
             ),
         )
 

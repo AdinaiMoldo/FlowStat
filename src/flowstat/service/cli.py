@@ -39,6 +39,7 @@ from flowstat.service.runs import (
     InvalidInputsError,
     Launch,
     NotPublishedError,
+    RunNotOwnedError,
     RunService,
 )
 from flowstat.service.users import ROLES, UserService
@@ -260,6 +261,8 @@ def _resume(args: argparse.Namespace) -> int:
         )
     except RunNotFoundError:
         return _err(f"there is no run {args.run_id}")
+    except RunNotOwnedError as error:
+        return _err(str(error))
     commands = list(launch.commands)
     if args.decision is not None:  # the answer an approval was waiting for has arrived
         for step in launch.scheduler.waiting_steps():
@@ -289,6 +292,8 @@ def _resolve(args: argparse.Namespace) -> int:
         )
     except RunNotFoundError:
         return _err(f"there is no run {args.run_id}")
+    except RunNotOwnedError as error:
+        return _err(str(error))
     scheduler = launch.scheduler
     if any(isinstance(c, Start) for c in launch.commands):
         return _err(

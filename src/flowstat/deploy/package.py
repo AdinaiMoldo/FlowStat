@@ -49,6 +49,7 @@ def build_bundle(
     title_keys_sha256: Mapping[str, str],
     now: str,
     kind: str,
+    control_key_sha256: str = "",
 ) -> Path:
     """Write ``<root>/<service_id>/`` for ``version`` and return it.
 
@@ -71,6 +72,7 @@ def build_bundle(
             api_key_sha256=api_key_sha256,
             created_at=now,
             title_keys_sha256=dict(title_keys_sha256),
+            control_key_sha256=control_key_sha256,
         ),
     )
     if kind == "docker":

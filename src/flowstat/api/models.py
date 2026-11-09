@@ -344,3 +344,60 @@ class SchemaOut(BaseModel):
 
 class ServiceStartIn(Request):
     inputs: dict[str, Any] = {}
+
+
+# -- handover of runs between owners (api-spec section 10) -------------------------------------
+class OwnershipOut(BaseModel):
+    run_id: str
+    epoch: int
+    state: str
+    peer: str | None
+    version: int | None
+
+
+class PlanIn(Request):
+    run_id: str
+    source: str
+    target: str
+    epoch: int
+    version: int
+    inputs: dict[str, Any]
+    last_seq: int
+    at: float
+
+
+class SnapshotBody(BaseModel):
+    """The run as an owner stores it, as it travels between owners."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    run_id: str
+    workflow: str
+    version: int
+    inputs: dict[str, Any]
+    created_at: str
+    events: list[dict[str, Any]]
+    ownership: OwnershipOut
+
+
+class AdoptIn(Request):
+    snapshot: SnapshotBody
+    plan: PlanIn
+
+
+class MigrateIn(Request):
+    to: int
+    owner: str = "core"  # "core" or the id of a running deployment of version `to`
+
+
+class Migrated(BaseModel):
+    run_id: str
+    source: int = Field(serialization_alias="from")
+    to: int
+    owner: str
+    epoch: int
+    status: str
+
+
+class Recovered(BaseModel):
+    recovered: dict[str, str]  # run id -> completed, abandoned or unreachable

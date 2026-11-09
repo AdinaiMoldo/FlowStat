@@ -34,6 +34,8 @@ class Manifest:
     format: int = FORMAT
     # one key per title that an approval of the workflow names: title -> SHA-256 of its key
     title_keys_sha256: dict[str, str] = field(default_factory=dict)
+    # the key with which the core moves runs in and out of the service ("" in an older bundle)
+    control_key_sha256: str = ""
 
 
 @dataclass(frozen=True, slots=True)

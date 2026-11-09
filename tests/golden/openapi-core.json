@@ -917,6 +917,63 @@
         "title": "Ingested",
         "type": "object"
       },
+      "MigrateIn": {
+        "additionalProperties": false,
+        "properties": {
+          "owner": {
+            "default": "core",
+            "title": "Owner",
+            "type": "string"
+          },
+          "to": {
+            "title": "To",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "to"
+        ],
+        "title": "MigrateIn",
+        "type": "object"
+      },
+      "Migrated": {
+        "properties": {
+          "epoch": {
+            "title": "Epoch",
+            "type": "integer"
+          },
+          "from": {
+            "title": "From",
+            "type": "integer"
+          },
+          "owner": {
+            "title": "Owner",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "to": {
+            "title": "To",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "run_id",
+          "from",
+          "to",
+          "owner",
+          "epoch",
+          "status"
+        ],
+        "title": "Migrated",
+        "type": "object"
+      },
       "MigrationOut": {
         "properties": {
           "from": {
@@ -1114,6 +1171,22 @@
           "message"
         ],
         "title": "ReasonOut",
+        "type": "object"
+      },
+      "Recovered": {
+        "properties": {
+          "recovered": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Recovered",
+            "type": "object"
+          }
+        },
+        "required": [
+          "recovered"
+        ],
+        "title": "Recovered",
         "type": "object"
       },
       "RunOut": {
@@ -2251,6 +2324,78 @@
         "x-permission": "public"
       }
     },
+    "/migrations/recover": {
+      "post": {
+        "operationId": "recover_migrations_recover_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Recovered"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no valid token (E-AUTH-001)"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the role lacks the permission (E-AUTH-002)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "not found (E-API-002)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "conflict with the state of the resource (E-API-003)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the request is invalid (E-API-001, E-API-004, E-API-005, E-INPUT-*)"
+          }
+        },
+        "summary": "Take the moves that were interrupted forward",
+        "tags": [
+          "migration"
+        ],
+        "x-permission": "runs:migrate"
+      }
+    },
     "/runs": {
       "get": {
         "operationId": "runs_list_runs_get",
@@ -2551,6 +2696,109 @@
           "runs"
         ],
         "x-permission": "runs:decide"
+      }
+    },
+    "/runs/{run_id}/migrate": {
+      "post": {
+        "operationId": "migrate_runs__run_id__migrate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MigrateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Migrated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no valid token (E-AUTH-001)"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the role lacks the permission (E-AUTH-002)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "not found (E-API-002)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "conflict with the state of the resource (E-API-003)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the request is invalid (E-API-001, E-API-004, E-API-005, E-INPUT-*)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "an owner of the run cannot be reached (E-MIG-011)"
+          }
+        },
+        "summary": "Move an unfinished run to another version and owner",
+        "tags": [
+          "migration"
+        ],
+        "x-permission": "runs:migrate"
       }
     },
     "/validate": {

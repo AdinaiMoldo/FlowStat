@@ -52,7 +52,56 @@ function reasonList(reasons) {
   return td;
 }
 
+function mover(run, owners, onMove) {
+  const td = document.createElement("td");
+  if (!run.migratable) return td;
+  const select = document.createElement("select");
+  select.setAttribute("aria-label", `Where to move ${run.run_id}`);
+  select.dataset.testid = "move-owner";
+  for (const owner of owners) {
+    const option = document.createElement("option");
+    option.value = owner;
+    option.textContent = owner === "core" ? "this core" : `service ${owner}`;
+    select.append(option);
+  }
+  if (owners.includes(run.owner)) select.value = run.owner;
+  const button = document.createElement("button");
+  button.type = "button";
+  button.dataset.testid = "move";
+  button.textContent = "Move";
+  button.addEventListener("click", () => onMove(run.run_id, select.value));
+  td.append(select, button);
+  return td;
+}
+
 export function createMigration() {
+  async function owners(name, version) {
+    const found = ["core"];
+    try {
+      const rows = await call("GET", "/deployments");
+      for (const d of rows) {
+        if (d.workflow === name && d.version === version && d.status === "running") found.push(d.id);
+      }
+    } catch (error) {
+      // a person who may not list the services can still move runs inside the core
+    }
+    return found;
+  }
+
+  async function move(runId, owner) {
+    const status = $("migration-status");
+    const to = Number($("migration-to").value);
+    let note = "";
+    try {
+      const done = await call("POST", `/runs/${encodeURIComponent(runId)}/migrate`, { to, owner });
+      note = `${runId} moved to v${done.to} at ${done.owner === "core" ? "this core" : "service " + done.owner}`;
+    } catch (error) {
+      status.textContent = problem(error);
+      return;
+    }
+    await check(note);
+  }
+
   async function load() {
     const status = $("migration-status");
     try {
@@ -78,16 +127,17 @@ export function createMigration() {
     }
   }
 
-  async function check() {
+  async function check(note) {
     const rows = $("migration-rows");
     const status = $("migration-status");
     const name = $("migration-workflow").value;
+    const targets = await owners(name, Number($("migration-to").value));
     rows.replaceChildren();
     try {
       const query = `from=${$("migration-from").value}&to=${$("migration-to").value}`;
       const answer = await call("GET", `/workflows/${encodeURIComponent(name)}/migration?${query}`);
       const movable = answer.runs.filter((r) => r.migratable).length;
-      status.textContent = `${answer.runs.length} unfinished run(s), ${movable} can move`;
+      status.textContent = `${note ? note + "; " : ""}${answer.runs.length} unfinished run(s), ${movable} can move`;
       for (const r of answer.runs) {
         const tr = document.createElement("tr");
         tr.dataset.testid = "migration-run";
@@ -99,6 +149,7 @@ export function createMigration() {
           cell(r.migratable ? "can move" : "cannot move", r.migratable ? "good" : "bad"),
           reasonList(r.reasons),
           cell(`${r.kept.length} kept, ${r.pending.length} to run${r.dropped.length ? ", " + r.dropped.length + " dropped" : ""}`),
+          mover(r, targets, move),
         );
         rows.append(tr);
       }
@@ -110,6 +161,6 @@ export function createMigration() {
   $("migration-workflow").addEventListener("change", () => loadVersions().catch((e) => {
     $("migration-status").textContent = problem(e);
   }));
-  $("migration-check").addEventListener("click", check);
+  $("migration-check").addEventListener("click", () => check());
   return { load, check };
 }

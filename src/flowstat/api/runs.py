@@ -42,6 +42,7 @@ from flowstat.service.runs import (
     InvalidInputsError,
     Launch,
     NotPublishedError,
+    RunNotOwnedError,
     RunService,
     StepNotFoundError,
     StepNotWaitingError,
@@ -185,6 +186,9 @@ def answer_run(request: Request, runs: RunService, run_id: str, body: DecisionIn
     except RunNotFoundError:
         locks.release(run_id)
         raise fail(404, "E-API-002", f"there is no run {run_id}") from None
+    except RunNotOwnedError as error:
+        locks.release(run_id)
+        raise fail(409, "E-MIG-010", str(error)) from None
     except StepNotFoundError:
         locks.release(run_id)
         raise fail(404, "E-API-002", f"the run {run_id} has no step '{body.step}'") from None

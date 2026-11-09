@@ -51,6 +51,19 @@ CREATE TABLE IF NOT EXISTS outbox (
     shipped_through INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS ownership (
+    run_id  TEXT    PRIMARY KEY,
+    epoch   INTEGER NOT NULL,
+    state   TEXT    NOT NULL CHECK (state IN ('OWNED', 'MIGRATING', 'MIGRATED_OUT')),
+    peer    TEXT,
+    version INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS handovers (
+    run_id  TEXT    PRIMARY KEY,
+    plan    TEXT    NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS run_events (
     run_id  TEXT    NOT NULL,
     seq     INTEGER NOT NULL,
@@ -90,7 +103,8 @@ CREATE TABLE IF NOT EXISTS deployments (
     created_at TEXT    NOT NULL,
     updated_at TEXT    NOT NULL,
     ingest_key_sha256 TEXT,
-    last_event_at     TEXT
+    last_event_at     TEXT,
+    control_key       TEXT
 );
 
 CREATE TRIGGER IF NOT EXISTS run_events_no_update
@@ -134,6 +148,7 @@ _LATER_COLUMNS = [
     ("runs", "origin", "TEXT"),
     ("deployments", "ingest_key_sha256", "TEXT"),
     ("deployments", "last_event_at", "TEXT"),
+    ("deployments", "control_key", "TEXT"),
 ]
 
 

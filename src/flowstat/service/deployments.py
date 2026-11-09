@@ -49,6 +49,7 @@ class Packager(Protocol):
         title_keys_sha256: Mapping[str, str],
         now: str,
         kind: str,
+        control_key_sha256: str = "",
     ) -> Path:
         """Write the bundle of ``version`` under ``root`` and return its directory."""
         ...
@@ -73,11 +74,13 @@ class Keys:
     """The keys of a service, shown once. ``api_key`` starts runs and reads; it holds no title.
     ``title_keys`` has one key per title that an approval of the workflow names, and each may
     answer the approvals of its own title only (DR-04). ``ingest_key`` lets the service ship its
-    runs to this core and does nothing else; the service gets it in its environment."""
+    runs to this core and does nothing else; the service gets it in its environment. The
+    ``control_key`` is not shown: only the core uses it, to move runs in and out of the service."""
 
     api_key: str
     title_keys: Mapping[str, str]
     ingest_key: str = ""
+    control_key: str = ""
 
 
 def approval_titles(plan: Plan, signatures: Signatures) -> tuple[str, ...]:
@@ -153,14 +156,21 @@ class DeploymentService:
         )
         api_key = new_token()
         title_keys = {title: new_token() for title in titles}
-        keys = Keys(api_key, title_keys, new_token())
+        keys = Keys(api_key, title_keys, new_token(), new_token())
         hashes = {title: hash_token(key) for title, key in keys.title_keys.items()}
         bundle = self.packager(
-            self.root, service_id, version, hash_token(keys.api_key), hashes, now, kind
+            self.root,
+            service_id,
+            version,
+            hash_token(keys.api_key),
+            hashes,
+            now,
+            kind,
+            control_key_sha256=hash_token(keys.control_key),
         )
         row = Deployment(
             service_id, workflow, number, kind, "starting", str(bundle), now, now,
-            ingest_key_sha256=hash_token(keys.ingest_key),
+            ingest_key_sha256=hash_token(keys.ingest_key), control_key=keys.control_key,
         )  # fmt: skip
         self.store.add(row)
         env = (

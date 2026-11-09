@@ -20,6 +20,9 @@ class EventKind(Enum):
     STEP_UNCERTAIN = "STEP_UNCERTAIN"  # a crash left a non-idempotent call whose result is unknown
     STEP_RESOLVED = "STEP_RESOLVED"  # a person decided about an uncertain step (`decision`)
     RUN_FINISHED = "RUN_FINISHED"
+    # The run changed owner and version (US-33). Written by the new owner after the imported
+    # history: `attempt` is the epoch of the new ownership, `message` the id of the old owner.
+    RUN_MIGRATED = "RUN_MIGRATED"
 
 
 @dataclass(frozen=True, slots=True)

@@ -9,7 +9,9 @@ from dataclasses import dataclass
 from typing import TypeVar
 
 from flowstat.model.events import Event, EventKind
+from flowstat.model.ownership import Ownership, OwnerState
 from flowstat.model.states import RunOutcome, StepState
+from flowstat.repo import ownership as owned
 
 T = TypeVar("T")
 
@@ -216,6 +218,100 @@ class RunStore:
             return self._store(run_id, batch)
 
         return self._atomically(work)
+
+    def adopt(
+        self,
+        run: StoredRun,
+        events: Iterable[Event],
+        epoch: int,
+        source: str,
+        at: float,
+    ) -> Ownership:
+        """Become the owner of a run that comes from ``source`` (US-33), in one transaction.
+
+        The run row is made or brought up to date (version, inputs and origin as given), the
+        history is stored (events already here, identical, are ignored), the event RUN_MIGRATED
+        follows it, and the ownership is OWNED at ``epoch``. The same call again changes nothing.
+        """
+        batch = list(events)
+
+        def work() -> Ownership:
+            current = owned.read(self.db, run.run_id)
+            if current.owned and current.epoch >= epoch and current.epoch > 0:
+                return current
+            if current.epoch >= epoch:
+                raise owned.NotOwnerError(current)
+            made = self.db.execute(
+                "UPDATE runs SET workflow = ?, version = ?, inputs = ?, origin = ? "
+                "WHERE run_id = ?",
+                (
+                    run.workflow,
+                    run.version,
+                    json.dumps(run.inputs, sort_keys=True),
+                    run.origin,
+                    run.run_id,
+                ),
+            ).rowcount
+            if not made:
+                self.create(
+                    run.run_id, run.workflow, run.version, run.inputs, run.created_at, run.origin
+                )
+            last = self._store(run.run_id, batch)
+            marker = Event(last + 1, EventKind.RUN_MIGRATED, at, message=source, attempt=epoch)
+            self._store(run.run_id, [marker])
+            mine = Ownership(run.run_id, epoch, OwnerState.OWNED, source)
+            owned.write(self.db, mine)
+            return mine
+
+        return self._atomically(work)
+
+    def retarget(
+        self,
+        run_id: str,
+        epoch: int,
+        last_seq: int,
+        version: int,
+        inputs: dict[str, object],
+        at: float,
+    ) -> Ownership:
+        """Move a run of this store to another version of its workflow, in one transaction
+        (the owner stays; the epoch grows)."""
+
+        def work() -> Ownership:
+            current = owned.read(self.db, run_id)
+            done = Ownership(run_id, epoch + 1, OwnerState.OWNED, current.peer, None)
+            if current == done:
+                return current
+            if not current.owned:
+                raise owned.NotOwnerError(current)
+            if current.epoch != epoch:
+                raise owned.EpochMismatchError(
+                    f"{run_id}: the epoch is {current.epoch}, not {epoch}"
+                )
+            last = self.last_seq(run_id)
+            if last != last_seq:
+                raise owned.RunChangedError(run_id, last_seq, last)
+            self.db.execute(
+                "UPDATE runs SET version = ?, inputs = ? WHERE run_id = ?",
+                (version, json.dumps(inputs, sort_keys=True), run_id),
+            )
+            marker = Event(last + 1, EventKind.RUN_MIGRATED, at, message=run_id, attempt=epoch + 1)
+            self._store(run_id, [marker])
+            mine = Ownership(run_id, epoch + 1, OwnerState.OWNED, current.peer)
+            owned.write(self.db, mine)
+            return mine
+
+        return self._atomically(work)
+
+    def set_location(
+        self, run_id: str, origin: str | None, version: int, inputs: dict[str, object]
+    ) -> None:
+        """Say where the run is now (the core's copy of a run that a deployment drives): which
+        deployment, and the version and inputs it has there. Repeatable."""
+        self.db.execute(
+            "UPDATE runs SET origin = ?, version = ?, inputs = ? WHERE run_id = ?",
+            (origin, version, json.dumps(inputs, sort_keys=True), run_id),
+        )
 
     def _atomically(self, work: Callable[[], T]) -> T:
         self.db.execute("BEGIN IMMEDIATE")
