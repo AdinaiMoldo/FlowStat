@@ -19,7 +19,7 @@ from flowstat.service.ingest import (
     WrongDeploymentError,
     parse_batch,
 )
-from flowstat.service.outbox import Backoff, Outbox, Reply, SendFailed
+from flowstat.service.outbox import Backoff, Outbox, Reply, SendFailed, ShipLoop, ShipReport
 from flowstat.service.users import hash_token
 
 T = "2026-11-09T10:00:00Z"
@@ -252,3 +252,66 @@ def test_any_batch_size_ends_with_the_same_history(size: int) -> None:
     db, core = service({"r1": 9}), Core()
     Outbox(db, core, batch_size=size).ship_once()
     assert core.events("r1") == RunStore(db).events("r1")
+
+
+# -- the loop -----------------------------------------------------------------------------------
+OK = ShipReport(0, 0, (), None)
+DOWN = ShipReport(0, 0, (), "the core is not reachable: no route")
+
+
+def loop_of(
+    reports: list[ShipReport | Exception], stop_after: int
+) -> tuple[ShipLoop, list[float], list[int]]:
+    """A loop that gets the given reports, and a wait that asks to stop after ``stop_after``."""
+    waits: list[float] = []
+    rounds: list[int] = []
+
+    def one_round() -> ShipReport:
+        rounds.append(1)
+        item = reports.pop(0) if reports else OK
+        if isinstance(item, Exception):
+            raise item
+        return item
+
+    def wait(seconds: float) -> bool:
+        waits.append(seconds)
+        return len(waits) >= stop_after
+
+    return ShipLoop(one_round, wait), waits, rounds
+
+
+def test_a_quiet_loop_waits_the_idle_time_between_rounds() -> None:
+    loop, waits, _ = loop_of([], stop_after=3)
+    loop.run()
+    assert waits == [1.0, 1.0, 1.0]
+
+
+def test_failed_rounds_wait_longer_each_time_and_a_good_one_starts_again() -> None:
+    loop, waits, _ = loop_of([DOWN, DOWN, DOWN, OK, DOWN], stop_after=5)
+    loop.run()
+    assert waits == [1.0, 2.0, 4.0, 1.0, 1.0]  # the last DOWN is the final round, after the stop
+
+
+def test_the_wait_never_passes_thirty_seconds() -> None:
+    loop, waits, _ = loop_of([DOWN] * 9, stop_after=9)
+    loop.run()
+    assert max(waits) == 30.0 and waits[-1] == 30.0
+
+
+def test_one_last_round_is_made_after_the_stop_is_asked() -> None:
+    loop, waits, rounds = loop_of([], stop_after=2)
+    loop.run()
+    assert len(waits) == 2 and len(rounds) == 3  # two before the stop, one after
+
+
+def test_a_round_that_raises_is_a_failed_round_and_the_loop_goes_on() -> None:
+    loop, waits, _ = loop_of([RuntimeError("database is locked"), OK], stop_after=2)
+    loop.run()
+    assert waits == [1.0, 1.0]
+    assert loop.last is None
+
+
+def test_a_skipped_run_is_not_a_failure() -> None:
+    loop, waits, _ = loop_of([ShipReport(0, 0, ("r1",), None)], stop_after=1)
+    loop.run()
+    assert waits == [1.0]

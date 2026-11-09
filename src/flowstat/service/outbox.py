@@ -12,6 +12,7 @@ core that is a second database.
 
 from __future__ import annotations
 
+import logging
 import sqlite3
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
@@ -129,4 +130,63 @@ class Outbox:
             return sent, "skip"  # 404, 409 without 'expected', 422: this run will not be accepted
 
 
-__all__ = ["BATCH", "Backoff", "Outbox", "Reply", "Send", "SendFailed", "ShipReport"]
+log = logging.getLogger("flowstat.service")
+
+
+class ShipLoop:
+    """Rounds of shipping, one after another, until asked to stop.
+
+    After a round that could not reach the core it waits 1 s, 2 s, ... up to 30 s; after one that
+    could, ``idle`` seconds. ``wait(seconds)`` returns True when the loop has to end (a thread
+    event waits on it; a test passes a function that counts), and one last round is made then, so
+    what the service finished just before it stopped is not left behind.
+    """
+
+    def __init__(
+        self,
+        one_round: Callable[[], ShipReport],
+        wait: Callable[[float], bool],
+        backoff: Backoff | None = None,
+        idle: float = 1.0,
+    ) -> None:
+        self.one_round = one_round
+        self.wait = wait
+        self.backoff = backoff or Backoff()
+        self.idle = idle
+        self.last: str | None = None  # the reason of the last failure, to log a change only
+
+    def step(self) -> float:
+        """One round; returns how long to wait before the next."""
+        try:
+            report = self.one_round()
+        except Exception as error:  # a broken round must not end the loop
+            report = ShipReport(0, 0, (), f"the round failed: {error}")
+        if report.stopped is not None:
+            if report.stopped != self.last:
+                log.warning("events are not shipped: %s", report.stopped)
+            self.last = report.stopped
+            return self.backoff.next()
+        if self.last is not None:
+            log.info("events are shipped again")
+        self.last = None
+        self.backoff.reset()
+        for run_id in report.skipped:
+            log.warning("the core will not take run %s; it is left out of shipping", run_id)
+        return self.idle
+
+    def run(self) -> None:
+        while not self.wait(self.step()):
+            pass
+        self.step()  # the last round, after the stop was asked
+
+
+__all__ = [
+    "BATCH",
+    "Backoff",
+    "Outbox",
+    "Reply",
+    "Send",
+    "SendFailed",
+    "ShipLoop",
+    "ShipReport",
+]

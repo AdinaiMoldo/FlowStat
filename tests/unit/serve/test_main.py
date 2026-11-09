@@ -82,3 +82,19 @@ def test_a_message_names_the_runs_left_at_stop(
     )  # fmt: skip
     release.set()
     assert "1 run(s) were still going" in capsys.readouterr().err
+
+
+def test_services_are_told_to_reach_the_core_at_its_own_address_unless_said_otherwise(
+    tmp_path: Path,
+) -> None:
+    def ingest_url(*extra: str) -> str | None:
+        seen: list[str | None] = []
+        main(
+            ["--db", str(tmp_path / "f.db"), "--data", str(tmp_path), "--target", "t.db", *extra],
+            serve=lambda app, host, port: seen.append(app.state.config.ingest_url),
+        )
+        return seen[0]
+
+    assert ingest_url("--port", "9001") == "http://127.0.0.1:9001"
+    assert ingest_url("--host", "0.0.0.0", "--port", "9002") == "http://127.0.0.1:9002"
+    assert ingest_url("--ingest-url", "http://core.office:8000") == "http://core.office:8000"
