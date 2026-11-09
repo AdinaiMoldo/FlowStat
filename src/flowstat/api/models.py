@@ -401,3 +401,26 @@ class Migrated(BaseModel):
 
 class Recovered(BaseModel):
     recovered: dict[str, str]  # run id -> completed, abandoned or unreachable
+
+
+class VersionStatisticsOut(BaseModel):
+    runs: int
+    failed: int
+
+
+class WorkflowStatisticsOut(BaseModel):
+    workflow: str
+    runs: int
+    running: int
+    finished: int
+    succeeded: int
+    not_reached: int
+    cancelled: int
+    failed: int
+    failure_rate: float | None  # failed / finished; null while nothing has finished
+    average_duration: float | None  # seconds of the engine's clock, over finished runs
+    versions: dict[str, VersionStatisticsOut]  # the version number as text -> its counts
+
+
+class StatisticsOut(BaseModel):
+    workflows: list[WorkflowStatisticsOut]
