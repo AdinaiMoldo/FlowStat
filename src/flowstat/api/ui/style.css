@@ -50,6 +50,13 @@ input { font: inherit; padding: 5px 8px; border: 1px solid var(--line); border-r
   flex: 1; min-height: 200px; resize: none; border: 1px solid var(--line); border-radius: 6px;
   padding: 8px; font: 13px/1.5 ui-monospace, Consolas, monospace;
 }
+.graph-pane {
+  flex: 1; min-height: 200px; display: flex; flex-direction: column; gap: 4px;
+  border: 1px solid var(--line); border-radius: 6px; padding: 6px;
+}
+.graph { flex: 1; min-height: 140px; }
+.legend { margin: 0; font-size: 12px; }
+.layers { margin: 0; padding-left: 20px; line-height: 1.7; overflow: auto; }
 .notice { margin: 0; padding: 6px 8px; border-radius: 6px; background: #fff7e6; color: var(--warning); }
 .problem { display: grid; grid-template-columns: 54px 1fr; gap: 2px 8px; }
 .problem .where { color: var(--muted); font-variant-numeric: tabular-nums; }

@@ -12,9 +12,12 @@ from flowstat.api.models import (
     Checked,
     DiagnosticOut,
     DraftSaved,
+    GraphOut,
+    Previewed,
     Published,
     TextIn,
     VersionDetail,
+    VersionGraph,
     VersionSummary,
     WorkflowSummary,
 )
@@ -23,7 +26,7 @@ from flowstat.model.diagnostics import Diagnostic
 from flowstat.model.versions import VersionStatus
 from flowstat.repo.versions import AlreadyPublishedError, VersionNotFoundError
 from flowstat.service.permissions import PUBLIC
-from flowstat.service.workflows import PublishError, WorkflowService
+from flowstat.service.workflows import InvalidWorkflowError, PublishError, WorkflowService
 
 router = SecuredRouter(tags=["workflows"])
 
@@ -46,6 +49,19 @@ def health() -> dict[str, str]:
 def validate(body: TextIn, workflows: WorkflowService = Depends(get_workflows)) -> Checked:
     errors, findings = workflows.check(body.text)
     return Checked(diagnostics=_out(errors), findings=_out(findings))
+
+
+@router.secured(
+    "POST",
+    "/graph",
+    "workflows:write",
+    summary="The graph of a text, or its errors; stores nothing",
+)
+def preview(body: TextIn, workflows: WorkflowService = Depends(get_workflows)) -> Previewed:
+    errors, graph = workflows.preview(body.text)
+    return Previewed(
+        diagnostics=_out(errors), graph=GraphOut.of(graph) if graph is not None else None
+    )
 
 
 @router.secured("GET", "/workflows", "workflows:read", summary="List the workflows")
@@ -108,6 +124,28 @@ def read_version(
         diagnostics=_out(errors),
         findings=_out(findings),
     )
+
+
+@router.secured(
+    "GET",
+    "/workflows/{name}/versions/{n}/graph",
+    "workflows:read",
+    summary="The graph of a stored version",
+)
+def read_graph(
+    name: str, n: int, workflows: WorkflowService = Depends(get_workflows)
+) -> VersionGraph:
+    try:
+        return VersionGraph(graph=GraphOut.of(workflows.graph(name, n)))
+    except VersionNotFoundError:
+        raise _not_found(name, n) from None
+    except InvalidWorkflowError as error:
+        summary = ErrorItem(code="E-API-004", message=f"{name} v{n} has errors and has no graph")
+        details = [
+            ErrorItem(code=d.code, message=d.message, line=d.line, column=d.column)
+            for d in error.diagnostics
+        ]
+        raise ApiError(422, [summary, *details]) from None
 
 
 @router.secured(

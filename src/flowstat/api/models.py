@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
 from flowstat.model.diagnostics import Diagnostic
+from flowstat.service.graph import Graph
 
 
 class Request(BaseModel):
@@ -70,6 +72,53 @@ class VersionDetail(Checked):
     text: str
     created_at: str
     published_at: str | None
+
+
+class GraphNodeOut(BaseModel):
+    id: str
+    base: str
+    action: str
+    line: int
+    column: int
+    layer: int
+    conditional: bool
+    when: str | None
+    goal: bool
+    group: str | None
+    join: str | None
+
+
+class GraphEdgeOut(BaseModel):
+    source: str
+    target: str
+
+
+class GraphGroupOut(BaseModel):
+    id: str
+    size: int
+
+
+class GraphOut(BaseModel):
+    nodes: list[GraphNodeOut]
+    edges: list[GraphEdgeOut]
+    groups: list[GraphGroupOut]
+
+    @classmethod
+    def of(cls, graph: Graph) -> GraphOut:
+        return cls(
+            nodes=[GraphNodeOut(**asdict(n)) for n in graph.nodes],
+            edges=[GraphEdgeOut(**asdict(e)) for e in graph.edges],
+            groups=[GraphGroupOut(**asdict(g)) for g in graph.groups],
+        )
+
+
+class Previewed(BaseModel):
+    diagnostics: list[DiagnosticOut]
+    graph: GraphOut | None  # null when the text has errors
+
+
+class VersionGraph(BaseModel):
+    graph: GraphOut
 
 
 class CatalogueIn(Request):

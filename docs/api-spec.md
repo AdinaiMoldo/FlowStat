@@ -48,8 +48,8 @@ walks the routes. `public` is the single exception (`GET /health`).
 
 | Permission | Routes | admin | designer | operator |
 | --- | --- | --- | --- | --- |
-| `workflows:read` | `GET /workflows`, `GET /workflows/{name}/versions`, `GET /workflows/{name}/versions/{n}` | yes | yes | yes |
-| `workflows:write` | `POST /validate`, `POST /workflows/{name}/versions` | yes | yes | no |
+| `workflows:read` | `GET /workflows`, `GET /workflows/{name}/versions`, `GET /workflows/{name}/versions/{n}`, `GET /workflows/{name}/versions/{n}/graph` | yes | yes | yes |
+| `workflows:write` | `POST /validate`, `POST /graph`, `POST /workflows/{name}/versions` | yes | yes | no |
 | `workflows:publish` | `POST /workflows/{name}/versions/{n}/publish` | yes | yes | no |
 | `catalogue:write` | `PUT /catalogue/{list}` | yes | no | no |
 | `runs:read` | `GET /runs`, `GET /runs/{id}` | yes | yes | yes |
@@ -242,7 +242,7 @@ run of the core, the deployment id for a run shipped by a service); `GET /deploy
 ```json
 {"nodes": [{"id": "load[BIS]", "base": "load", "action": "xlsx.read", "line": 14, "conditional": false,
             "goal": false, "group": "load", "layer": 1}],
- "edges": [{"from": "start", "to": "load[BIS]"}],
+ "edges": [{"source": "start", "target": "load[BIS]"}],
  "groups": [{"id": "load", "size": 9}]}
 ```
 

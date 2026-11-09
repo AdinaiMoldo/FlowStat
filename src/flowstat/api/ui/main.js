@@ -1,6 +1,7 @@
 // The editor page: workflows, a text with live diagnostics, save and publish.
 import { ApiError, call, session } from "./api.js";
 import { PAUSE_MS, createEditor } from "./editor.js";
+import { createGraph } from "./graph.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -23,6 +24,10 @@ const state = {
   sequence: 0, // answers that arrive late for an older text are dropped
   timer: null,
   problems: [],
+  preview: false, // the graph is shown
+  graph: null, // the drawing, made when the graph is first shown
+  graphSequence: 0,
+  hasGraph: false, // a valid text was drawn before, so the last graph can stay on an error
 };
 
 function nameOf(text) {
@@ -77,6 +82,41 @@ function summary(errors, findings) {
     .join(", ");
 }
 
+// -- the graph ---------------------------------------------------------------------------------
+async function drawGraph(text) {
+  const mine = ++state.graphSequence;
+  const note = $("graph-note");
+  try {
+    const result = await call("POST", "/graph", { text });
+    if (mine !== state.graphSequence) return;
+    if (result.graph) {
+      state.graph.draw(result.graph);
+      state.hasGraph = true;
+      note.hidden = true;
+    } else {
+      note.hidden = false;
+      note.textContent = state.hasGraph
+        ? "The text has errors; this is the last graph that was valid."
+        : "The text has errors, so there is no graph yet.";
+    }
+  } catch (error) {
+    if (mine !== state.graphSequence) return;
+    note.hidden = false;
+    note.textContent = explain(error);
+  }
+}
+
+function togglePreview() {
+  state.preview = !state.preview;
+  $("graph-pane").hidden = !state.preview;
+  $("preview").textContent = state.preview ? "Hide graph" : "Show graph";
+  $("preview").setAttribute("aria-pressed", String(state.preview));
+  if (state.preview) {
+    state.graph ||= createGraph($("graph"), (line, column) => state.editor.reveal(line, column));
+    drawGraph(state.editor.getText());
+  }
+}
+
 // -- the check after a pause -----------------------------------------------------------------
 async function check() {
   const text = state.editor.getText();
@@ -84,6 +124,7 @@ async function check() {
   state.checked = text;
   const mine = ++state.sequence;
   say("checking…");
+  if (state.preview) drawGraph(text);
   try {
     const result = await call("POST", "/validate", { text });
     if (mine !== state.sequence) return;
@@ -218,6 +259,7 @@ async function main() {
     $("workflows").replaceChildren();
   });
   $("new").addEventListener("click", fresh);
+  $("preview").addEventListener("click", togglePreview);
   $("save").addEventListener("click", save);
   $("publish").addEventListener("click", publish);
 
