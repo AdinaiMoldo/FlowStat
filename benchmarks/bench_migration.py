@@ -12,6 +12,8 @@ Run: python benchmarks/bench_migration.py
   against a version that adds a step and changes a later one. The figure is the time of one
   check; the plans are compiled once, as the service does for each run in a listing.
 
+* Statistics (US-34): the counts of 1,000 stored runs of 33 events each, from the events alone.
+
 The conclusion is kept in docs/research/m8-measurement.md.
 """
 
@@ -132,10 +134,38 @@ def handover() -> list[str]:
     return lines
 
 
+def counting() -> list[str]:
+    from flowstat.model.events import Event, EventKind
+    from flowstat.model.states import RunOutcome
+    from flowstat.repo.runs import StoredRun
+    from flowstat.service.statistics import summarise
+
+    outcomes = [RunOutcome.SUCCEEDED] * 7 + [RunOutcome.FAILED, RunOutcome.GOAL_NOT_REACHED]
+    rows = []
+    for i in range(1000):
+        events = [Event(0, EventKind.RUN_STARTED, 0.0)]
+        events += [Event(n, EventKind.STEP_STARTED, float(n), step="a") for n in range(1, 32)]
+        events.append(Event(32, EventKind.RUN_FINISHED, 40.0, outcome=outcomes[i % len(outcomes)]))
+        rows.append((StoredRun(f"r{i}", f"w{i % 3}", 1 + i % 2, {}, "t"), events))
+    times = []
+    for _ in range(20):
+        began = time.perf_counter()
+        summarise(rows)
+        times.append((time.perf_counter() - began) * 1000)
+    return [
+        "| Statistics | Runs | median ms | p95 ms | max ms |",
+        "| --- | --- | --- | --- | --- |",
+        f"| counts of 1,000 runs, 33 events each, 3 workflows | 1000 | "
+        f"{statistics.median(times):.1f} | {sorted(times)[18]:.1f} | {max(times):.1f} |",
+    ]
+
+
 def main() -> None:
     print("\n".join(conformance()))
     print()
     print("\n".join(handover()))
+    print()
+    print("\n".join(counting()))
 
 
 if __name__ == "__main__":

@@ -326,3 +326,15 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Chose: the core calls a service with a fourth key (control), which the core must keep to present it; the other keys the core knows only as hashes. Rejected: the core using the ingest key (wrong direction, and it would give the service's own key the power to move runs) and an unauthenticated route on loopback.
 - Chose: the replay of the check is its own small state over the new plan (the join rule and the evaluator of the engine, public), not `Scheduler.restore`, which takes the recorded states as true and raises on an unknown step, the very thing the check must report. `restore` is used afterwards by the owner that takes the run, and an oracle test runs both.
 - Triaged to M9: resuming unfinished runs at start, the health probe, the plan cache, key rotation, a live refresh. None is in a story of M8; the handover's own recovery is in.
+
+## 2026-11-09 M8: what the stories changed in the design
+
+- Chose: `migration` is on layer 6 beside `recovery`. The service (layer 7) calls conformance and the handover, and layer 5 cannot be imported through the layers in between.
+- Chose: a failed step keeps its `on_failure` in the check, because the restore re-applies the stop and a changed policy would change the run after the fact. Added the reason `E-MIG-008` (inputs of the run refused by the new version): resolving the inputs again under the new version found a case the first list of seven reasons did not have.
+- Chose: the core's journal table is the coordinator's intent and nothing more. When it recovers, it reads the owners (the old owner's export is the authority) and not the core's own copy, which lags by design.
+- Chose: the mirror update carries the version and the inputs, not only the owner. A service-origin run moved to another version would otherwise show the old version in the core until the next shipment.
+- Chose: the outbox skips runs that the store does not own (`MIGRATING`, `MIGRATED_OUT`); shipping a history the store has just given away would race with the new owner.
+- Chose: the fourth key (control) is kept in clear in the core's registry because the core has to present it. Stated as a limit; rotation is M9.
+- Chose: `cancelled` is its own count in the statistics, so that `finished` is the sum of the outcomes and a cancelled run is neither a success nor a failure.
+- Found by CI after the second story: three mypy errors that only the project's own interpreter shows. The `mypy` on the path of the sandbox is another installation; the check is `python -m mypy`.
+

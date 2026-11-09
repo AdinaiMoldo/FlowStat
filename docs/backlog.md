@@ -12,7 +12,7 @@ The full backlog (34 user stories, 203 SP baseline, 214 SP planned after the rec
 | M5 (I4b). Analysis | 26 + 5 | US-18, US-19, US-21, US-22, US-35 | C1 phase 4 (types), C2, feasible critical path | done (5 Nov) |
 | M6 (I5a). API, roles and deployment | 21 | US-25, US-29, US-30 | REST API, roles, packaging a workflow as a service | done (8 Nov) |
 | M7 (I5b). IDE and service view | 21 | US-26, US-27, US-28, US-31 | Monaco editor, graph preview, completion, runs of deployed services in the core | done (9 Nov) |
-| M8 (I6). Evolution | 24 | US-32 to US-34 | C5 (conformance first, handover second) and statistics | in progress |
+| M8 (I6). Evolution | 24 | US-32 to US-34 | C5 (conformance first, handover second) and statistics | done (9 Nov) |
 | M9. Hardening | not estimated | - | Coverage gate, final diagrams, traceability matrix, report assembly | not started |
 
 The split of I4 and I5 into two milestones each follows the size of the FleetSync sprints (8 to 29 SP). The SP of M4 and M5 exclude the feasible critical path, which became the story US-35 (5 SP) when M5 started. The reference interpreter (the oracle of C2) moved from M4 to M5 in the readiness audit of M4 and is counted with it. M9 is not in the 203 SP baseline.
@@ -52,9 +52,9 @@ Recount of 5 November: the baseline of 203 SP stays the zero point of the burndo
 | US-29 | As an admin, I restrict publishing to designers | A3 | 3 | Should | M6 | done (8 Nov) |
 | US-30 | As an admin, I deploy a workflow as a separate service | B5 | 13 | Must | M6 | done (8 Nov); container test runs on the Linux runner of CI |
 | US-31 | As an admin, I see the runs of deployed services in the core | A6, A2 | 5 | Must | M7 | done (9 Nov) |
-| US-32 | As a designer, I learn which running instances can move to a new version | C5 | 13 | Should | M8 | not started |
-| US-33 | As an operator, I move a migratable run to the new version | C5 | 8 | Should | M8 | not started |
-| US-34 | As an admin, I see failure rate and average duration per workflow | A5 | 3 | Could | M8 | not started |
+| US-32 | As a designer, I learn which running instances can move to a new version | C5 | 13 | Should | M8 | done |
+| US-33 | As an operator, I move a migratable run to the new version | C5 | 8 | Should | M8 | done |
+| US-34 | As an admin, I see failure rate and average duration per workflow | A5 | 3 | Could | M8 | done |
 | US-35 | As an operator, steps on the longest chain that can really run start first | C3 | 5 | Should | M5 | done |
 
 Acceptance criteria: `stories.md`. The same stories are GitHub issues, grouped by milestone.
