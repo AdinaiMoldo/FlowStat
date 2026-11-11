@@ -39,7 +39,13 @@ def get_deployments(
 ) -> DeploymentService:
     config = config_of(request)
     return DeploymentService(
-        db, workflows, config.packager, config.launchers, config.bundles, config.ingest_url
+        db,
+        workflows,
+        config.packager,
+        config.launchers,
+        config.bundles,
+        config.ingest_url,
+        config.allowed_hosts,
     )
 
 

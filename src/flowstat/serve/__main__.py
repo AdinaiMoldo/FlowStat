@@ -9,6 +9,7 @@ the runs that are still going stay in their log as they are, and the next start 
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from collections.abc import Callable, Sequence
 from dataclasses import replace
@@ -23,6 +24,7 @@ from flowstat.api.expiring import start_expiry
 from flowstat.api.probing import probe_due, start_probing
 from flowstat.deploy.launchers import http_healthy, launchers_for
 from flowstat.deploy.package import build_bundle
+from flowstat.model.hosts import hosts_from, parse_hosts
 from flowstat.repo.db import open_database
 
 
@@ -47,6 +49,14 @@ def _parser() -> argparse.ArgumentParser:
         type=float,
         default=5.0,
         help="seconds between looks for waiting steps that ran out of time (0: only at start)",
+    )
+    parser.add_argument(
+        "--allow-host",
+        action="append",
+        default=[],
+        metavar="HOST",
+        help="a host that http.call may reach, once for each (default: FLOWSTAT_ALLOWED_HOSTS, "
+        "comma separated; with none given any host may be called). Deployed services get the list",
     )
     parser.add_argument(
         "--probe-interval",
@@ -78,6 +88,7 @@ def main(
         launchers=launchers_for(),
         ingest_url=ingest_url,
         health=http_healthy,
+        allowed_hosts=parse_hosts(",".join(args.allow_host)) or hosts_from(os.environ),
     )
     app = create_app(config)
     run = serve or (lambda a, host, port: uvicorn.run(a, host=host, port=port))

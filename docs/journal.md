@@ -375,3 +375,15 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Chose: a handover to, or a call of, an unreachable service is refused at once with its state in the message; it would have failed after the timeout of the transport otherwise.
 - Checked against a real socket as well: the probe with the real `http_healthy` sees a local server that answers, then the same server shut down. A killed `python -m flowstat.api.service` process was not started for this; the socket is the same.
 - Measured by mutation: asking stopped services too, 2 tests fail; one ask instead of two, 1 fails; `state` ignoring `answering`, 6 fail.
+
+## 2026-11-11 M9: US-39, the hosts that http.call may reach
+
+- Chose: the host is the one the request goes to (`urlsplit(url).hostname`), lower case, no port, no final dot, and the part after `@` when the URL has a user. The first version of the test named the trick `https://allowed@evil/`; reading `netloc` instead of `hostname` makes 8 tests fail.
+- Chose: one function (`model/hosts.py`) is used by the check at save and by the call, so the two cannot differ about what a host is. It is in `model` because `analysis` may not import `actions`.
+- Chose: with no list any host may be called. A default that refuses everything would break every workflow that exists; the admin who wants the limit gives the list, and the matrix says it is off until then. There is no way to write an empty list on purpose: an empty text is no list.
+- Chose: a redirect is followed only to a host of the list. `urllib` follows redirects by itself, which would have made the list a suggestion: the first host answers 302 and the second is reached. Without the redirect handler the redirect test fails.
+- Chose: a service takes the list from its environment at its start, as it takes the address of the core; a list changed in the core reaches a service when it is deployed again. The other way (the core asks the service) would need a route that nobody else needs.
+- Found: `default_registry()` was called in four more places than the app (the command line three times, `driving.drive`), so a list set in the app would not have limited a run that `flowstat resume` took up. They take the list now (`Machine.hosts`, the environment for the command line); a test goes through the API and a run.
+- Found: a redirect with 307 on POST is not followed by `urllib` at all (it raises), so the redirect test uses 302, which becomes a GET.
+- Not covered, and said in the spec: a name that resolves to an address inside the network, and wildcards.
+- Measured by mutation: no redirect handler, 1 test fails; `netloc` for `hostname`, 8 fail; the check before sending removed, 3 fail.

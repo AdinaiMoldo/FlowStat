@@ -39,6 +39,7 @@ from flowstat.api.models import (
 from flowstat.api.resuming import resume_on_start
 from flowstat.api.runs import plain
 from flowstat.api.secured import SecuredRouter
+from flowstat.model.hosts import hosts_from
 from flowstat.model.versions import Version, VersionStatus
 from flowstat.repo.db import open_database
 from flowstat.repo.users import UserExistsError, UserStore
@@ -179,7 +180,7 @@ def create_service_app(config: AppConfig, bundle: Bundle) -> FastAPI:
     )
     app.state.config = config
     app.state.bundle = bundle
-    app.state.registry = default_registry()
+    app.state.registry = default_registry(config.allowed_hosts)
     app.state.locks = RunLocks()
     errors.install(app)
     app.include_router(router)
@@ -234,6 +235,7 @@ def main(
     config = real_config(
         str(root / "service.db"), root / "data", str(root / "target.db"), args.workers, pool, root
     )
+    config = replace(config, allowed_hosts=hosts_from(os.environ if env is None else env))
     try:
         app = create_service_app(replace(config), bundle)
     except BundleError as error:

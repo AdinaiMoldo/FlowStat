@@ -242,6 +242,13 @@ when a run is to be moved to it or called in it (section 10). An unreachable ser
 stopped (`DELETE`), because a hung process is not a gone one. `POST /deployments` also shows the third
 key, `ingest_key`; it is passed to the service by environment and its hash is in the registry row.
 
+**Hosts of `http.call`** (US-39, M9). `python -m flowstat.serve --allow-host HOST` (repeat it, or
+`FLOWSTAT_ALLOWED_HOSTS=a,b`) limits the hosts a step may call; the core passes the list to each
+service it deploys (environment `FLOWSTAT_ALLOWED_HOSTS`), and a service reads it at its start. A
+version whose constant URL names another host is refused when it is saved (E-TYPE-007), and a call
+to another host fails before it is sent (E-ACT-011); dsl-spec 5.5 has the rules. A list changed in
+the core reaches a service when it is deployed again.
+
 ## 8. What is not in M6 or M7
 
 User management endpoints; passwords and a login page; TLS (terminate it in front of the server,

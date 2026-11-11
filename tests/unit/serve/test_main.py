@@ -98,3 +98,30 @@ def test_services_are_told_to_reach_the_core_at_its_own_address_unless_said_othe
     assert ingest_url("--port", "9001") == "http://127.0.0.1:9001"
     assert ingest_url("--host", "0.0.0.0", "--port", "9002") == "http://127.0.0.1:9002"
     assert ingest_url("--ingest-url", "http://core.office:8000") == "http://core.office:8000"
+
+
+# -- the hosts http.call may reach (US-39) ---------------------------------------------------------
+def served_config(tmp_path: Path, *extra: str) -> object:
+    configs = []
+    main(
+        ["--db", str(tmp_path / "f.db"), "--data", str(tmp_path), "--target", "t.db", *extra],
+        serve=lambda app, host, port: configs.append(app.state.config),
+    )
+    return configs[0]
+
+
+def test_hosts_are_given_once_each_and_reach_the_registry_and_the_config(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("FLOWSTAT_ALLOWED_HOSTS", raising=False)
+    config = served_config(tmp_path, "--allow-host", "Api.Example.kg", "--allow-host", "b.kg")
+    assert config.allowed_hosts == frozenset({"api.example.kg", "b.kg"})  # type: ignore[attr-defined]
+
+
+def test_without_the_option_the_environment_gives_the_list_and_without_both_any_host_may_be_called(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("FLOWSTAT_ALLOWED_HOSTS", "a.kg, b.kg")
+    assert served_config(tmp_path).allowed_hosts == frozenset({"a.kg", "b.kg"})  # type: ignore[attr-defined]
+    monkeypatch.delenv("FLOWSTAT_ALLOWED_HOSTS")
+    assert served_config(tmp_path).allowed_hosts is None  # type: ignore[attr-defined]
