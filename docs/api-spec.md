@@ -145,6 +145,15 @@ copy of a run that a service drives (its `origin` is that service, which takes u
 own start). The lock of a run keeps an answer that arrives at the same moment from driving it twice
 (409). `flowstat resume` stays for the command line, which has no server.
 
+**A time limit on a waiting step** (US-38, M9; dsl-spec 5.6). A step with `timeout: T` that went to
+`WAITING` fails with `E-RUN-009` when `T` seconds have passed since the recorded time of its wait.
+Nothing stays in memory while a step waits, so the core and a service look at their own runs when
+they start (after the runs left going are taken up) and then every `--expire-interval` seconds
+(default 5, 0 looks only at start); a run is rebuilt only when its version has a step with a limit.
+The failure is recorded at the time it is noticed and the `on_failure` of the step applies. An
+answer to a step whose time has run out, and that the check has not yet failed, is refused with 409
+`E-API-003` ("the answer came too late"), so an answer and a time limit are never both accepted.
+
 ## 6. Workflows and the catalogue
 
 `POST /validate` with `{"text": "..."}` checks a text without storing it and answers 200 with

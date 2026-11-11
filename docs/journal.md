@@ -356,3 +356,12 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Measured by the crash test (`tests/crash/test_resume_at_start.py`): the history of the nine-region example, answered `approved` and answered `rejected`, cut after each event, a new core started on the cut; every cut goes on to the end of the uninterrupted run. The step that is not idempotent (the mail on the rejected path) is `UNCERTAIN` when the cut falls while it was sent, and is not sent again. Breaking the rule (not taking `RUNNING` runs up) fails it at the first cut; so does leaving the call out of the service.
 - Found while writing the test: `git checkout FILE` to undo a mutation of a file that also had edits not yet committed undid the edits. Mutations are now made on a copy that is put back (`cp`), never with `checkout`.
 
+## 2026-11-11 M9: US-38, the time limit of an approval
+
+- Chose: the deadline is the recorded time of `STEP_WAITING` plus `timeout`, the check is made with the clock that is passed in, and the failure is written at the time of the check. Three alternatives were left: a timer in memory (lost at a restart), a limit counted from the restore (every restart would give a new full limit), a failure written at the deadline (an event in the past).
+- Chose: `E-RUN-009` is an ordinary failure of the step, so `on_failure` and the join rules are used as they are; a retry is never given. A test compares `expire` with `step_failed` event by event.
+- Chose: an answer after the deadline and before the check is refused with 409. The other choice, accept it and let the check lose, would make the log say a person answered and the step failed.
+- Chose: a `timeout` on a step that cannot wait is a diagnostic of the type phase (E-TYPE-006), since only the type phase knows the signature of the action; a limit that changes on a waiting step is a reason in the conformance check (E-MIG-004), since the new version would judge a wait the old one started.
+- Chose: the core and a service look at start and every `--expire-interval` seconds on a thread; a version learns once whether any of its steps has a limit, so the others are never rebuilt for it.
+- Merge: US-36 and US-38 both added a call at the start of the app and the service; both stay, in the order recover, resume, expire.
+- Measured by mutation: wait time taken from the restore, 9 tests fail; deadline exclusive, 9 fail. The full suite passes (2057, one test skipped for want of a Docker daemon here).
