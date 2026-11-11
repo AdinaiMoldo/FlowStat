@@ -17,6 +17,8 @@ from flowstat.actions.statguard import validate
 from flowstat.actions.stats import aggregate
 from flowstat.actions.xlsx import read_form
 from flowstat.analysis.signatures import ActionSignature, Choices, Signatures
+from flowstat.compiler.cache import PlanCache
+from flowstat.compiler.plan import Plan
 from flowstat.engine.runner import Error, Executor, Ok, Outcome, Pause
 from flowstat.engine.scheduler import Start
 
@@ -46,8 +48,11 @@ def _fits(value: object, expected: type) -> bool:
 
 
 class Registry:
-    def __init__(self, specs: Iterable[ActionSpec]) -> None:
+    def __init__(self, specs: Iterable[ActionSpec], plan_cache_size: int = 64) -> None:
         self._specs = {s.name: s for s in specs}
+        # The plans compiled against this registry (its actions and their signatures), kept for
+        # the process that holds it: the services that are built for a request take it from here.
+        self.plans: PlanCache[Plan] = PlanCache(plan_cache_size)
 
     def names(self) -> frozenset[str]:
         return frozenset(self._specs)

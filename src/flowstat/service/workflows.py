@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from flowstat.analysis import availability, guards
 from flowstat.analysis.signatures import Signatures
 from flowstat.analysis.types import check_types
+from flowstat.compiler.cache import PlanCache
 from flowstat.compiler.catalogue import Catalogue
 from flowstat.compiler.compile import CompileResult, compile_workflow
 from flowstat.compiler.inputs import InputError, validate_inputs
@@ -63,7 +64,9 @@ class WorkflowService:
         db: sqlite3.Connection,
         known_actions: frozenset[str] | None = None,
         signatures: Signatures | None = None,
+        plans: PlanCache[Plan] | None = None,
     ) -> None:
+        self.plans = plans  # shared by the services of one process; None: compile every time
         self.versions_store = VersionStore(db)
         self.catalogue_repo = CatalogueRepo(db)
         self.known_actions = known_actions
@@ -187,11 +190,20 @@ class WorkflowService:
         return self._catalogue_for(self.versions_store.get(name, number))
 
     def get_plan(self, name: str, number: int) -> Plan:
+        """The plan of a stored version. The plan of a published version is compiled once for a
+        process: it is frozen with its catalogue, so what it is keyed by cannot change (US-41).
+        A draft is compiled every time, and a text that does not compile is never kept."""
         version = self.versions_store.get(name, number)
-        result = self._compile(version.text, self._catalogue_for(version))
-        if result.plan is None:
-            raise InvalidWorkflowError(result.diagnostics)
-        return result.plan
+
+        def compile_it() -> Plan:
+            result = self._compile(version.text, self._catalogue_for(version))
+            if result.plan is None:
+                raise InvalidWorkflowError(result.diagnostics)
+            return result.plan
+
+        if self.plans is None or version.status is not VersionStatus.PUBLISHED:
+            return compile_it()
+        return self.plans.get((name, number, version.text, version.catalogue), compile_it)
 
     def validate_inputs(
         self, name: str, number: int, values: dict[str, object]
