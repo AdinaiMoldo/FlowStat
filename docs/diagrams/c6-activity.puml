@@ -1,0 +1,50 @@
+@startuml c6-activity
+' DOC-9. C6, the solver and the test generator.
+' Card: docs/algorithms/C6.md#pseudocode
+' code: flowstat.solver.solve:check
+' code: flowstat.solver.solve:_solve_clause
+' code: flowstat.solver.predicate:dnf
+' code: flowstat.solver.diffgraph:solve_differences
+' code: flowstat.analysis.generate:generate
+skinparam shadowing false
+
+start
+partition "check(pred, domains)" {
+  :clauses = dnf(nnf(pred), cap 64);
+  if (more than the cap?) then (yes)
+    :unknown;
+    stop
+  endif
+  repeat
+    :solve_clause(clause, domains);
+    note right
+      one-variable atoms restrict the domain of the variable;
+      opaque atoms: unsat if the rest is unsat, else unknown;
+      two-variable atoms become edges, solved by Bellman-Ford
+      (a negative cycle is unsat).
+    end note
+    if (sat and holds(pred, witness)?) then (yes)
+      :return sat with the witness;
+      stop
+    endif
+  repeat while (another clause?)
+  if (any clause was unknown?) then (yes)
+    :unknown;
+  else (no)
+    :unsat;
+  endif
+}
+stop
+
+start
+partition "generate(plan)" {
+  :run[s] = guard(s) and join(s, run of the needs);
+  :for every guarded step and each of run, skip:\ncheck(run[s] or not run[s], domains);
+  :unsat: infeasible; sat: a base candidate;
+  :candidates: the bases and, for each, one-variable changes\n(at most 600);
+  :reach[c] = targets that predict decides as run or skip;
+  :cover = greedy(reach);\nbetter = exact_search smaller than the cover;
+  :missed = feasible targets that no candidate reaches;
+}
+stop
+@enduml

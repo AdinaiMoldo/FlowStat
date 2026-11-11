@@ -1,0 +1,29 @@
+@startuml c2-activity
+' DOC-9. C2, availability: when a step reads the output of another, does that output exist?
+' Card: docs/algorithms/C2.md#pseudocode
+' code: flowstat.analysis.availability:analyse
+' code: flowstat.analysis.availability:compute
+' code: flowstat.analysis.availability:available_at
+' code: flowstat.analysis.runs:run_conditions
+' code: flowstat.analysis.variables:lower_guards
+' code: flowstat.solver.solve:entails
+skinparam shadowing false
+
+start
+:lower_guards: the guard of every step as a predicate\nand the domain of every variable;
+:compute, in plan order;
+partition "for every step Y" {
+  :runs[Y] = guard(Y) and gate(join(Y), runs of the needs);
+  :facts of Y by the rule of its join\n(all_success: OR, any_success and at_least: AND, all_done: nothing);
+  :facts of a clean ancestor X |= lo(runs[X])\n(no continue at or above X);
+  :drop facts of more than 300 nodes;
+}
+:analyse: for every reference to X in Y;
+if (entails(guard(Y), Av[Y][X]) is UNSAT?) then (the guard proves X ran)
+  :the read is safe: no warning;
+else (a case is found, or unknown)
+  :a warning with the condition and\na value of the inputs that breaks it;
+endif
+:groups, goals, dead steps, undo: notes and warnings;
+stop
+@enduml

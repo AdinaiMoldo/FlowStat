@@ -1,0 +1,31 @@
+@startuml c6-sequence
+' DOC-9. C6, the solver: how an analysis asks and what it gets back.
+' Card: docs/algorithms/C6.md#pseudocode
+' code: flowstat.analysis.guards:analyse
+' code: flowstat.solver.solve:overlap
+' code: flowstat.solver.solve:uncovered
+' code: flowstat.solver.solve:check
+' code: flowstat.solver.predicate:dnf
+' code: flowstat.solver.diffgraph:solve_differences
+skinparam shadowing false
+
+participant "guards.analyse" as guards
+participant "overlap, uncovered" as ask
+participant "check" as check
+participant "dnf" as dnf
+participant "_solve_clause" as clause
+participant "solve_differences" as bf
+
+guards -> ask : guards of a branch group, domains
+ask -> check : And(p, q) or And(Not p...)
+check -> dnf : nnf(pred), cap
+dnf --> check : clauses, or None
+loop every clause
+  check -> clause : clause, domains
+  clause -> bf : difference edges (when two variables meet)
+  bf --> clause : values, or a negative cycle
+  clause --> check : sat with a witness, unsat, or unknown
+end
+check --> ask : sat (a case), unsat (a proof), unknown
+ask --> guards : a finding with a case, or none
+@enduml

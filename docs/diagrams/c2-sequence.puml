@@ -1,0 +1,30 @@
+@startuml c2-sequence
+' DOC-9. C2, availability: the analysis asks the solver.
+' Card: docs/algorithms/C2.md#pseudocode
+' code: flowstat.analysis.availability:analyse
+' code: flowstat.analysis.availability:compute
+' code: flowstat.analysis.variables:lower_guards
+' code: flowstat.analysis.runs:run_conditions
+' code: flowstat.solver.solve:entails
+skinparam shadowing false
+
+actor "WorkflowService" as caller
+participant "analyse" as analyse
+participant "lower_guards" as lower
+participant "compute" as compute
+participant "run_conditions" as runs
+participant "entails (solver)" as solver
+
+caller -> analyse : plan, signatures
+analyse -> lower : plan, signatures
+lower --> analyse : predicates, domains
+analyse -> compute : plan, predicates
+compute -> runs : plan, predicates
+runs --> compute : run condition of every step
+compute --> analyse : guaranteed facts
+loop every reference of every step
+  analyse -> solver : entails(guard, available), domains
+  solver --> analyse : UNSAT (proved), SAT (a case), or UNKNOWN
+end
+analyse --> caller : diagnostics
+@enduml

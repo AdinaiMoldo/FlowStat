@@ -16,5 +16,14 @@ a `plantuml` command on the PATH); `python scripts/render_diagrams.py --check` s
 are missing. Where PlantUML is not installed, the test that renders every source is skipped; the
 other tests do not need it.
 
-The behaviour diagrams (state machines of a step, a run and an owner; an activity and a sequence
-diagram for each of C1 to C6) are DOC-9.
+## Behaviour (DOC-9)
+
+| Diagram | Files | What is compared with the code |
+|---|---|---|
+| States of a step | `step-states.puml` | exactly the values of `StepState`; every move the scheduler makes in the scenarios of `tests/unit/engine/test_state_diagrams.py` is an arrow, and every arrow is made by a scenario |
+| Status of a run | `run-states.puml` | exactly the statuses that `engine/scheduler.py` and `model/history.py` return (read from the source, there is no enumeration); the same two-way check of moves |
+| Ownership of a run | `ownership-states.puml` | exactly the values of `OwnerState`; every arrow is made by a call of the stores (`tests/unit/repo/test_ownership_diagram.py`) |
+| Activity and sequence of C1 to C6 | `c1-activity.puml`, `c1-sequence.puml`, ... `c6-sequence.puml` | each names the section of its algorithm card (`' Card:` line, the section must exist) and the functions it draws (`' code:` line, they must exist); the activity diagram has every procedure that the pseudocode of the card defines (`tests/architecture/test_behaviour_diagrams.py`) |
+
+A diagram of a C function is drawn from its card and the code together, in the story that changes
+the function, and the tests above fail until the diagram agrees.

@@ -1,0 +1,57 @@
+@startuml c5-activity
+' DOC-9. C5, version migration: the check of the history, then the handover.
+' Card: docs/algorithms/C5.md#pseudocode
+' Card: docs/algorithms/C5.md#pseudocode-part-2
+' code: flowstat.migration.conformance:check
+' code: flowstat.migration.handover:move
+' code: flowstat.migration.handover:recover
+skinparam shadowing false
+
+start
+partition "check(old, new, events, inputs)" {
+  :fold the events: state, started, touched, outputs;
+  if (finished, undoing, or an uncertain step?) then (yes)
+    :NEVER_MIGRATE, and nothing else is looked at;
+    stop
+  endif
+  :resolve the inputs for the new version (E-MIG-008);
+  :a RUNNING step: E-MIG-002;
+  :an old step with events: absent from new E-MIG-003,\nchanged E-MIG-004;
+  :a new step with events: a predecessor that has not ended or\na recorded fate that differs from the join E-MIG-005,\nfrom the guard E-MIG-006;
+  :a new step without events: a read the outputs cannot serve E-MIG-007;
+  if (any reason?) then (yes)
+    :not migratable: the reasons;
+    stop
+  endif
+}
+partition "move(plan)" {
+  if (source == target?) then (yes)
+    :retarget: version and inputs change\nin one transaction;
+    stop
+  endif
+  :journal.begin(plan);
+  :fence the source: OWNED(e) to MIGRATING(e+1),\nrefused if the history grew after last_seq;
+  partition "forward(plan)" {
+    :adopt at the target: store the history,\nRUN_MIGRATED, OWNED(e+1) (repeatable);
+    :release the source: MIGRATED_OUT;
+    :mirror.moved(plan), journal.end;
+  }
+}
+:completed;
+stop
+
+start
+partition "recover(plan), after a stop" {
+  :read the ownership of the source and of the target;
+  if (the target is OWNED at e+1 or more?) then (yes)
+    :release the source if it is still MIGRATING;\nmirror.moved; journal.end: completed;
+  elseif (the source is MIGRATING(e+1) towards the target?) then (yes)
+    :forward(plan): completed;
+  elseif (the source is OWNED(e)?) then (yes)
+    :journal.end: abandoned;
+  else (no)
+    :raise Inconsistent: no sequence of the protocol makes this;
+  endif
+}
+stop
+@enduml
