@@ -28,8 +28,8 @@
 <text x="635.2" y="384" font-size="12" text-anchor="middle" fill="#1f2933">M8</text>
 <text x="702.4" y="384" font-size="12" text-anchor="middle" fill="#1f2933">M9</text>
 <text x="16" y="206" font-size="12" fill="#617080" transform="rotate(-90 16 206)" text-anchor="middle">story points</text>
-<polyline fill="none" stroke="#8a94a0" stroke-width="2" stroke-dasharray="6 4" points="97.6,150.2 164.8,150.2 164.8,143.9 232.0,143.9 232.0,143.9 299.2,143.9 299.2,143.9 366.4,143.9 366.4,143.9 433.6,143.9 433.6,138.6 500.8,138.6 500.8,138.6 568.0,138.6 568.0,138.6 635.2,138.6 635.2,138.6 702.4,138.6 702.4,89.1"/>
-<polyline fill="none" stroke="#2563a8" stroke-width="2.5" points="97.6,150.2 164.8,177.6 232.0,217.6 299.2,247.1 366.4,267.1 433.6,294.5 500.8,316.6 568.0,338.7 635.2,364.0 702.4,331.3"/>
+<polyline fill="none" stroke="#8a94a0" stroke-width="2" stroke-dasharray="6 4" points="97.6,150.2 164.8,150.2 164.8,143.9 232.0,143.9 232.0,143.9 299.2,143.9 299.2,143.9 366.4,143.9 366.4,143.9 433.6,143.9 433.6,138.6 500.8,138.6 500.8,138.6 568.0,138.6 568.0,138.6 635.2,138.6 635.2,138.6 702.4,138.6 702.4,85.9"/>
+<polyline fill="none" stroke="#2563a8" stroke-width="2.5" points="97.6,150.2 164.8,177.6 232.0,217.6 299.2,247.1 366.4,267.1 433.6,294.5 500.8,316.6 568.0,338.7 635.2,364.0 702.4,364.0"/>
 <circle cx="97.6" cy="150.2" r="4" fill="#2563a8"/>
 <text x="97.6" y="141.2" font-size="11" text-anchor="middle" fill="#1f2933">203</text>
 <circle cx="164.8" cy="177.6" r="4" fill="#2563a8"/>
@@ -48,8 +48,8 @@
 <text x="568.0" y="329.7" font-size="11" text-anchor="middle" fill="#1f2933">24</text>
 <circle cx="635.2" cy="364.0" r="4" fill="#2563a8"/>
 <text x="635.2" y="355.0" font-size="11" text-anchor="middle" fill="#1f2933">0</text>
-<circle cx="702.4" cy="331.3" r="4" fill="#2563a8"/>
-<text x="702.4" y="322.3" font-size="11" text-anchor="middle" fill="#1f2933">31</text>
+<circle cx="702.4" cy="364.0" r="4" fill="#2563a8"/>
+<text x="702.4" y="355.0" font-size="11" text-anchor="middle" fill="#1f2933">0</text>
 <text x="736" y="40" font-size="12" text-anchor="end" fill="#2563a8">remaining</text>
 <text x="656" y="40" font-size="12" text-anchor="end" fill="#8a94a0">scope</text>
 </svg>

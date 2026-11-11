@@ -13,7 +13,7 @@ The full backlog (34 user stories, 203 SP baseline, 214 SP planned after the rec
 | M6 (I5a). API, roles and deployment | 21 | US-25, US-29, US-30 | REST API, roles, packaging a workflow as a service | done (8 Nov) |
 | M7 (I5b). IDE and service view | 21 | US-26, US-27, US-28, US-31 | Monaco editor, graph preview, completion, runs of deployed services in the core | done (9 Nov) |
 | M8 (I6). Evolution | 24 | US-32 to US-34 | C5 (conformance first, handover second) and statistics | done (9 Nov) |
-| M9. Hardening | 50 | US-36 to US-43, DOC-7 to DOC-9 | What M3 to M8 carried over (resume at start, health of services, time limit of an approval, hosts of `http.call`, key rotation, plan cache, live refresh, long guarded chains); coverage gate per package, diagrams, traceability matrix, charts | in progress |
+| M9. Hardening | 50 | US-36 to US-43, DOC-7 to DOC-9 | What M3 to M8 carried over (resume at start, health of services, time limit of an approval, hosts of `http.call`, key rotation, plan cache, live refresh, long guarded chains); coverage gate per package, diagrams, traceability matrix, charts | done (12 Nov) |
 
 The split of I4 and I5 into two milestones each follows the size of the FleetSync sprints (8 to 29 SP). The SP of M4 and M5 exclude the feasible critical path, which became the story US-35 (5 SP) when M5 started. The reference interpreter (the oracle of C2) moved from M4 to M5 in the readiness audit of M4 and is counted with it. M9 is not in the 203 SP baseline.
 
@@ -66,7 +66,7 @@ Recount of 5 November: the baseline of 203 SP stays the zero point of the burndo
 | US-41 | As a user of the API, listing runs does not compile a plan for each run | B4 | 3 | Could | M9 | done |
 | US-42 | As an operator, the lists of runs and services update by themselves | B2 | 2 | Could | M9 | done |
 | US-43 | As a designer, a workflow of many guarded steps is analysed and not refused | C2 | 3 | Should | M9 | done |
-| DOC-7 | As the author, I assemble the final report from the repository | DOC | 5 | Must | M9 | not started |
+| DOC-7 | As the author, I assemble the final report from the repository | DOC | 5 | Must | M9 | done |
 | DOC-8 | As a reader, I see the structure of the system in diagrams | DOC | 5 | Must | M9 | done |
 | DOC-9 | As a reader, I see the behaviour of the system in diagrams | DOC | 8 | Must | M9 | done |
 
