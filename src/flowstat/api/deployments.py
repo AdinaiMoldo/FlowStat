@@ -2,15 +2,27 @@
 
 from __future__ import annotations
 
+import logging
 import sqlite3
+from typing import Literal
 
 from fastapi import Depends, Request
 
+from flowstat.api.config import AppConfig
 from flowstat.api.deps import config_of, get_db, get_workflows
-from flowstat.api.errors import ApiError, ErrorItem, fail
-from flowstat.api.models import DeployedOut, DeployIn, DeploymentOut, Ingested, IngestIn
+from flowstat.api.errors import ApiError, ErrorBody, ErrorItem, fail
+from flowstat.api.models import (
+    DeployedOut,
+    DeployIn,
+    DeploymentOut,
+    Ingested,
+    IngestIn,
+    KeyRecoveryOut,
+    KeyRotationOut,
+)
 from flowstat.api.runs import latest_published
 from flowstat.api.secured import SecuredRouter
+from flowstat.repo.db import connect
 from flowstat.repo.deployments import Deployment, DeploymentNotFoundError
 from flowstat.repo.versions import VersionNotFoundError
 from flowstat.service.deployments import (
@@ -26,10 +38,12 @@ from flowstat.service.ingest import (
     IngestService,
     parse_batch,
 )
+from flowstat.service.rotation import KeyRotation, RotationRefusedError, ServiceAwayError
 from flowstat.service.runs import NotPublishedError
 from flowstat.service.workflows import WorkflowService
 
 router = SecuredRouter(tags=["deployments"])
+log = logging.getLogger("flowstat.api")
 
 
 def get_deployments(
@@ -175,3 +189,72 @@ def ingest_events(
             [ErrorItem(code="E-API-003", message=str(error), expected=error.expected)],
         ) from None
     return Ingested(run_id=batch.run.run_id, stored_through=last)
+
+
+AWAY = {
+    503: {
+        "model": ErrorBody,
+        "description": "the service does not answer (E-KEY-001); the rotation is recorded and "
+        "POST /deployments/{id}/keys/recover finishes it or takes it back",
+    }
+}
+
+
+def keys_of(request: Request, db: sqlite3.Connection) -> KeyRotation:
+    return KeyRotation(db, getattr(request.app.state, "key_transport_for", None))
+
+
+@router.secured(
+    "POST",
+    "/deployments/{deployment_id}/keys/{kind}/rotate",
+    "deployments:write",
+    summary="Replace the control key or the ingest key of a service",
+    responses=AWAY,
+)
+def rotate_key(
+    deployment_id: str,
+    kind: Literal["control", "ingest"],
+    request: Request,
+    db: sqlite3.Connection = Depends(get_db),
+) -> KeyRotationOut:
+    config = config_of(request)
+    try:
+        keys_of(request, db).rotate(deployment_id, kind, config.new_token(), config.clock())
+    except DeploymentNotFoundError:
+        raise fail(404, "E-API-002", f"there is no deployment {deployment_id}") from None
+    except RotationRefusedError as error:
+        raise fail(409, "E-API-003", str(error)) from None
+    except ServiceAwayError as error:
+        raise fail(
+            503, "E-KEY-001", f"{error}; POST /deployments/{deployment_id}/keys/recover ends it"
+        ) from None
+    return KeyRotationOut(deployment_id=deployment_id, key=kind, state="rotated")
+
+
+@router.secured(
+    "POST",
+    "/deployments/{deployment_id}/keys/recover",
+    "deployments:write",
+    summary="Finish or take back a key rotation that was interrupted",
+)
+def recover_keys(
+    deployment_id: str, request: Request, db: sqlite3.Connection = Depends(get_db)
+) -> KeyRecoveryOut:
+    try:
+        outcome = keys_of(request, db).recover(deployment_id, config_of(request).clock())
+    except DeploymentNotFoundError:
+        raise fail(404, "E-API-002", f"there is no deployment {deployment_id}") from None
+    return KeyRecoveryOut(deployment_id=deployment_id, outcome=outcome)
+
+
+def recover_keys_on_start(config: AppConfig) -> None:
+    """A core that starts finishes the rotations it left half done."""
+    db = connect(config.db_path)
+    try:
+        done = KeyRotation(db).recover_all(config.clock())
+        if done:
+            log.info("key rotations taken to their end at start: %s", done)
+    except Exception:
+        log.exception("the key rotations left in the registry could not be looked at")
+    finally:
+        db.close()
