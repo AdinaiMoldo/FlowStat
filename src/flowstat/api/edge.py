@@ -7,12 +7,14 @@ these from here, through ``AppConfig`` (deterministic mode).
 from __future__ import annotations
 
 import json
+import logging
 import secrets
 import threading
 import time
 import urllib.error
 import urllib.request
 import uuid
+from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor, wait
 from datetime import UTC, datetime
 from pathlib import Path
@@ -20,6 +22,8 @@ from pathlib import Path
 from flowstat.api.config import AppConfig, Job
 from flowstat.repo.db import connect
 from flowstat.service.outbox import Backoff, Outbox, Reply, Send, SendFailed, ShipLoop, ShipReport
+
+log = logging.getLogger("flowstat.api")
 
 
 def now_text() -> str:
@@ -101,6 +105,35 @@ def _json(raw: bytes) -> dict[str, object]:
     except ValueError:
         return {}
     return data if isinstance(data, dict) else {}
+
+
+class Ticker:
+    """A thread that calls ``work`` every ``interval`` seconds until it is stopped.
+
+    The core and the services use it to look for waiting steps that ran out of time (US-38). The
+    call is made in the thread, an exception in it is logged and does not end the thread, and
+    ``stop`` waits for a call that is running and returns whether the thread ended in time.
+    """
+
+    def __init__(self, work: Callable[[], object], interval: float, name: str = "ticker") -> None:
+        self.work, self.interval = work, interval
+        self._stop = threading.Event()
+        self._thread = threading.Thread(target=self._run, name=name, daemon=True)
+
+    def _run(self) -> None:
+        while not self._stop.wait(self.interval):
+            try:
+                self.work()
+            except Exception:
+                log.exception("the periodic check failed")
+
+    def start(self) -> None:
+        self._thread.start()
+
+    def stop(self, limit: float) -> bool:
+        self._stop.set()
+        self._thread.join(limit)
+        return not self._thread.is_alive()
 
 
 class Shipper:

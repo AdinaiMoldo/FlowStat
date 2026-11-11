@@ -35,6 +35,8 @@ step         : {
   retry?      : { max: int >= 0, backoff: fixed | exponential, delay?: number > 0 }
                                                 max = retries after the first attempt;
                                                 delay in seconds (default 1)
+  timeout?    : number > 0                     seconds a step that waits for a person may wait
+                                                (only for an action that waits, section 5.6)
   compensate? : action name                    undo action used by the saga
 }
 ```
@@ -373,6 +375,32 @@ so for an action that ignores the key the guarantee is "at most once automatical
 UNCERTAIN"; a clock jump is not part of the fault model; one process owns a run at a time (the owner
 switch is C5, M8).
 
+### 5.6 The time limit of a wait (M9)
+
+`timeout: T` on a step whose action waits for a person (`approval.wait`) fails the step when nobody
+answered in `T` seconds. Not to be confused with the argument `timeout` of `http.call`, which is
+written under `with` and limits one request.
+
+- **The deadline** is the recorded time of the event `STEP_WAITING` plus `T`. It is in the log, so
+  a process that restarts finds the same deadline, and a restart does not give the step more time.
+  Time spent while the process was down counts.
+- **Who looks.** Nothing stays in memory while a step waits, so the check is made from the log: when
+  a core or a service starts (after the runs left going are taken up, api-spec section 5) and then
+  every few seconds (`--expire-interval`, default 5; 0 looks only at start). A run is rebuilt only if
+  its version has a step with a limit; that is learnt once for each version.
+- **The failure** is an ordinary failure of the step with the code `E-RUN-009` ("nobody answered
+  within T seconds"), recorded at the time the check noticed it and not at the deadline: a log does
+  not get events in the past. The `on_failure` of the step then applies (`fail`, `continue` or
+  `compensate`), `retry` never does (a time limit is not transient), and its join rule sees a failed
+  step as it sees any.
+- **A late answer.** An answer that comes after the deadline and before the check is refused (409
+  `E-API-003`, "the answer came too late"); the check fails the step. There is never a moment at
+  which both an answer and a time limit are accepted.
+- **At save.** `timeout` on a step whose action does not wait is E-TYPE-006 (the type phase: it
+  needs the signature of the action). An action the checker does not know is not judged.
+- **Migration.** A run whose step is waiting cannot move to a version that changes or removes
+  that step's `timeout` (E-MIG-004): the time already waited was counted under the old limit.
+
 ## 6. Diagnostics
 
 Every diagnostic has a code, a severity, a message, a line and a column in the original text (also
@@ -419,6 +447,7 @@ for steps that came from `foreach` expansion, through the source map).
 | E-VER-001 | error | the `version` in the text differs from the version number being published | service |
 | E-VER-002 | error | the `workflow` name in the text differs from the name it is saved under | service |
 | E-RUN-001 to E-RUN-008 | error | runtime error of an expression, see 3.1 (the step FAILS) | engine |
+| E-RUN-009 | error | nobody answered a waiting step within its `timeout` (the step FAILS), see 5.6 | engine |
 | E-CONTRACT-001 | error | `ensures` is false after the action returned (the step FAILS) | engine |
 | E-ACT-001 | error | the action is not registered (the step FAILS) | actions |
 | E-ACT-002 | error | a file cannot be read; the message has the path as written in `with` | actions |
@@ -436,6 +465,7 @@ for steps that came from `foreach` expansion, through the source map).
 | E-TYPE-001 | error | type mismatch: an operand, a condition, an argument or a function argument has the wrong type | types (M5), see 9 |
 | E-TYPE-002 | error | the output of an action has no such field | types (M5) |
 | E-TYPE-003 | error | a required argument of the action is missing | types (M5) |
+| E-TYPE-006 | error | `timeout` on a step whose action does not wait for a person | types (M9), see 5.6 |
 | W-TYPE-004 | warning | the action does not take this argument | types (M5) |
 | W-TYPE-005 | warning | `==` or `!=` between types that have no value in common (the result is always the same) | types (M5) |
 | W-AVAIL-001 | warning | a reference may read an output that does not exist (the step can be skipped or can have failed) | availability (M5), see 10 |

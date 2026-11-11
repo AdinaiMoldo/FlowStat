@@ -423,3 +423,31 @@ def test_restoring_the_history_under_the_new_plan_accepts_what_the_check_refuses
     history = finished(run(old), cut)
     Scheduler(new, {"n": 5}, 1).restore(history, 99.0, lambda action: True)  # no error
     assert verdict(old, new, history).migratable is False, name
+
+
+# -- the time limit of a step that waits (US-38) -------------------------------------------------
+ASKING = "  a:\n    action: x.y\n  b:\n    action: x.ask\n    needs: [a]\n{extra}"
+
+
+def asking(timeout: str | None) -> Plan:
+    extra = f"    timeout: {timeout}\n" if timeout else ""
+    return plan(ASKING.format(extra=extra), goal="b")
+
+
+def waiting_history(plan_: Plan) -> list[Event]:
+    sim = simulate(plan_, {"n": 5}, 1, lambda s: Wait(1.0) if s.step == "b" else Done(1.0, {}))
+    return upto(sim.scheduler.events, K.STEP_WAITING, "b")
+
+
+def test_the_limit_of_a_step_that_is_waiting_cannot_be_changed_under_it() -> None:
+    old = asking("100")
+    history = waiting_history(old)
+    for changed in ("200", None):
+        assert codes(verdict(old, asking(changed), history)) == [("E-MIG-004", "b")]
+    assert verdict(old, asking("100"), history).migratable
+
+
+def test_the_limit_of_a_step_that_has_not_started_may_change() -> None:
+    old, new = asking("100"), asking("200")
+    history = finished(run(old), "a")  # a has finished; b has no event yet
+    assert verdict(old, new, history).migratable

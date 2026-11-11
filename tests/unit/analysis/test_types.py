@@ -399,3 +399,31 @@ def test_the_checker_agrees_with_the_reference_evaluator(seed: int) -> None:
         if failed:
             assert errors, text  # a failure for a type reason that the checker did not report
     assert accepted > 40 and rejected > 25  # both kinds are well represented
+
+
+# -- the time limit of a step (US-38, dsl-spec 5.6) ---------------------------------------------
+ASK = "  ask:\n    action: approval.wait\n    with: {role: chief}\n    timeout: 3600\n"
+BUSY = "  work:\n    action: xlsx.read\n    with: {path: 'BIS/q.xlsx'}\n    timeout: 3600\n"
+
+
+def test_a_time_limit_on_a_step_that_waits_for_a_person_is_accepted() -> None:
+    assert "E-TYPE-006" not in codes(check(ASK, "ask"))
+
+
+def test_a_time_limit_on_a_step_that_does_not_wait_is_an_error_at_the_step() -> None:
+    [found] = [d for d in check(BUSY, "work") if d.code == "E-TYPE-006"]
+    assert found.severity is Severity.ERROR
+    assert "xlsx.read does not wait" in found.message
+    line = lines_of(BUSY).index("  work:") + 1
+    assert (found.line, found.column) == (line, 3)  # the line of the step, as for W-TYPE-004
+
+
+def test_the_limit_is_judged_once_for_every_instance_of_a_foreach() -> None:
+    steps = FAN_IN.replace("    action: xlsx.read\n", "    action: xlsx.read\n    timeout: 10\n", 1)
+    steps += CONSOLIDATE
+    assert codes(check(steps, "consolidate")).count("E-TYPE-006") == 1  # nine instances, one error
+
+
+def test_an_action_the_checker_does_not_know_is_not_judged() -> None:
+    steps = "  x:\n    action: custom.thing\n    timeout: 5\n"
+    assert "E-TYPE-006" not in codes(check(steps, "x"))

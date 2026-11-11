@@ -40,6 +40,7 @@ class PlanStep:
     loop: tuple[str, str] | None  # (variable, catalogue code) for an expanded instance
     line: int  # position of the step in the source text (the source map)
     column: int
+    timeout: float | None = None  # seconds a step that waits for a person may wait (US-38)
 
 
 @dataclass(frozen=True, slots=True)

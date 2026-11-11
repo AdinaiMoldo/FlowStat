@@ -57,6 +57,7 @@ class StepDecl:
     retry: tuple[int, str, float] | None
     compensate: str | None
     compensate_pos: Pos | None = None
+    timeout: float | None = None  # seconds a step that waits for a person may wait
 
 
 @dataclass(frozen=True)
@@ -182,6 +183,15 @@ def _build_step(name: Scalar, body: Mapping, diags: list[Diagnostic]) -> StepDec
                 delay = float(delay_node.value)
             retry = (max_node.value, _text(retry_node.get("backoff")) or "fixed", delay)
 
+    timeout: float | None = None
+    timeout_node = _scalar(body.get("timeout"))
+    if (
+        timeout_node is not None
+        and isinstance(timeout_node.value, int | float)
+        and not isinstance(timeout_node.value, bool)
+    ):
+        timeout = float(timeout_node.value)
+
     assert action is not None
     return StepDecl(
         name=str(name.value),
@@ -198,6 +208,7 @@ def _build_step(name: Scalar, body: Mapping, diags: list[Diagnostic]) -> StepDec
         with_=tuple(with_),
         on_failure=_text(body.get("on_failure")) or "fail",
         retry=retry,
+        timeout=timeout,
         compensate=_text(body.get("compensate")) or None,
         compensate_pos=(
             content_pos(compensate_node)

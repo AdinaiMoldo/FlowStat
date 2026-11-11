@@ -62,6 +62,11 @@ CASES: list[tuple[str, str, list[str]]] = [
     ("retry delay negative", step("    retry: {max: 1, delay: " + MARK + "-2.5}"), ["E-SHAPE-004"]),
     ("retry delay text", step("    retry: {max: 1, delay: " + MARK + "soon}"), ["E-SHAPE-003"]),
     ("retry delay boolean", step("    retry: {max: 1, delay: " + MARK + "true}"), ["E-SHAPE-003"]),
+    ("timeout zero", step("    timeout: " + MARK + "0"), ["E-SHAPE-004"]),
+    ("timeout negative", step("    timeout: " + MARK + "-60"), ["E-SHAPE-004"]),
+    ("timeout text", step("    timeout: " + MARK + "'two days'"), ["E-SHAPE-003"]),
+    ("timeout boolean", step("    timeout: " + MARK + "true"), ["E-SHAPE-003"]),
+    ("timeout map", step("    timeout: " + MARK + "{seconds: 5}"), ["E-SHAPE-003"]),
     ("foreach malformed", step("    foreach: " + MARK + "region"), ["E-SHAPE-004"]),
     ("when is a number", step("    when: " + MARK + "5"), ["E-SHAPE-003"]),
     ("ensures is a list", step("    ensures: " + MARK + "[x]"), ["E-SHAPE-003"]),
@@ -95,6 +100,12 @@ def test_valid_document_has_no_diagnostics() -> None:
 
 def test_the_compensate_policy_is_valid() -> None:
     diags, _ = run(step("    on_failure: compensate\n    compensate: x.undo"))
+    assert diags == []
+
+
+@pytest.mark.parametrize("value", ["3600", "0.5", "172800"])
+def test_a_time_limit_is_a_positive_number_of_seconds(value: str) -> None:
+    diags, _ = run(step("    timeout: " + value))
     assert diags == []
 
 
