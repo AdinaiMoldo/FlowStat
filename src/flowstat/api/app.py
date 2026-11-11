@@ -33,7 +33,7 @@ of the token decides what it may do (`x-permission` on each operation). Every er
 def create_app(config: AppConfig) -> FastAPI:
     app = FastAPI(title="FlowStat", version="0.1.0", description=DESCRIPTION)
     app.state.config = config
-    app.state.registry = default_registry()
+    app.state.registry = default_registry(config.allowed_hosts)
     app.state.locks = RunLocks()
     errors.install(app)
     app.include_router(workflows.router)
@@ -44,6 +44,7 @@ def create_app(config: AppConfig) -> FastAPI:
     app.include_router(statistics.router)
     ui.mount(app)
     migrations.recover_on_start(config, app.state.locks)
+    deployments.recover_keys_on_start(config)
     resuming.resume_on_start(config, app.state.registry, app.state.locks)
     expiring.expire_due(config, app.state.registry, app.state.locks)
     return app

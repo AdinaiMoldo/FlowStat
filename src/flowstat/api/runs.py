@@ -103,12 +103,20 @@ def drive_in_background(
         try:
             db = connect(config.db_path)
             workflows = WorkflowService(
-                db, known_actions=registry.names(), signatures=registry.signatures()
+                db,
+                known_actions=registry.names(),
+                signatures=registry.signatures(),
+                plans=registry.plans,
             )
             runs = RunService(db, workflows)
             launch, commands = prepare(runs)
             machine = Machine(
-                config.data_dir, config.target, config.workers, config.time, config.sleep
+                config.data_dir,
+                config.target,
+                config.workers,
+                config.time,
+                config.sleep,
+                config.allowed_hosts,
             )
             drive(runs, run_id, launch, machine, commands)
         except Exception:  # the log keeps what happened; the next start takes the run up

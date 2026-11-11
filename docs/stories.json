@@ -378,6 +378,15 @@
     "milestone": "M9"
   },
   {
+    "id": "US-43",
+    "story": "As a designer, a workflow of many guarded steps is analysed and not refused",
+    "criteria": "Given a chain of 1,000 steps in which each step runs only if the one before it says so, when the draft is saved, then the checks finish within 3 seconds and report no internal error",
+    "function": "C2",
+    "sp": 3,
+    "priority": "Should",
+    "milestone": "M9"
+  },
+  {
     "id": "DOC-7",
     "story": "As the author, I assemble the final report from the repository",
     "criteria": "Given the repository, when the check of the report runs, then every story and every NFR has a row in the traceability matrix with evidence or the reason it has none, the burndown and the velocity chart are made from the backlog, the coverage of each of the C1-C6 packages is at least 90%, and the negative check is filled",

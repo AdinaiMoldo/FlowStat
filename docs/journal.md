@@ -375,3 +375,54 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Chose: a handover to, or a call of, an unreachable service is refused at once with its state in the message; it would have failed after the timeout of the transport otherwise.
 - Checked against a real socket as well: the probe with the real `http_healthy` sees a local server that answers, then the same server shut down. A killed `python -m flowstat.api.service` process was not started for this; the socket is the same.
 - Measured by mutation: asking stopped services too, 2 tests fail; one ask instead of two, 1 fails; `state` ignoring `answering`, 6 fail.
+
+## 2026-11-11 M9: US-39, the hosts that http.call may reach
+
+- Chose: the host is the one the request goes to (`urlsplit(url).hostname`), lower case, no port, no final dot, and the part after `@` when the URL has a user. The first version of the test named the trick `https://allowed@evil/`; reading `netloc` instead of `hostname` makes 8 tests fail.
+- Chose: one function (`model/hosts.py`) is used by the check at save and by the call, so the two cannot differ about what a host is. It is in `model` because `analysis` may not import `actions`.
+- Chose: with no list any host may be called. A default that refuses everything would break every workflow that exists; the admin who wants the limit gives the list, and the matrix says it is off until then. There is no way to write an empty list on purpose: an empty text is no list.
+- Chose: a redirect is followed only to a host of the list. `urllib` follows redirects by itself, which would have made the list a suggestion: the first host answers 302 and the second is reached. Without the redirect handler the redirect test fails.
+- Chose: a service takes the list from its environment at its start, as it takes the address of the core; a list changed in the core reaches a service when it is deployed again. The other way (the core asks the service) would need a route that nobody else needs.
+- Found: `default_registry()` was called in four more places than the app (the command line three times, `driving.drive`), so a list set in the app would not have limited a run that `flowstat resume` took up. They take the list now (`Machine.hosts`, the environment for the command line); a test goes through the API and a run.
+- Found: a redirect with 307 on POST is not followed by `urllib` at all (it raises), so the redirect test uses 302, which becomes a GET.
+- Not covered, and said in the spec: a name that resolves to an address inside the network, and wildcards.
+- Measured by mutation: no redirect handler, 1 test fails; `netloc` for `hostname`, 8 fail; the check before sending removed, 3 fail.
+
+## 2026-11-11 M9: US-43, a long chain of guarded steps is analysed
+
+- Found: while preparing the NFR-01 row of the report the analyses of M5 were run on the chain of the compile benchmark. At 500 steps `bounds` raised `RecursionError` (so a save of the draft through the API would have ended in an internal error), and below that the time grew faster than the length. The compiler was not the cause; no earlier benchmark had put a long guarded chain through C2.
+- Chose: a story of its own (US-43, 3 SP, M9 now 50 SP) and not a change inside DOC-7, because it changes a C function and needs its tests, its card and its measurement.
+- Chose: bound the size of a run condition (`RUN_CAP`, 200 nodes) and give a larger one up as an opaque atom, the way `_quorum` already gives up a quorum over 64 combinations. The other ways were to make `nnf` and `bounds` iterative (the conditions would still be quadratic in size and the time stays bad) and to share subterms (a larger change in the solver, which the stories of M9 do not need).
+- Chose: 200 after trying 500 and 1,000: at 1,000 the 1,000-step chain failed again in `nnf`, because the depth of the recursion is half the bound times the frames of one level.
+- Chose: count the size with a loop (`runs.within`), since a recursive count fails on the input it is asked about. A test builds a predicate 5,000 deep.
+- Cost, said in the card: a guarded chain is exact for about 100 steps in a row; after that its steps lose facts, so a warning may appear where a more exact analysis would not give one, and none is missed. The time with the bound is still above linear (1.9 s at 1,000 steps), which is left as a stated limit.
+- Checked: the soundness test of C2 against the reference interpreter again with `RUN_CAP = 3`, so that many conditions are given up (29 to 38 conditions given up in each of three seeds, 461 to 729 facts checked; see `research/deep-chains.md`).
+## 2026-11-11 M9: US-40, replacing the control key and the ingest key
+
+- Chose: the story says "a stop in the middle leaves exactly one key working". Read as: after the look that the core makes when it starts (or on request) exactly one key works. Before that look both work, on purpose: a send that is under way with the old key must be able to end, and a core that cannot tell whether the service heard the new key cannot take one away. Said so in the spec instead of promising an instant that no protocol can give.
+- Chose: the record is in the registry row and the service is asked. The core writes the intent first, the service is told, the row ends last. `recover` asks the service whether it knows the new key: yes, finish; no, take back. Both ends leave one key. The first plan, to keep a journal of calls as the handover does, was not needed: the service can say what it holds.
+- Chose: the control key is rotated with a second user (`control.next`) beside the first, and one call, `settle`, makes the key the caller holds the only one. The same call is the rollback when the old key makes it. That is why a rotation can be repeated from any point.
+- Chose: the ingest key is given to the service and kept in its database; the stored key wins over its environment, or a restart would go back to a key the core refuses. `http_send` takes a function for the key, read at every send, so the first send after the change already uses it.
+- Chose: the core makes the key (`config.new_token`), the admin never types it, and it is not shown: it is not needed by anyone but the two sides.
+- Not done: the key that starts runs and the title keys. They are shown to the person who deploys, so changing them is a decision of that person, and a new deployment does it. Said in the spec.
+- Found: the permission `handover:control` is reused for the routes of the service (only the control key holds it); a new permission would have changed the table of section 3 for no new reader.
+- Found while testing: the unique hash of a user stops the swap of the two control users in one update; the next user is removed first, in one transaction with the move.
+- Measured by mutation (the stop at every call is the test): recovery that always completes, 2 tests fail; settle that does not move the key, 7; the core that takes only the current ingest hash, 1; ingest recovery that always completes, 2.
+
+## 2026-11-11 M9: US-41, the plan of a published version is compiled once for a process
+
+- The story is worded as "listing runs does not compile a plan for each run", and that was done in M6 (the list reads the status from the events). What remained is the report, the graph and the start of a run, which still compile. Measured those and kept the wording of the story in the matrix.
+- Chose: the rule for keeping the cache was written before the measurement (a report at least twice as fast, nothing slower). The result met it (2.4x to 2.8x), so it stays; if it had not, the cache would have been taken out and the note written all the same.
+- Chose: the key is `(workflow, number, text, catalogue snapshot)`, not the number alone. The plan of a published version cannot change, so the number would do, but with the text in the key a cache can never give the plan of another text, whatever happens to a database file. A draft is not kept.
+- Chose: the cache is held by the `Registry`, not by a global and not by the app: the places that build a `WorkflowService` (routes, the pool, resume, expiry) already have the registry, the plans depend on the registry's actions and signatures, and two apps in one test process get two caches.
+- Found while measuring: the first version of the benchmark measured the list after the start of runs that the cache-off pass had made, so the list seemed 30% slower with the cache. Two databases with 50 runs each, one for each pass, show the list unchanged. The table is from the fair one.
+- Measured by mutation: a draft that is kept, 1 test fails; a key of the name only, 1 fails; no move to the end on a hit, 1 fails.
+
+## 2026-11-11 M9: US-42, the lists follow the server
+
+- Chose: polling, not a push. A push (server-sent events, a websocket) needs a channel that stays open for each page, and the one reader of the list is a person with a tab; a request every 4 seconds from one visible tab costs less than a connection that the app has to keep, count and close. The period is 4 s, not 5: a change waits one period and one answer.
+- Chose: the poller asks only while its view is shown and the tab is visible, asks at once when the tab comes back, and does not start a round while one is under way. The three conditions of the story ("within 5 s", "no request while hidden") are three tests.
+- Chose: a refresh that the person did not ask for never empties the table when the server does not answer; a refresh that the person asked for does, as before. A 401 ends the refresh, because a page without a token would ask every 4 seconds for ever.
+- Found while testing: the sync API of Playwright delivers the events of a page only while a call into Playwright waits, not during `time.sleep`. The first version of the test for the hidden tab slept, got an empty list of requests, and passed for the wrong reason. They wait with `page.wait_for_timeout` now, and each of three faults (no check of visibility, no stop when another view is shown, no stop at a 401) fails its own test, which is how I know the empty lists are real.
+- Chose: the Services view follows too, since the status that US-37 made (`unreachable`) is what a person waits to see change there. The sources of the Runs view are not refreshed by the poller (they would move under the hand that is choosing).
+- Not done: a mark on a row that changed since the last round. The story does not ask for it.

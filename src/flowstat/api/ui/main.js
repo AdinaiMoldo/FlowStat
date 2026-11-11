@@ -243,8 +243,18 @@ function goTo(view) {
     $(`tab-${name}`).setAttribute("aria-selected", String(name === view));
   }
   document.body.dataset.view = view;
-  if (view === "runs") state.ops.loadRuns();
-  if (view === "services") state.ops.loadServices();
+  if (view === "runs") {
+    state.ops.loadRuns();
+    state.ops.live.start();
+  } else {
+    state.ops.live.stop();
+  }
+  if (view === "services") {
+    state.ops.loadServices();
+    state.ops.liveServices.start();
+  } else {
+    state.ops.liveServices.stop();
+  }
   if (view === "migration") state.migration.load();
   if (view === "statistics") state.statistics.load();
 }

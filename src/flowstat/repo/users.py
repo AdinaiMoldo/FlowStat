@@ -53,6 +53,29 @@ class UserStore:
         ).fetchone()
         return None if row is None else _user(row)
 
+    def hash_of(self, name: str) -> str | None:
+        """The token hash of a user (the service compares it with the key the core announces)."""
+        row = self.db.execute("SELECT token_hash FROM users WHERE name = ?", (name,)).fetchone()
+        return None if row is None else str(row[0])
+
+    def exists(self, name: str) -> bool:
+        return self.hash_of(name) is not None
+
+    def replace_token(self, name: str, token_hash: str) -> None:
+        """Give ``name`` another token hash. Raises ``UserExistsError`` when another user has it."""
+        try:
+            cursor = self.db.execute(
+                "UPDATE users SET token_hash = ?, disabled = 0 WHERE name = ?", (token_hash, name)
+            )
+        except sqlite3.IntegrityError:
+            raise UserExistsError("another user already has this token") from None
+        if cursor.rowcount == 0:
+            raise UserNotFoundError(f"there is no user '{name}'")
+
+    def remove(self, name: str) -> None:
+        """Delete a user (only the key of a rotation that did not happen is removed this way)."""
+        self.db.execute("DELETE FROM users WHERE name = ?", (name,))
+
     def disable(self, name: str) -> None:
         cursor = self.db.execute("UPDATE users SET disabled = 1 WHERE name = ?", (name,))
         if cursor.rowcount == 0:

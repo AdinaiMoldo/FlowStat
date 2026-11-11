@@ -223,3 +223,16 @@ def test_a_fourth_key_is_made_its_hash_goes_into_the_bundle_and_the_core_keeps_t
     assert calls.controls == [hash_token(keys.control_key)]
     assert row.control_key == keys.control_key  # the core has to present it, so it is kept
     assert service.get("d-1").control_key == keys.control_key
+
+
+def test_a_service_is_started_with_the_hosts_the_core_allows(tmp_path: Path) -> None:
+    service, launcher, _ = make(tmp_path)
+    service.allowed_hosts = frozenset({"b.kg", "a.kg"})
+    deploy(service)
+    assert launcher.envs[0]["FLOWSTAT_ALLOWED_HOSTS"] == "a.kg,b.kg"
+
+
+def test_without_a_list_the_service_gets_none(tmp_path: Path) -> None:
+    service, launcher, _ = make(tmp_path)
+    deploy(service)
+    assert "FLOWSTAT_ALLOWED_HOSTS" not in launcher.envs[0]

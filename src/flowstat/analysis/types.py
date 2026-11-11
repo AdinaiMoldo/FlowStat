@@ -31,6 +31,7 @@ from flowstat.dsl.ast import (
     Unary,
 )
 from flowstat.model.diagnostics import Diagnostic, Severity
+from flowstat.model.hosts import leading_host
 
 
 # -- the types ---------------------------------------------------------------------------------
@@ -266,6 +267,8 @@ class _Checker:
         given: set[str] = set()
         for name, parts in step.with_:
             given.add(name)
+            if name == "url" and sig is not None and sig.hosts is not None:
+                self.check_host(parts, sig.hosts, step)
             t = self.argument_type(parts, step)
             if sig is None:
                 continue
@@ -294,6 +297,18 @@ class _Checker:
                         step,
                         "E-TYPE-003",
                     )
+
+    def check_host(self, parts: tuple[object, ...], hosts: frozenset[str], step: PlanStep) -> None:
+        """A constant url must name a host of the list (US-39). A host that a reference builds is
+        decided when the call is made."""
+        host = leading_host(parts)
+        if host is not None and host not in hosts:
+            self.error(
+                f"{step.action} may not call the host '{host}': the hosts allowed here are "
+                f"{', '.join(sorted(hosts))}",
+                step,
+                "E-TYPE-007",
+            )
 
     def expected(self, sig: ActionSignature, name: str) -> Type | None:
         text = sig.params.get(name) or sig.optional.get(name)

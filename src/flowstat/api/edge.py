@@ -67,7 +67,9 @@ def real_config(
     )
 
 
-def http_send(base_url: str, key: str, deployment_id: str, timeout: float = 10.0) -> Send:
+def http_send(
+    base_url: str, key: str | Callable[[], str], deployment_id: str, timeout: float = 10.0
+) -> Send:
     """A ``send`` for the outbox: POST the batch to the core with the ingest key.
 
     Any answer of the core is a ``Reply``; no answer (the core is down, the connection broke, the
@@ -79,7 +81,10 @@ def http_send(base_url: str, key: str, deployment_id: str, timeout: float = 10.0
         request = urllib.request.Request(
             url,
             data=json.dumps(payload).encode("utf8"),
-            headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"},
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {key() if callable(key) else key}",
+            },
             method="POST",
         )
         try:

@@ -12,11 +12,13 @@ from dataclasses import replace
 from flowstat.actions.base import ActionContext, ActionError, ActionSpec
 from flowstat.actions.database import delete_batch, write_rows
 from flowstat.actions.email import send_email
-from flowstat.actions.http import call as http_call
+from flowstat.actions.http import calling as http_calling
 from flowstat.actions.statguard import validate
 from flowstat.actions.stats import aggregate
 from flowstat.actions.xlsx import read_form
 from flowstat.analysis.signatures import ActionSignature, Choices, Signatures
+from flowstat.compiler.cache import PlanCache
+from flowstat.compiler.plan import Plan
 from flowstat.engine.runner import Error, Executor, Ok, Outcome, Pause
 from flowstat.engine.scheduler import Start
 
@@ -46,8 +48,11 @@ def _fits(value: object, expected: type) -> bool:
 
 
 class Registry:
-    def __init__(self, specs: Iterable[ActionSpec]) -> None:
+    def __init__(self, specs: Iterable[ActionSpec], plan_cache_size: int = 64) -> None:
         self._specs = {s.name: s for s in specs}
+        # The plans compiled against this registry (its actions and their signatures), kept for
+        # the process that holds it: the services that are built for a request take it from here.
+        self.plans: PlanCache[Plan] = PlanCache(plan_cache_size)
 
     def names(self) -> frozenset[str]:
         return frozenset(self._specs)
@@ -70,6 +75,7 @@ class Registry:
                 optional,
                 outputs,
                 spec.effect,
+                spec.hosts,
             )
         return out
 
@@ -120,7 +126,9 @@ class Registry:
         return execute
 
 
-def default_registry() -> Registry:
+def default_registry(hosts: frozenset[str] | None = None) -> Registry:
+    """The actions of the engine. ``hosts`` is the list of hosts ``http.call`` may reach (US-39);
+    None: any host."""
     rows = "list<row>"
     return Registry(
         [
@@ -174,10 +182,11 @@ def default_registry() -> Registry:
                 "http.call",
                 {"url": str},
                 {"status": int},
-                http_call,
+                http_calling(hosts),
                 idempotent=True,
                 optional={"method": "string", "body": "any", "timeout": "float"},
                 effect=True,
+                hosts=hosts,
             ),
             # the outbox keeps one row per key, but a real mail server would send twice
             ActionSpec(

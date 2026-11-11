@@ -15,6 +15,7 @@ from typing import Protocol
 
 from flowstat.analysis.signatures import Signatures
 from flowstat.compiler.plan import Plan
+from flowstat.model.hosts import ALLOWED_HOSTS
 from flowstat.model.versions import Version, VersionStatus
 from flowstat.repo.deployments import KINDS, Deployment, DeploymentStore
 from flowstat.repo.runs import RunStore
@@ -121,6 +122,7 @@ class DeploymentService:
         launchers: Mapping[str, Launcher],
         root: Path,
         ingest_url: str | None = None,
+        allowed_hosts: frozenset[str] | None = None,
     ) -> None:
         self.store = DeploymentStore(db)
         self.runs = RunStore(db)
@@ -129,6 +131,7 @@ class DeploymentService:
         self.launchers = launchers
         self.root = root
         self.ingest_url = ingest_url  # where services ship their runs; None: they do not
+        self.allowed_hosts = allowed_hosts  # given to each service, so it calls the same hosts
 
     def deploy(
         self,
@@ -180,6 +183,8 @@ class DeploymentService:
             if self.ingest_url
             else {}
         )
+        if self.allowed_hosts is not None:
+            env = {**env, ALLOWED_HOSTS: ",".join(sorted(self.allowed_hosts))}
         try:
             running = launcher.start(bundle, env)
         except LaunchError as error:

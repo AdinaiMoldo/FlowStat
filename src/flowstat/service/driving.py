@@ -25,6 +25,7 @@ class Machine:
     workers: int  # steps of one run that may run at the same time
     clock: Callable[[], float]
     sleep: Callable[[float], None]
+    hosts: frozenset[str] | None = None  # the hosts http.call may reach (US-39); None: any
 
 
 def drive(
@@ -44,7 +45,7 @@ def drive(
 
     run_threaded(
         launch.scheduler,
-        default_registry().executor(base),
+        default_registry(machine.hosts).executor(base),
         machine.clock,
         machine.sleep,
         answer,

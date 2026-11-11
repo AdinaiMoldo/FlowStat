@@ -20,7 +20,7 @@ import uvicorn
 from fastapi import Depends, FastAPI, Request
 
 from flowstat.actions.registry import default_registry
-from flowstat.api import errors, handover, runs
+from flowstat.api import errors, handover, keys, runs
 from flowstat.api.config import AppConfig
 from flowstat.api.deps import get_runs, get_workflows
 from flowstat.api.edge import RunPool, Shipper, http_send, real_config
@@ -39,17 +39,18 @@ from flowstat.api.models import (
 from flowstat.api.resuming import resume_on_start
 from flowstat.api.runs import plain
 from flowstat.api.secured import SecuredRouter
+from flowstat.model.hosts import hosts_from
 from flowstat.model.versions import Version, VersionStatus
-from flowstat.repo.db import open_database
+from flowstat.repo.db import connect, open_database
 from flowstat.repo.users import UserExistsError, UserStore
 from flowstat.repo.versions import VersionNotFoundError, VersionStore
 from flowstat.service.bundle import Bundle, BundleError, read_bundle
 from flowstat.service.deployments import DEPLOYMENT_ID, INGEST_KEY, INGEST_URL
+from flowstat.service.keys import CONTROL, ServiceKeys
 from flowstat.service.runs import RunService
 from flowstat.service.workflows import WorkflowService
 
 KEY_OWNER = "service"  # the user of the key that starts runs: an operator with no title
-CONTROL = "control"  # the user of the key the core presents to move runs in and out
 APPROVER = "approver."  # + a title: the user of the key that answers the approvals of that title
 
 router = SecuredRouter(tags=["service"])
@@ -179,13 +180,14 @@ def create_service_app(config: AppConfig, bundle: Bundle) -> FastAPI:
     )
     app.state.config = config
     app.state.bundle = bundle
-    app.state.registry = default_registry()
+    app.state.registry = default_registry(config.allowed_hosts)
     app.state.locks = RunLocks()
     errors.install(app)
     app.include_router(router)
     app.include_router(listing)
     app.include_router(runs.shared)
     app.include_router(handover.router)
+    app.include_router(keys.router)
     resume_on_start(config, app.state.registry, app.state.locks)
     expire_due(config, app.state.registry, app.state.locks)
     return app
@@ -215,7 +217,16 @@ def shipper_from(env: Mapping[str, str], db_path: str) -> Shipper | None:
     url, key, who = env.get(INGEST_URL), env.get(INGEST_KEY), env.get(DEPLOYMENT_ID)
     if not (url and key and who):
         return None
-    return Shipper(db_path, http_send(url, key, who))
+
+    def current_key() -> str:
+        """The key the core gave last, which survives a restart, else the one of the environment."""
+        db = connect(db_path)
+        try:
+            return ServiceKeys(db, key).ingest_key() or key
+        finally:
+            db.close()
+
+    return Shipper(db_path, http_send(url, current_key, who))
 
 
 def main(
@@ -234,13 +245,16 @@ def main(
     config = real_config(
         str(root / "service.db"), root / "data", str(root / "target.db"), args.workers, pool, root
     )
+    config = replace(config, allowed_hosts=hosts_from(os.environ if env is None else env))
     try:
         app = create_service_app(replace(config), bundle)
     except BundleError as error:
         print(f"the bundle is not usable: {error}", file=sys.stderr)
         return 2
     run = serve or (lambda a, host, port: uvicorn.run(a, host=host, port=port))
-    shipper = shipper_from(os.environ if env is None else env, config.db_path)
+    environment = os.environ if env is None else env
+    app.state.env_ingest_key = environment.get(INGEST_KEY)
+    shipper = shipper_from(environment, config.db_path)
     if shipper is not None:
         shipper.start()
     ticker = start_expiry(app, config, args.expire_interval)
