@@ -2,7 +2,7 @@
 
 This is the edge: it reads the real clock, makes identifiers and owns the pool that drives runs and
 the launchers of deployments. When the server stops it waits for the runs in flight for a limit;
-the runs that are still going stay in their log as they are, and ``flowstat resume`` takes them up
+the runs that are still going stay in their log as they are, and the next start takes them up
 (docs/api-spec.md section 5). Services that were deployed keep running; they are separate processes.
 """
 
@@ -69,7 +69,7 @@ def main(
         left = pool.stop(args.stop_limit)
         if left:
             print(
-                f"{left} run(s) were still going; take them up with 'flowstat resume'",
+                f"{left} run(s) were still going; the next start takes them up",
                 file=sys.stderr,
             )
     return 0

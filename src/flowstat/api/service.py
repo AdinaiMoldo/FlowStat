@@ -35,6 +35,7 @@ from flowstat.api.models import (
     Started,
     StartIn,
 )
+from flowstat.api.resuming import resume_on_start
 from flowstat.api.runs import plain
 from flowstat.api.secured import SecuredRouter
 from flowstat.model.versions import Version, VersionStatus
@@ -184,6 +185,7 @@ def create_service_app(config: AppConfig, bundle: Bundle) -> FastAPI:
     app.include_router(listing)
     app.include_router(runs.shared)
     app.include_router(handover.router)
+    resume_on_start(config, app.state.registry, app.state.locks)
     return app
 
 
@@ -241,7 +243,7 @@ def main(
             print("the last events were not shipped to the core", file=sys.stderr)
         if left:
             print(
-                f"{left} run(s) were still going; take them up with 'flowstat resume'",
+                f"{left} run(s) were still going; the next start takes them up",
                 file=sys.stderr,
             )
     return 0
