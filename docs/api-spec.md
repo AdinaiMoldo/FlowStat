@@ -133,8 +133,17 @@ the user (`by`), not with the role string. The same checks 1 and 2
 are used by the command line (`--decision`), which until now accepted two fixed words whatever the
 step declared; the command line is the operator of the machine, so it asks for no title.
 
-A stopped app leaves its unfinished runs as they are in the log. They are taken up by `flowstat
-resume`; resuming every unfinished run at start is M8.
+A stopped app leaves its unfinished runs as they are in the log. **A process that starts takes up
+the runs it owns** (US-36, M9): after the moves left in the journal are finished, every run of its
+own database whose status is `CREATED` (stored, never started), `RUNNING` or `COMPENSATING` is
+rebuilt from its history and driven on the pool, oldest first, with no command from anyone. A step
+that was running is run again with its key when its action is idempotent and is `UNCERTAIN` when it
+is not (dsl-spec 5.5); a finished step stays finished. A run that is `WAITING` (an approval, or a
+step only a person can resolve) is not touched: its answer comes by the route. Only runs the store
+owns are taken up: not one that is `MIGRATING` or `MIGRATED_OUT` (section 10), and not the core's
+copy of a run that a service drives (its `origin` is that service, which takes up its own at its
+own start). The lock of a run keeps an answer that arrives at the same moment from driving it twice
+(409). `flowstat resume` stays for the command line, which has no server.
 
 ## 6. Workflows and the catalogue
 
@@ -214,8 +223,9 @@ key, `ingest_key`; it is passed to the service by environment and its hash is in
 
 User management endpoints; passwords and a login page; TLS (terminate it in front of the server,
 which matters more now that services send a key over the network); CORS (not needed, see section 9);
-rate limiting; token and key rotation; resuming runs when the app starts (M8); the epoch fence and
-migration (M8); a health probe of the services from the registry (M8); a live refresh of the run list;
+rate limiting; token and key rotation (US-40); resuming runs when the app starts (done in US-36); the
+epoch fence and migration (done in M8); a health probe of the services from the registry (US-37); a
+live refresh of the run list (US-42);
 more than one core process (the database is SQLite).
 
 ## 9. M7: the editor, the graph, completion and the events of services
