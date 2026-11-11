@@ -250,3 +250,72 @@ Function A5 · 3 SP · Could
 Given a chain of two steps whose guards exclude each other, and a shorter chain that can run, when one worker is free, then the step that opens the shorter chain starts first. The plain longest path would start the other
 
 Function C3 · 5 SP · Should
+
+### US-36: As an operator, a run that was unfinished when a process stopped goes on when the process starts
+
+Given a core or a service that stopped with runs unfinished (a step running, an approval waiting), when the process starts, then every run it owns is resumed from its history without a command: an idempotent step is run again with its key, a non-idempotent step that was running is UNCERTAIN, a waiting approval stays waiting. A run that is MIGRATING or MIGRATED_OUT is not resumed, and two starts do not drive a run twice
+
+Function C4 · 5 SP · Should
+
+
+### US-37: As an admin, the registry shows whether a deployed service answers
+
+Given a deployed service whose process is killed, when the core probes it, then the registry says it does not answer within the probe interval; when it answers again, then the registry says running again. A probe never changes a deployment that was stopped on purpose
+
+Function A6 · 3 SP · Should
+
+
+### US-38: As a designer, I give an approval a time limit
+
+Given a step that waits for a person and has `timeout: 3600`, when 3600 seconds of the run's clock pass without an answer, then the step fails with its own code and its `on_failure` applies. Given the process restarts after the limit, then the step still fails (the limit is measured from the recorded time of the wait). Given `timeout` on a step that does not wait, then the designer gets a diagnostic at save
+
+Function C3 · 8 SP · Should
+
+
+### US-39: As an admin, I limit the hosts that `http.call` may reach
+
+Given a list of allowed hosts, when a step calls another host, then it fails permanently before anything is sent. Given a workflow whose constant URL names a host outside the list, then the designer gets a diagnostic at save. Given no list, then nothing changes
+
+Function B6 · 3 SP · Should
+
+
+### US-40: As an admin, I replace the key of a deployment without stopping it
+
+Given a deployed service, when I rotate its control key (or its ingest key), then the new key works and the old one is refused after the switch. Given a stop in the middle of the rotation, then exactly one key works after restart
+
+Function A3 · 5 SP · Should
+
+
+### US-41: As a user of the API, listing runs does not compile a plan for each run
+
+Given a published version and 100 runs of it, when the runs are listed, then the plan of the version is compiled once. The cost per run before and after is measured and written down
+
+Function B4 · 3 SP · Could
+
+
+### US-42: As an operator, the lists of runs and services update by themselves
+
+Given the Runs page is open, when a run changes, then the table shows it within 5 seconds without a click, and the page asks no more while its tab is hidden
+
+Function B2 · 2 SP · Could
+
+
+### DOC-7: As the author, I assemble the final report from the repository
+
+Given the repository, when the check of the report runs, then every story and every NFR has a row in the traceability matrix with evidence or the reason it has none, the burndown and the velocity chart are made from the backlog, the coverage of each of the C1-C6 packages is at least 90%, and the negative check is filled
+
+Function DOC · 5 SP · Must
+
+
+### DOC-8: As a reader, I see the structure of the system in diagrams
+
+Given the diagram sources, when they are rendered, then use case, context, class, component and deployment diagrams exist without error, and every class in the class diagram exists in the code
+
+Function DOC · 5 SP · Must
+
+
+### DOC-9: As a reader, I see the behaviour of the system in diagrams
+
+Given the diagram sources, when they are rendered, then the state machines of step, run and ownership have exactly the states of the code, and each of C1 to C6 has an activity and a sequence diagram that follow its card
+
+Function DOC · 8 SP · Must

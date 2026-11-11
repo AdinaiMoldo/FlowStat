@@ -313,5 +313,95 @@
     "sp": 5,
     "priority": "Should",
     "milestone": "M5"
+  },
+  {
+    "id": "US-36",
+    "story": "As an operator, a run that was unfinished when a process stopped goes on when the process starts",
+    "criteria": "Given a core or a service that stopped with runs unfinished (a step running, an approval waiting), when the process starts, then every run it owns is resumed from its history without a command: an idempotent step is run again with its key, a non-idempotent step that was running is UNCERTAIN, a waiting approval stays waiting. A run that is MIGRATING or MIGRATED_OUT is not resumed, and two starts do not drive a run twice",
+    "function": "C4",
+    "sp": 5,
+    "priority": "Should",
+    "milestone": "M9"
+  },
+  {
+    "id": "US-37",
+    "story": "As an admin, the registry shows whether a deployed service answers",
+    "criteria": "Given a deployed service whose process is killed, when the core probes it, then the registry says it does not answer within the probe interval; when it answers again, then the registry says running again. A probe never changes a deployment that was stopped on purpose",
+    "function": "A6",
+    "sp": 3,
+    "priority": "Should",
+    "milestone": "M9"
+  },
+  {
+    "id": "US-38",
+    "story": "As a designer, I give an approval a time limit",
+    "criteria": "Given a step that waits for a person and has `timeout: 3600`, when 3600 seconds of the run's clock pass without an answer, then the step fails with its own code and its `on_failure` applies. Given the process restarts after the limit, then the step still fails (the limit is measured from the recorded time of the wait). Given `timeout` on a step that does not wait, then the designer gets a diagnostic at save",
+    "function": "C3",
+    "sp": 8,
+    "priority": "Should",
+    "milestone": "M9"
+  },
+  {
+    "id": "US-39",
+    "story": "As an admin, I limit the hosts that `http.call` may reach",
+    "criteria": "Given a list of allowed hosts, when a step calls another host, then it fails permanently before anything is sent. Given a workflow whose constant URL names a host outside the list, then the designer gets a diagnostic at save. Given no list, then nothing changes",
+    "function": "B6",
+    "sp": 3,
+    "priority": "Should",
+    "milestone": "M9"
+  },
+  {
+    "id": "US-40",
+    "story": "As an admin, I replace the key of a deployment without stopping it",
+    "criteria": "Given a deployed service, when I rotate its control key (or its ingest key), then the new key works and the old one is refused after the switch. Given a stop in the middle of the rotation, then exactly one key works after restart",
+    "function": "A3",
+    "sp": 5,
+    "priority": "Should",
+    "milestone": "M9"
+  },
+  {
+    "id": "US-41",
+    "story": "As a user of the API, listing runs does not compile a plan for each run",
+    "criteria": "Given a published version and 100 runs of it, when the runs are listed, then the plan of the version is compiled once. The cost per run before and after is measured and written down",
+    "function": "B4",
+    "sp": 3,
+    "priority": "Could",
+    "milestone": "M9"
+  },
+  {
+    "id": "US-42",
+    "story": "As an operator, the lists of runs and services update by themselves",
+    "criteria": "Given the Runs page is open, when a run changes, then the table shows it within 5 seconds without a click, and the page asks no more while its tab is hidden",
+    "function": "B2",
+    "sp": 2,
+    "priority": "Could",
+    "milestone": "M9"
+  },
+  {
+    "id": "DOC-7",
+    "story": "As the author, I assemble the final report from the repository",
+    "criteria": "Given the repository, when the check of the report runs, then every story and every NFR has a row in the traceability matrix with evidence or the reason it has none, the burndown and the velocity chart are made from the backlog, the coverage of each of the C1-C6 packages is at least 90%, and the negative check is filled",
+    "function": "DOC",
+    "sp": 5,
+    "priority": "Must",
+    "milestone": "M9"
+  },
+  {
+    "id": "DOC-8",
+    "story": "As a reader, I see the structure of the system in diagrams",
+    "criteria": "Given the diagram sources, when they are rendered, then use case, context, class, component and deployment diagrams exist without error, and every class in the class diagram exists in the code",
+    "function": "DOC",
+    "sp": 5,
+    "priority": "Must",
+    "milestone": "M9"
+  },
+  {
+    "id": "DOC-9",
+    "story": "As a reader, I see the behaviour of the system in diagrams",
+    "criteria": "Given the diagram sources, when they are rendered, then the state machines of step, run and ownership have exactly the states of the code, and each of C1 to C6 has an activity and a sequence diagram that follow its card",
+    "function": "DOC",
+    "sp": 8,
+    "priority": "Must",
+    "milestone": "M9"
   }
 ]

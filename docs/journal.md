@@ -338,3 +338,12 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Chose: `cancelled` is its own count in the statistics, so that `finished` is the sum of the outcomes and a cancelled run is neither a success nor a failure.
 - Found by CI after the second story: three mypy errors that only the project's own interpreter shows. The `mypy` on the path of the sandbox is another installation; the check is `python -m mypy`.
 
+## 2026-11-11 M9: what the audit found
+
+- Found: there are no diagrams. The Playbook says a diagram is born with the code, `diagrams/README.md` lists what was planned for each increment, and the folder holds only that README. Not planned away: missed. Chose to draw them in M9, last among the code stories, and to make a test compare the states of a state machine with the enumerations so that a diagram cannot drift from the code a second time.
+- Found: the traceability matrix covers three NFRs of nine and keys the last five stories by function. DOC-7 rebuilds it by requirement.
+- Chose: DOC-1 to DOC-6 are the review and the retrospective of M1 to M8, not counted again; DOC-7 stays; DOC-8 and DOC-9 are new (diagrams), sized 5 and 8 SP, with the reason above.
+- Chose: a store resumes the runs it owns, nothing else. This answers the question M8 left (which of several processes resumes which run) with the table of ownership, and makes US-36 a small story.
+- Chose: the time limit of a waiting step is measured from the recorded time of the wait and judged by the clock that is passed in, as every other time in the engine. A limit from the clock of the process would make a restart reset it.
+- Not done by the author alone: NFR-06 (usability with a colleague). The matrix will say `not verified` and the exercise is prepared; no result is written for it.
+
