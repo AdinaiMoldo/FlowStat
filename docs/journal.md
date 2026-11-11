@@ -387,3 +387,13 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Found: a redirect with 307 on POST is not followed by `urllib` at all (it raises), so the redirect test uses 302, which becomes a GET.
 - Not covered, and said in the spec: a name that resolves to an address inside the network, and wildcards.
 - Measured by mutation: no redirect handler, 1 test fails; `netloc` for `hostname`, 8 fail; the check before sending removed, 3 fail.
+
+## 2026-11-11 M9: US-43, a long chain of guarded steps is analysed
+
+- Found: while preparing the NFR-01 row of the report the analyses of M5 were run on the chain of the compile benchmark. At 500 steps `bounds` raised `RecursionError` (so a save of the draft through the API would have ended in an internal error), and below that the time grew faster than the length. The compiler was not the cause; no earlier benchmark had put a long guarded chain through C2.
+- Chose: a story of its own (US-43, 3 SP, M9 now 50 SP) and not a change inside DOC-7, because it changes a C function and needs its tests, its card and its measurement.
+- Chose: bound the size of a run condition (`RUN_CAP`, 200 nodes) and give a larger one up as an opaque atom, the way `_quorum` already gives up a quorum over 64 combinations. The other ways were to make `nnf` and `bounds` iterative (the conditions would still be quadratic in size and the time stays bad) and to share subterms (a larger change in the solver, which the stories of M9 do not need).
+- Chose: 200 after trying 500 and 1,000: at 1,000 the 1,000-step chain failed again in `nnf`, because the depth of the recursion is half the bound times the frames of one level.
+- Chose: count the size with a loop (`runs.within`), since a recursive count fails on the input it is asked about. A test builds a predicate 5,000 deep.
+- Cost, said in the card: a guarded chain is exact for about 100 steps in a row; after that its steps lose facts, so a warning may appear where a more exact analysis would not give one, and none is missed. The time with the bound is still above linear (1.9 s at 1,000 steps), which is left as a stated limit.
+- Checked: the soundness test of C2 against the reference interpreter again with `RUN_CAP = 3`, so that many conditions are given up (29 to 38 conditions given up in each of three seeds, 461 to 729 facts checked; see `research/deep-chains.md`).
