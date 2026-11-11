@@ -24,6 +24,7 @@ from flowstat.api import errors, handover, runs
 from flowstat.api.config import AppConfig
 from flowstat.api.deps import get_runs, get_workflows
 from flowstat.api.edge import RunPool, Shipper, http_send, real_config
+from flowstat.api.expiring import expire_due, start_expiry
 from flowstat.api.locks import RunLocks
 from flowstat.api.models import (
     InputOut,
@@ -184,6 +185,7 @@ def create_service_app(config: AppConfig, bundle: Bundle) -> FastAPI:
     app.include_router(listing)
     app.include_router(runs.shared)
     app.include_router(handover.router)
+    expire_due(config, app.state.registry, app.state.locks)
     return app
 
 
@@ -197,6 +199,12 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--workers", type=int, default=4, help="steps of one run at the same time")
     parser.add_argument("--max-runs", type=int, default=4, help="runs driven at the same time")
     parser.add_argument("--stop-limit", type=float, default=30.0, help="seconds to wait at stop")
+    parser.add_argument(
+        "--expire-interval",
+        type=float,
+        default=5.0,
+        help="seconds between looks for waiting steps that ran out of time (0: only at start)",
+    )
     return parser
 
 
@@ -233,9 +241,12 @@ def main(
     shipper = shipper_from(os.environ if env is None else env, config.db_path)
     if shipper is not None:
         shipper.start()
+    ticker = start_expiry(app, config, args.expire_interval)
     try:
         run(app, args.host, args.port)
     finally:
+        if ticker is not None:
+            ticker.stop(args.stop_limit)
         left = pool.stop(args.stop_limit)
         if shipper is not None and not shipper.stop(args.stop_limit):
             print("the last events were not shipped to the core", file=sys.stderr)

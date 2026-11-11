@@ -46,6 +46,7 @@ Command = Start | Cancel
 CompensationPlanner = Callable[[Plan, Collection[str]], Mapping[str, frozenset[str]]]
 
 # What an undo gets when its step declares no retry: three retries, exponential, from 1 second.
+TIMEOUT_CODE = "E-RUN-009"  # a waiting step ran out of time (US-38)
 DEFAULT_UNDO_RETRY = RetrySpec(3, "exponential", 1.0)
 
 _FAILED_LIKE = frozenset({StepState.FAILED, StepState.UPSTREAM_FAILED, StepState.CANCELLED})
@@ -123,6 +124,7 @@ class Scheduler:
         self._queue: deque[int] = deque()
         self._running: set[int] = set()
         self._waiting: set[int] = set()
+        self._waiting_since: dict[int, float] = {}  # when the step went to WAITING (recorded)
         self._attempt = [1] * n  # the attempt that is running (or ran last) for each step
         self._args: list[dict[str, object]] = [{} for _ in range(n)]  # as rendered at dispatch
         self._commands: list[Command] = []
@@ -158,6 +160,20 @@ class Scheduler:
         """Steps that wait for an answer, in the order of the plan."""
         return [s.id for s in self.plan.steps if self.states[s.id] is StepState.WAITING]
 
+    def deadlines(self) -> dict[str, float]:
+        """The time at which each waiting step that has a ``timeout`` runs out, in plan order.
+
+        The deadline is the recorded time of the wait plus the limit, so it is the same after a
+        restore, whatever time the restore is made at (US-38).
+        """
+        return {
+            step.id: self._waiting_since[i] + step.timeout
+            for i, step in enumerate(self.plan.steps)
+            if step.timeout is not None
+            and self.states[step.id] is StepState.WAITING
+            and i in self._waiting_since
+        }
+
     def arguments(self, step_id: str) -> dict[str, object]:
         """The arguments the step was given when it started (as recorded outputs render them)."""
         return dict(self._args[self._index[step_id]])
@@ -185,6 +201,22 @@ class Scheduler:
         if i is None or self.states[step_id] is not StepState.WAITING:
             return []
         return self._complete(i, output, now)
+
+    def expire(self, now: float) -> list[Command]:
+        """Fail every waiting step whose time ran out by ``now``, in plan order.
+
+        The failure is recorded at ``now``, the time it was noticed, not at the deadline: the
+        history says when the run learnt it, and a process that was down for an hour does not
+        write events in the past. The step fails like any step (its ``on_failure`` applies) and
+        is never retried; an answer that comes after it is ignored.
+        """
+        commands: list[Command] = []
+        for step_id, deadline in self.deadlines().items():
+            if deadline <= now and self.states[step_id] is StepState.WAITING:
+                limit = self.plan.steps[self._index[step_id]].timeout
+                message = f"nobody answered within {limit:g} seconds"
+                commands += self.step_failed(step_id, TIMEOUT_CODE, message, now)
+        return commands
 
     def step_failed(
         self, step_id: str, code: str, message: str, now: float, transient: bool = False
@@ -240,6 +272,7 @@ class Scheduler:
         self.states[step_id] = StepState.WAITING
         self._running.discard(i)
         self._waiting.add(i)
+        self._waiting_since[i] = now
         self._log(EventKind.STEP_WAITING, now, step=step_id)
         return self._advance(now)
 
@@ -340,6 +373,7 @@ class Scheduler:
                 ran.add(i)
             elif e.kind is EventKind.STEP_WAITING:
                 self.states[e.step or ""] = StepState.WAITING
+                self._waiting_since[i] = e.at
             elif e.kind is EventKind.STEP_RETRY and e.attempt is not None:
                 self._attempt[i] = e.attempt
             elif e.kind is EventKind.STEP_COMPENSATING:

@@ -256,6 +256,13 @@ class _Checker:
             if not isinstance(t, AnyT) and t != BOOL:
                 self.error(f"'{kind}' must be true or false, not {noun(t)}", expr)
         sig = self.signatures.get(step.action)
+        if step.timeout is not None and sig is not None and not sig.waits:
+            self.error(
+                f"the action {step.action} does not wait for a person, so the step has no "
+                "time to limit; 'timeout' is for steps such as approval.wait",
+                step,
+                "E-TYPE-006",
+            )
         given: set[str] = set()
         for name, parts in step.with_:
             given.add(name)

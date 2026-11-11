@@ -19,6 +19,7 @@ from fastapi import FastAPI
 
 from flowstat.api.app import create_app
 from flowstat.api.edge import RunPool, real_config
+from flowstat.api.expiring import start_expiry
 from flowstat.deploy.launchers import launchers_for
 from flowstat.deploy.package import build_bundle
 from flowstat.repo.db import open_database
@@ -40,6 +41,12 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--workers", type=int, default=4, help="steps of one run at the same time")
     parser.add_argument("--max-runs", type=int, default=4, help="runs driven at the same time")
     parser.add_argument("--stop-limit", type=float, default=30.0, help="seconds to wait at stop")
+    parser.add_argument(
+        "--expire-interval",
+        type=float,
+        default=5.0,
+        help="seconds between looks for waiting steps that ran out of time (0: only at start)",
+    )
     return parser
 
 
@@ -63,9 +70,12 @@ def main(
     )
     app = create_app(config)
     run = serve or (lambda a, host, port: uvicorn.run(a, host=host, port=port))
+    ticker = start_expiry(app, config, args.expire_interval)
     try:
         run(app, args.host, args.port)
     finally:
+        if ticker is not None:
+            ticker.stop(args.stop_limit)
         left = pool.stop(args.stop_limit)
         if left:
             print(

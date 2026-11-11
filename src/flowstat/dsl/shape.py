@@ -310,6 +310,7 @@ STEP_SHAPE = Map(
                 }
             )
         ),
+        "timeout": Key(Positive()),
         "compensate": Key(Str(_ACTION, hint="'package.name'")),
     }
 )

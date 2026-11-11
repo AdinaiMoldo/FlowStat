@@ -37,7 +37,18 @@ def test_levenshtein_is_symmetric_and_obeys_the_triangle_inequality() -> None:
         assert levenshtein(x, z) <= levenshtein(x, y) + levenshtein(y, z)
 
 
-KEYS = ["action", "with", "needs", "join", "when", "ensures", "foreach", "retry", "compensate"]
+KEYS = [
+    "action",
+    "with",
+    "needs",
+    "join",
+    "when",
+    "ensures",
+    "foreach",
+    "retry",
+    "timeout",
+    "compensate",
+]
 
 
 @pytest.mark.parametrize(
@@ -49,6 +60,7 @@ KEYS = ["action", "with", "needs", "join", "when", "ensures", "foreach", "retry"
         ("actoin", "action"),
         ("foreech", "foreach"),
         ("compensat", "compensate"),
+        ("timeot", "timeout"),
         ("zzzzzz", None),
         ("x", None),  # too short to guess
         ("", None),

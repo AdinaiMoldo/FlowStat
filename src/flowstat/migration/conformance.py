@@ -200,6 +200,9 @@ def _changed(old: PlanStep, new: PlanStep, state: StepState | None) -> list[str]
     # the failure policy of a step that failed has already been applied to the rest of the run
     if state is StepState.FAILED and old.on_failure != new.on_failure:
         what.append("on_failure")
+    # the time a waiting step has left was counted under its limit
+    if state is StepState.WAITING and old.timeout != new.timeout:
+        what.append("timeout")
     return what
 
 

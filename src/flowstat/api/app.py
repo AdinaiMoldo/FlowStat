@@ -9,7 +9,16 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from flowstat.actions.registry import default_registry
-from flowstat.api import deployments, errors, migrations, runs, statistics, ui, workflows
+from flowstat.api import (
+    deployments,
+    errors,
+    expiring,
+    migrations,
+    runs,
+    statistics,
+    ui,
+    workflows,
+)
 from flowstat.api.config import AppConfig
 from flowstat.api.locks import RunLocks
 
@@ -34,4 +43,5 @@ def create_app(config: AppConfig) -> FastAPI:
     app.include_router(statistics.router)
     ui.mount(app)
     migrations.recover_on_start(config, app.state.locks)
+    expiring.expire_due(config, app.state.registry, app.state.locks)
     return app

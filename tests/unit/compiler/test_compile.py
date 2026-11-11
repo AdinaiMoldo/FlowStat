@@ -322,6 +322,24 @@ def test_catalogue_errors() -> None:
     assert _catalogue_errors("regions: [{code: a}, {code: b}]\n") == []
 
 
+def test_a_step_without_a_time_limit_has_none() -> None:
+    assert all(step.timeout is None for step in compiled().steps)
+
+
+def test_the_time_limit_of_a_step_is_in_the_plan_and_in_every_instance_of_a_foreach() -> None:
+    text = EXAMPLE.replace(
+        "    with: {role: chief_statistician}\n",
+        "    with: {role: chief_statistician}\n    timeout: 172800\n",
+        1,
+    ).replace("  check:\n", "  check:\n    timeout: 90.5\n", 1)
+    result = compile_workflow(text, catalogue())
+    assert result.plan is not None
+    plan = result.plan
+    assert plan.step("approve").timeout == 172800.0
+    checks = [s for s in plan.steps if s.base == "check"]
+    assert len(checks) == 9 and {s.timeout for s in checks} == {90.5}
+
+
 def test_retry_delay_is_one_second_unless_given() -> None:
     assert compiled().step("publish").retry.delay == 1.0  # type: ignore[union-attr]
     text = EXAMPLE.replace("retry: {max: 3, backoff: exponential}", "retry: {max: 2, delay: 0.25}")

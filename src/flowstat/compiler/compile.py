@@ -409,6 +409,7 @@ def compile_workflow(
                     else (inst.binding[0], inst.binding[1]["code"]),
                     line=decl.pos.line,
                     column=decl.pos.column,
+                    timeout=decl.timeout,
                 )
             )
         plan = Plan(

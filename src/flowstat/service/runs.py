@@ -184,6 +184,11 @@ class RunService:
             raise StepNotFoundError(step)
         if state is not StepState.WAITING:
             raise StepNotWaitingError(f"{step} is {state.value}, not waiting for an answer")
+        deadline = scheduler.deadlines().get(step)
+        if deadline is not None and deadline <= now:  # the limit ran out; the next check fails it
+            raise StepNotWaitingError(
+                f"{step} ran out of time at {deadline:g}: the answer came too late"
+            )
         args = scheduler.arguments(step)
         action = next(s.action for s in scheduler.plan.steps if s.id == step)
         allowed = self.declared_decisions(action, args) or ()
