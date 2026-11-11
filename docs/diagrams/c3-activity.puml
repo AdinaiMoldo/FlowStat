@@ -1,0 +1,45 @@
+@startuml c3-activity
+' DOC-9. C3, the engine: the scheduler of one run.
+' Card: docs/algorithms/C3.md#pseudocode
+' code: flowstat.engine.scheduler:Scheduler.start
+' code: flowstat.engine.scheduler:Scheduler.step_done
+' code: flowstat.engine.scheduler:Scheduler.step_failed
+' code: flowstat.engine.scheduler:Scheduler.step_waiting
+' code: flowstat.engine.scheduler:Scheduler.signal
+' code: flowstat.engine.scheduler:Scheduler.expire
+' code: flowstat.engine.scheduler:Scheduler.cancel
+' code: flowstat.engine.scheduler:Scheduler._decide
+' code: flowstat.engine.scheduler:Scheduler._advance
+' code: flowstat.engine.scheduler:Scheduler._finish
+skinparam shadowing false
+
+start
+:start: queue every step with no predecessors;
+repeat
+  :advance;
+  while (the queue is not empty?) is (yes)
+    :decide(i), when all predecessors of i are terminal;
+    if (join_verdict gives a final state?) then (yes)
+      :finish(i, SKIPPED or UPSTREAM_FAILED);
+    elseif (when is false?) then (yes)
+      :finish(i, SKIPPED);
+    elseif (an error in when?) then (yes)
+      :finish(i, FAILED);
+    else (no)
+      :push i on the ready heap,\nkey (-longest feasible chain, declaration index);
+    endif
+  endwhile (no)
+  while (ready steps and running < m?) is (yes)
+    :pop the best and emit Start(i, action, rendered arguments);
+  endwhile (no)
+  if (every step is terminal?) then (yes)
+    :the outcome from the goals, or FAILED or CANCELLED;
+    stop
+  endif
+  :wait for an event of the driver:\nstep_done, step_failed, step_waiting, signal, expire, cancel;
+  :finish(i): set the state, log the event,\ndecrement the followers, queue those at 0;
+  if (i FAILED and on_failure is fail?) then (yes)
+    :cancel everything that is not terminal;
+  endif
+repeat while (more to do?)
+@enduml

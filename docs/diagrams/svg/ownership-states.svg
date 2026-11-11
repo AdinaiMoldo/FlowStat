@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" contentScriptType="application/ecmascript" contentStyleType="text/css" height="420px" preserveAspectRatio="none" style="width:550px;height:420px;" version="1.1" viewBox="0 0 550 420" width="550px" zoomAndPan="magnify"><defs/><g><rect fill="#FEFECE" height="50" rx="12.5" ry="12.5" style="stroke: #A80036; stroke-width: 1.5;" width="74" x="126" y="105"/><line style="stroke: #A80036; stroke-width: 1.5;" x1="126" x2="200" y1="131.9395" y2="131.9395"/><text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="54" x="136" y="123.5625">OWNED</text><rect fill="#FEFECE" height="50" rx="12.5" ry="12.5" style="stroke: #A80036; stroke-width: 1.5;" width="100" x="6" y="232"/><line style="stroke: #A80036; stroke-width: 1.5;" x1="6" x2="106" y1="258.9395" y2="258.9395"/><text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="80" x="16" y="250.5625">MIGRATING</text><rect fill="#FEFECE" height="50" rx="12.5" ry="12.5" style="stroke: #A80036; stroke-width: 1.5;" width="129" x="102.5" y="359"/><line style="stroke: #A80036; stroke-width: 1.5;" x1="102.5" x2="231.5" y1="385.9395" y2="385.9395"/><text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacingAndGlyphs" textLength="109" x="112.5" y="377.5625">MIGRATED_OUT</text><ellipse cx="163" cy="18" fill="#000000" rx="10" ry="10" style="stroke: none; stroke-width: 1.0;"/><!--link *start to OWNED--><path d="M152.79,18.46 C127.74,17.76 63.21,19.92 35,58 C9.24,92.77 74.39,112.7 120.91,122.15 " fill="none" id="*start-OWNED" style="stroke: #A80036; stroke-width: 1.0;"/><polygon fill="#A80036" points="125.91,123.14,117.8597,117.4662,121.0055,122.1677,116.304,125.3134,125.91,123.14" style="stroke: #A80036; stroke-width: 1.0;"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="208" x="36" y="71.5938">the run is created here (epoch 0)</text><!--link *start to OWNED--><path d="M172.95,20.09 C191.68,22.74 231.86,31.4 249,58 C264.43,81.94 233.72,101.82 204.81,114.39 " fill="none" id="*start-OWNED-1" style="stroke: #A80036; stroke-width: 1.0;"/><polygon fill="#A80036" points="200.19,116.34,210.0369,116.534,204.7982,114.3997,206.9325,109.1609,200.19,116.34" style="stroke: #A80036; stroke-width: 1.0;"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="138" x="254" y="71.5938">adopt at B (epoch + 1)</text><!--link OWNED to MIGRATING--><path d="M125.76,137.81 C99.36,144.79 65.75,158.54 49,185 C41.21,197.3 42.05,213.28 45.24,226.96 " fill="none" id="OWNED-MIGRATING" style="stroke: #A80036; stroke-width: 1.0;"/><polygon fill="#A80036" points="46.51,231.89,48.1472,222.1782,45.2671,227.0469,40.3983,224.1668,46.51,231.89" style="stroke: #A80036; stroke-width: 1.0;"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="197" x="50" y="198.5938">fence, the epoch grows by one</text><!--link MIGRATING to MIGRATED_OUT--><path d="M52.88,282.31 C52.26,297.01 53.83,315.46 63,329 C71.66,341.79 84.33,351.74 97.87,359.42 " fill="none" id="MIGRATING-MIGRATED_OUT" style="stroke: #A80036; stroke-width: 1.0;"/><polygon fill="#A80036" points="102.49,361.93,96.4954,354.1156,98.0978,359.5408,92.6726,361.1431,102.49,361.93" style="stroke: #A80036; stroke-width: 1.0;"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="183" x="64" y="325.5938">release, after B owns the run</text><!--link OWNED to OWNED--><path d="M200.05,118.72 C218.52,117.16 235,120.92 235,130 C235,138.23 221.47,142.09 205.18,141.58 " fill="none" id="OWNED-OWNED" style="stroke: #A80036; stroke-width: 1.0;"/><polygon fill="#A80036" points="200.05,141.28,208.8064,145.7884,205.0418,141.5661,209.2641,137.8015,200.05,141.28" style="stroke: #A80036; stroke-width: 1.0;"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="269" x="241" y="135.0938">retarget, A and B are one store (epoch + 1)</text><!--link MIGRATED_OUT to OWNED--><path d="M222.74,358.91 C234.44,351.13 245.26,341.26 252,329 C282.82,272.91 283.4,240.77 252,185 C241.87,167.01 223.05,154.32 205.32,145.78 " fill="none" id="MIGRATED_OUT-OWNED" style="stroke: #A80036; stroke-width: 1.0;"/><polygon fill="#A80036" points="200.36,143.48,206.8421,150.895,204.896,145.5835,210.2076,143.6374,200.36,143.48" style="stroke: #A80036; stroke-width: 1.0;"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacingAndGlyphs" textLength="262" x="276" y="262.0938">adopt, the run comes back (epoch grows)</text><!--
+@startuml ownership-states
+skinparam shadowing false
+
+state OWNED
+state MIGRATING
+state MIGRATED_OUT
+
+[*] - -> OWNED : the run is created here (epoch 0)
+
+OWNED - -> MIGRATING : fence, the epoch grows by one
+MIGRATING - -> MIGRATED_OUT : release, after B owns the run
+OWNED - -> OWNED : retarget, A and B are one store (epoch + 1)
+MIGRATED_OUT - -> OWNED : adopt, the run comes back (epoch grows)
+[*] - -> OWNED : adopt at B (epoch + 1)
+@enduml
+
+PlantUML version 1.2019.06(Fri May 24 19:10:25 CEST 2019)
+(GPL source distribution)
+Java Runtime: OpenJDK Runtime Environment
+JVM: OpenJDK 64-Bit Server VM
+Java Version: 21.0.12.1+1-1-24.04.4-Ubuntu
+Operating System: Linux
+OS Version: 6.18.44-fc-v378
+Default Encoding: UTF-8
+Language: en
+Country: US
+--></g></svg>

@@ -1,0 +1,27 @@
+@startuml c4-sequence
+' DOC-9. C4, fault tolerance: a process starts and takes up the runs it owns.
+' Card: docs/algorithms/C4.md#pseudocode
+' code: flowstat.service.runs:RunService.recover
+' code: flowstat.engine.scheduler:Scheduler.restore
+' code: flowstat.recovery.wal:WriteAheadLog.commit
+' code: flowstat.recovery.saga:compensation_blockers
+skinparam shadowing false
+
+participant "resume at start" as start
+participant "RunService.recover" as service
+participant "RunStore" as store
+participant "Scheduler" as scheduler
+participant "WriteAheadLog" as wal
+participant "driver" as driver
+
+start -> service : run_id, workers, now, idempotent
+service -> store : events(run_id), the run is owned here
+store --> service : the history
+service -> scheduler : restore(history, now, idempotent)
+scheduler --> service : commands (idempotent calls again), UNCERTAIN for the rest
+service --> start : Launch(scheduler, WAL, commands)
+start -> driver : drive the launch
+driver -> wal : commit(RUN_RESUMED, STEP_UNCERTAIN)
+note right: committed before the first command
+driver -> scheduler : step_done, step_failed, resolve
+@enduml

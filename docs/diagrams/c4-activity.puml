@@ -1,0 +1,47 @@
+@startuml c4-activity
+' DOC-9. C4, fault tolerance: what a process does with a run that a crash left unfinished.
+' Card: docs/algorithms/C4.md#pseudocode
+' code: flowstat.recovery.wal:WriteAheadLog.commit
+' code: flowstat.engine.scheduler:Scheduler.restore
+' code: flowstat.engine.scheduler:Scheduler.resolve
+' code: flowstat.recovery.saga:compensation_blockers
+skinparam shadowing false
+
+start
+:commit: store the events that are not stored yet,\nin one transaction, before any command runs;
+note right: this is what a crash leaves behind
+:restore(history, now, idempotent);
+:fold the events: states, outputs, attempts;
+if (the run has an outcome?) then (yes)
+  :nothing to do;
+  stop
+endif
+:log RUN_RESUMED;
+:counters, stopped, cancelled, compensate_requested\nread from the recorded states;
+if (stopped and not undoing?) then (yes)
+  :cancel everything that is not terminal\n(completes a partial stop);
+endif
+partition "for every step that was RUNNING or COMPENSATING" {
+  if (idempotent(its action)?) then (yes)
+    :command Start with the same attempt (same key);
+  else (no)
+    :state UNCERTAIN, log STEP_UNCERTAIN (E-REC-001);
+  endif
+}
+if (undoing?) then (yes)
+  :blockers: rebuild from the states\n(bitset of descendants, reverse topological order);
+  :dispatch the undo calls that are ready;
+else (no)
+  :queue every PENDING step without an unfinished predecessor;
+  :advance the scheduler;
+endif
+:WAITING stays WAITING; UNCERTAIN stays UNCERTAIN;
+if (a person decides about an UNCERTAIN step?) then (resolve)
+  if (decision) then (done)
+    :log STEP_RESOLVED; finish the step\n(an undo becomes COMPENSATED);
+  else (retry)
+    :attempt + 1; log STEP_RESOLVED; command Start;
+  endif
+endif
+stop
+@enduml

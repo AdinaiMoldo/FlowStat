@@ -1,0 +1,63 @@
+@startuml step-states
+' DOC-9. The states of a step (model/states.py, StepState) and how engine/scheduler.py moves it.
+' tests/unit/engine/test_state_diagrams.py: the states are exactly those of the enumeration, and
+' every move the scheduler makes in the scenarios of that test is an arrow here.
+skinparam shadowing false
+
+state PENDING
+state READY
+state RUNNING
+state WAITING
+state SUCCEEDED
+state FAILED
+state SKIPPED
+state UPSTREAM_FAILED
+state CANCELLED
+state UNCERTAIN
+state COMPENSATING
+state COMPENSATED
+state COMPENSATION_FAILED
+
+[*] --> PENDING
+
+PENDING --> READY : predecessors finished, join and when hold
+PENDING --> SKIPPED : when is false, or the join cannot hold
+PENDING --> UPSTREAM_FAILED : a predecessor failed and the join cannot hold
+PENDING --> FAILED : the condition cannot be evaluated
+PENDING --> CANCELLED : the run is stopped
+
+READY --> RUNNING : a slot is free
+READY --> FAILED : the arguments cannot be evaluated
+READY --> CANCELLED : the run is stopped
+
+RUNNING --> RUNNING : transient failure, retry left
+RUNNING --> WAITING : the action asks for an answer
+RUNNING --> SUCCEEDED : the action finished, ensures holds
+RUNNING --> FAILED : the action failed, or ensures does not hold
+RUNNING --> UNCERTAIN : a crash during a call that is not idempotent
+RUNNING --> CANCELLED : the run is stopped
+
+WAITING --> SUCCEEDED : the answer came
+WAITING --> FAILED : the time limit ran out (E-RUN-009)
+WAITING --> CANCELLED : the run is stopped
+
+UNCERTAIN --> SUCCEEDED : a person decides done
+UNCERTAIN --> RUNNING : a person decides retry
+UNCERTAIN --> COMPENSATED : a person decides done, for an undo
+UNCERTAIN --> COMPENSATING : a person decides retry, for an undo
+UNCERTAIN --> CANCELLED : the run is stopped
+
+SUCCEEDED --> COMPENSATING : the run undoes its work
+COMPENSATING --> COMPENSATING : transient failure of the undo
+COMPENSATING --> COMPENSATED : the undo finished
+COMPENSATING --> COMPENSATION_FAILED : the undo failed
+COMPENSATING --> UNCERTAIN : a crash during a call that is not idempotent
+
+SUCCEEDED --> [*]
+FAILED --> [*]
+SKIPPED --> [*]
+UPSTREAM_FAILED --> [*]
+CANCELLED --> [*]
+COMPENSATED --> [*]
+COMPENSATION_FAILED --> [*]
+@enduml

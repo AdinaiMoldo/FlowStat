@@ -1,0 +1,33 @@
+@startuml c5-sequence
+' DOC-9. C5, version migration: the core moves a run from its owner to another.
+' Card: docs/algorithms/C5.md#pseudocode-part-2
+' code: flowstat.service.moving:HandoverService.migrate
+' code: flowstat.migration.handover:move
+' code: flowstat.migration.conformance:check
+skinparam shadowing false
+
+actor "Administrator" as admin
+participant "HandoverService" as core
+participant "check (conformance)" as check
+participant "journal" as journal
+participant "source owner" as source
+participant "target owner" as target
+participant "mirror (core's copy)" as mirror
+
+admin -> core : migrate(run, version, owner)
+core -> source : export(run)
+source --> core : snapshot (history, ownership)
+core -> check : old plan, new plan, events, inputs
+check --> core : verdict
+core -> journal : begin(plan)
+core -> source : fence(plan)
+source --> core : MIGRATING(e+1)
+core -> source : export(run)
+core -> target : adopt(snapshot, plan)
+target --> core : OWNED(e+1)
+core -> source : release(plan)
+source --> core : MIGRATED_OUT
+core -> mirror : moved(plan)
+core -> journal : end(run)
+core --> admin : moved
+@enduml

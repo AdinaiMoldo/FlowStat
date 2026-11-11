@@ -1,0 +1,21 @@
+@startuml context
+' DOC-8. FlowStat and what is outside it.
+skinparam shadowing false
+left to right direction
+
+actor "Committee staff" as staff
+rectangle "Browser UI (served by the core)" as ui
+rectangle "FlowStat core" as core
+database "SQLite file of the core" as db
+folder "Data directory\n(forms, reports)" as data
+rectangle "Allowed HTTP hosts" as hosts
+rectangle "Deployed services\n(process or container)" as services
+
+staff --> ui : designs, runs, approves
+ui --> core : REST, bearer token
+core --> db : workflows, runs, events
+core --> data : action files
+core --> hosts : http.call, only the listed hosts
+core --> services : control key
+services --> core : ingest key, events
+@enduml

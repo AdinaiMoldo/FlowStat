@@ -1,0 +1,17 @@
+@startuml ownership-states
+' DOC-9. The ownership of one run in one store (model/ownership.py, OwnerState; migration/handover.py).
+' A run moves from a store A to a store B in three calls: fence A, adopt at B, release A.
+skinparam shadowing false
+
+state OWNED
+state MIGRATING
+state MIGRATED_OUT
+
+[*] --> OWNED : the run is created here (epoch 0)
+
+OWNED --> MIGRATING : fence, the epoch grows by one
+MIGRATING --> MIGRATED_OUT : release, after B owns the run
+OWNED --> OWNED : retarget, A and B are one store (epoch + 1)
+MIGRATED_OUT --> OWNED : adopt, the run comes back (epoch grows)
+[*] --> OWNED : adopt at B (epoch + 1)
+@enduml
