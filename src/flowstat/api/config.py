@@ -34,3 +34,4 @@ class AppConfig:
     packager: Packager | None = None  # makes a bundle (deploy/package.py)
     launchers: Mapping[str, Launcher] = field(default_factory=dict)  # kind -> how to start it
     ingest_url: str | None = None  # where services ship their runs (the address of this core)
+    health: Callable[[str], bool] | None = None  # asks a service if it answers; None: not probed

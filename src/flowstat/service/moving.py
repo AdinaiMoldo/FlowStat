@@ -117,8 +117,8 @@ class HandoverService:
             row = self.deployments.get(owner)
         except DeploymentNotFoundError:
             raise TargetUnavailableError(f"there is no deployment {owner}") from None
-        if row.status != "running":
-            raise TargetUnavailableError(f"the deployment {owner} is {row.status}, not running")
+        if row.state != "running":
+            raise TargetUnavailableError(f"the deployment {owner} is {row.state}, not running")
         if (row.workflow, row.version) != (workflow, version):
             raise TargetUnavailableError(
                 f"the deployment {owner} serves {row.workflow} v{row.version}, "

@@ -6,7 +6,9 @@ import { ApiError, call } from "./api.js";
 const $ = (id) => document.getElementById(id);
 
 const GOOD = new Set(["SUCCEEDED", "FINISHED", "RUNNING", "running"]);
-const BAD = new Set(["FAILED", "GOAL_NOT_REACHED", "failed", "COMPENSATED", "COMPENSATION_FAILED"]);
+const BAD = new Set([
+  "FAILED", "GOAL_NOT_REACHED", "failed", "unreachable", "COMPENSATED", "COMPENSATION_FAILED",
+]);
 
 function cell(text, kind) {
   const td = document.createElement("td");

@@ -365,3 +365,13 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Chose: the core and a service look at start and every `--expire-interval` seconds on a thread; a version learns once whether any of its steps has a limit, so the others are never rebuilt for it.
 - Merge: US-36 and US-38 both added a call at the start of the app and the service; both stay, in the order recover, resume, expire.
 - Measured by mutation: wait time taken from the restore, 9 tests fail; deadline exclusive, 9 fail. The full suite passes (2057, one test skipped for want of a Docker daemon here).
+
+## 2026-11-11 M9: US-37, the registry says whether a service answers
+
+- Chose: `unreachable` is shown, not stored. The table has a `CHECK` on the status; a file made by an earlier version cannot have it changed without rebuilding the table, and the process was not stopped by the core, so `running` stays true of what the core did. Two columns (`answering`, `answering_since`) were added the way the earlier ones were, and the core shows `unreachable` when a running row has `answering = 0`.
+- Chose: a service is asked twice before it is called unreachable. One lost request on the loopback is common under load; two in a row is a service that does not answer. The price is a longer look when a service is down (two asks of 1 s at most).
+- Chose: write only on a change, and `answering_since` is the time of the change. A write at every look would put a transaction every 10 s into the database of the core, which the runs use too, to say the same thing again.
+- Chose: an unreachable service can be stopped. A hung process is the case the person most wants to stop, and `launcher.stop` already ignores a process that is gone.
+- Chose: a handover to, or a call of, an unreachable service is refused at once with its state in the message; it would have failed after the timeout of the transport otherwise.
+- Checked against a real socket as well: the probe with the real `http_healthy` sees a local server that answers, then the same server shut down. A killed `python -m flowstat.api.service` process was not started for this; the socket is the same.
+- Measured by mutation: asking stopped services too, 2 tests fail; one ask instead of two, 1 fails; `state` ignoring `answering`, 6 fail.

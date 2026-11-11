@@ -49,13 +49,15 @@ def deployment_out(row: Deployment, runs: int = 0) -> DeploymentOut:
         workflow=row.workflow,
         version=row.version,
         kind=row.kind,
-        status=row.status,
+        status=row.state,
         endpoint=row.endpoint,
         detail=row.detail,
         created_at=row.created_at,
         updated_at=row.updated_at,
         runs=runs,
         last_event_at=row.last_event_at,
+        answering=row.answering,
+        answering_since=row.answering_since,
     )
 
 

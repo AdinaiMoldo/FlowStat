@@ -268,6 +268,28 @@
       },
       "DeployedOut": {
         "properties": {
+          "answering": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answering"
+          },
+          "answering_since": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answering Since"
+          },
           "api_key": {
             "title": "Api Key",
             "type": "string"
@@ -361,6 +383,8 @@
           "updated_at",
           "runs",
           "last_event_at",
+          "answering",
+          "answering_since",
           "api_key",
           "title_keys",
           "ingest_key"
@@ -370,6 +394,28 @@
       },
       "DeploymentOut": {
         "properties": {
+          "answering": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answering"
+          },
+          "answering_since": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answering Since"
+          },
           "created_at": {
             "title": "Created At",
             "type": "string"
@@ -447,7 +493,9 @@
           "created_at",
           "updated_at",
           "runs",
-          "last_event_at"
+          "last_event_at",
+          "answering",
+          "answering_since"
         ],
         "title": "DeploymentOut",
         "type": "object"

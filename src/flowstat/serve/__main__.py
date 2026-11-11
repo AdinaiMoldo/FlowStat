@@ -20,7 +20,8 @@ from fastapi import FastAPI
 from flowstat.api.app import create_app
 from flowstat.api.edge import RunPool, real_config
 from flowstat.api.expiring import start_expiry
-from flowstat.deploy.launchers import launchers_for
+from flowstat.api.probing import probe_due, start_probing
+from flowstat.deploy.launchers import http_healthy, launchers_for
 from flowstat.deploy.package import build_bundle
 from flowstat.repo.db import open_database
 
@@ -47,6 +48,12 @@ def _parser() -> argparse.ArgumentParser:
         default=5.0,
         help="seconds between looks for waiting steps that ran out of time (0: only at start)",
     )
+    parser.add_argument(
+        "--probe-interval",
+        type=float,
+        default=10.0,
+        help="seconds between looks at the health of deployed services (0: only at start)",
+    )
     return parser
 
 
@@ -66,16 +73,23 @@ def main(
     config = real_config(args.db, Path(args.data), args.target, args.workers, pool, bundles)
     ingest_url = args.ingest_url or f"http://{_reachable(args.host)}:{args.port}"
     config = replace(
-        config, packager=build_bundle, launchers=launchers_for(), ingest_url=ingest_url
+        config,
+        packager=build_bundle,
+        launchers=launchers_for(),
+        ingest_url=ingest_url,
+        health=http_healthy,
     )
     app = create_app(config)
     run = serve or (lambda a, host, port: uvicorn.run(a, host=host, port=port))
     ticker = start_expiry(app, config, args.expire_interval)
+    probe_due(config)  # what the registry says of a service is true from the first request
+    prober = start_probing(app, config, args.probe_interval)
     try:
         run(app, args.host, args.port)
     finally:
-        if ticker is not None:
-            ticker.stop(args.stop_limit)
+        for each in (ticker, prober):
+            if each is not None:
+                each.stop(args.stop_limit)
         left = pool.stop(args.stop_limit)
         if left:
             print(
