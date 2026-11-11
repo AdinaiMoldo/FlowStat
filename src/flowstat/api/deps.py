@@ -34,7 +34,9 @@ def get_db(request: Request) -> Iterator[sqlite3.Connection]:
 
 def get_workflows(request: Request, db: sqlite3.Connection = Depends(get_db)) -> WorkflowService:
     registry = request.app.state.registry
-    return WorkflowService(db, known_actions=registry.names(), signatures=registry.signatures())
+    return WorkflowService(
+        db, known_actions=registry.names(), signatures=registry.signatures(), plans=registry.plans
+    )
 
 
 def get_runs(

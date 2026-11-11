@@ -48,6 +48,10 @@ def test_the_service_has_the_run_routes_and_nothing_about_workflows(svc: Service
         ("POST", "/migration/{run_id}/fence"),
         ("POST", "/migration/{run_id}/adopt"),
         ("POST", "/migration/{run_id}/release"),
+        ("GET", "/keys"),
+        ("POST", "/keys/control/prepare"),
+        ("POST", "/keys/control/settle"),
+        ("POST", "/keys/ingest"),
     }
 
 

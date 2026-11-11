@@ -103,7 +103,10 @@ def drive_in_background(
         try:
             db = connect(config.db_path)
             workflows = WorkflowService(
-                db, known_actions=registry.names(), signatures=registry.signatures()
+                db,
+                known_actions=registry.names(),
+                signatures=registry.signatures(),
+                plans=registry.plans,
             )
             runs = RunService(db, workflows)
             launch, commands = prepare(runs)

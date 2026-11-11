@@ -461,6 +461,7 @@ for steps that came from `foreach` expansion, through the source map).
 | E-COMP-001 | error | a compensation failed after its retries (the step is COMPENSATION_FAILED) | recovery |
 | E-ACT-008 | error | an HTTP call failed in transport, timed out or got a 5xx answer (transient) | actions |
 | E-ACT-010 | error | an HTTP call got a 4xx answer (permanent) | actions |
+| E-KEY-001 | error | a service does not answer while its key is replaced; the record stays and `POST /deployments/{id}/keys/recover` ends or takes back the rotation (503) | api (M9), api-spec section 7 |
 | E-ACT-011 | error | an HTTP call names a host that is not on the list of allowed hosts, or a redirect leads to one (permanent; nothing was sent) | actions (M9) |
 | E-ACT-999 | error | an action raised an exception it did not expect (the step FAILS, the run goes on) | engine |
 | E-TYPE-001 | error | type mismatch: an operand, a condition, an argument or a function argument has the wrong type | types (M5), see 9 |

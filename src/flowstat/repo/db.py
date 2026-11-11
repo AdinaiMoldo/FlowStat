@@ -106,7 +106,14 @@ CREATE TABLE IF NOT EXISTS deployments (
     last_event_at     TEXT,
     control_key       TEXT,
     answering         INTEGER,
-    answering_since   TEXT
+    answering_since   TEXT,
+    control_key_next  TEXT,
+    ingest_key_next_sha256 TEXT
+);
+
+CREATE TABLE IF NOT EXISTS service_settings (
+    name  TEXT PRIMARY KEY,
+    value TEXT NOT NULL
 );
 
 CREATE TRIGGER IF NOT EXISTS run_events_no_update
@@ -153,6 +160,8 @@ _LATER_COLUMNS = [
     ("deployments", "control_key", "TEXT"),
     ("deployments", "answering", "INTEGER"),
     ("deployments", "answering_since", "TEXT"),
+    ("deployments", "control_key_next", "TEXT"),
+    ("deployments", "ingest_key_next_sha256", "TEXT"),
 ]
 
 

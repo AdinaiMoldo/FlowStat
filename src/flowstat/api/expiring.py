@@ -35,7 +35,10 @@ def expire_due(
     try:
         db = connect(config.db_path)
         workflows = WorkflowService(
-            db, known_actions=registry.names(), signatures=registry.signatures()
+            db,
+            known_actions=registry.names(),
+            signatures=registry.signatures(),
+            plans=registry.plans,
         )
         ids = due(
             RunService(db, workflows),

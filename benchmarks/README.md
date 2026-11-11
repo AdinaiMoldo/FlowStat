@@ -13,3 +13,4 @@ Numbers, not impressions. Each benchmark ends with a one-page table and a conclu
 | m7 | A2, A6, B3 | I5b | cost of a batch of events at the core, of shipping, of the graph function and of its drawing (`bench_m7.py`) |
 | deep-chains | C2 | M9 | availability and priorities on a chain of 100 to 2,000 guarded steps, with and without the bound on the size of a run condition (`bench_chain.py`) |
 | migration | C5 | I6 | cost of the conformance check per history, and (US-33) the handover against stop-and-restart, and the counting of statistics (`bench_migration.py`) |
+| plan-cache | B4 | M9 | cost of a report, a graph, a list and a start with the plan compiled every time against kept (`bench_plan_cache.py`) |
