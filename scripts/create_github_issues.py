@@ -1,6 +1,7 @@
 """Create the user stories of docs/stories.json as GitHub issues, grouped by milestone.
 
-Needs the GitHub CLI (`gh auth login` done once) and is run from the repository root:
+Needs the GitHub CLI (`gh auth login` done once) and is run from the repository root. The variable
+`GITHUB_REPOSITORY=owner/name` skips the lookup of the repository (a plain REST call needs no more):
 
     python scripts/create_github_issues.py            # create the missing issues
     python scripts/create_github_issues.py US-05      # create only the listed stories
@@ -11,6 +12,7 @@ Stories whose title already exists are skipped, so the script can be run again s
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -22,14 +24,17 @@ def gh(*args: str) -> object:
 
 
 def main(only: list[str]) -> None:
-    repo = json.loads(
-        subprocess.run(
-            ["gh", "repo", "view", "--json", "nameWithOwner"],
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout
-    )["nameWithOwner"]
+    repo = (
+        os.environ.get("GITHUB_REPOSITORY")
+        or json.loads(
+            subprocess.run(
+                ["gh", "repo", "view", "--json", "nameWithOwner"],
+                capture_output=True,
+                text=True,
+                check=True,
+            ).stdout
+        )["nameWithOwner"]
+    )
     stories = json.loads(Path("docs/stories.json").read_text(encoding="utf8"))
     milestones: list[dict[str, object]] = gh(
         "api", f"repos/{repo}/milestones?state=all&per_page=100"
@@ -43,7 +48,12 @@ def main(only: list[str]) -> None:
         labels = [
             "story",
             s["priority"].lower(),
-            *sorted({c.strip()[0] for c in s["function"].split(",")}),
+            *sorted(
+                {
+                    ("doc" if c.strip().startswith("DOC") else c.strip()[0])
+                    for c in s["function"].split(",")
+                }
+            ),
         ]
         body = (
             f"**Story**\n\n{s['story']}\n\n**Acceptance criteria**\n\n{s['criteria']}\n\n"
