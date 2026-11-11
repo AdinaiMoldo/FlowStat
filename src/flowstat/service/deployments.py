@@ -55,6 +55,8 @@ class Packager(Protocol):
         ...
 
 
+PROBE_ATTEMPTS = 2  # asks of a service before it is called unreachable
+
 INGEST_URL = "FLOWSTAT_INGEST_URL"  # where the service ships the history of its runs
 INGEST_KEY = "FLOWSTAT_INGEST_KEY"  # the key that lets it (and nothing else) ship to the core
 DEPLOYMENT_ID = "FLOWSTAT_DEPLOYMENT_ID"  # who it says it is
@@ -183,17 +185,16 @@ class DeploymentService:
         except LaunchError as error:
             failed = self.store.update(service_id, now, status="failed", detail=error.detail)
             raise DeploymentFailedError(failed) from error
-        return (
-            self.store.update(
-                service_id, now, status="running", endpoint=running.endpoint, handle=running.handle
-            ),
-            keys,
+        self.store.update(
+            service_id, now, status="running", endpoint=running.endpoint, handle=running.handle
         )
+        return self.store.mark_answering(service_id, True, now), keys  # it answered to be started
 
     def stop(self, deployment_id: str, now: str) -> Deployment:
         row = self.store.get(deployment_id)
+        # an unreachable service is stopped like a running one: its process may be hung, not gone
         if row.status != "running" or row.handle is None:
-            raise NotRunningError(f"the deployment {deployment_id} is {row.status}, not running")
+            raise NotRunningError(f"the deployment {deployment_id} is {row.state}, not running")
         launcher = self.launchers.get(row.kind)
         if launcher is None:
             raise KindUnavailableError(f"deployments of kind '{row.kind}' are not available here")
@@ -203,6 +204,28 @@ class DeploymentService:
             self.store.update(deployment_id, now, status="running", detail=error.detail)
             raise
         return self.store.update(deployment_id, now, status="stopped")
+
+    def probe(
+        self, now: str, healthy: Callable[[str], bool], attempts: int = PROBE_ATTEMPTS
+    ) -> list[Deployment]:
+        """Ask every running service for its health and record a change of answer (US-37).
+
+        A service is asked up to ``attempts`` times, so one lost request does not make it
+        unreachable. A row is written only when the answer differs from the one recorded: the
+        time says since when, not when it was last asked, and a quiet registry causes no writes.
+        A service that was stopped, that failed, or that is still starting is not asked. Returns
+        the rows that changed.
+        """
+        changed: list[Deployment] = []
+        for row in self.store.all():
+            if row.status != "running" or not row.endpoint:
+                continue
+            answers = any(healthy(row.endpoint) for _ in range(attempts))
+            if answers == row.answering:
+                continue
+            reason = "" if answers else f"the service does not answer at {row.endpoint} since {now}"
+            changed.append(self.store.mark_answering(row.id, answers, now, reason))
+        return changed
 
     def shipped(self) -> dict[str, int]:
         """How many runs each deployment has shipped to this core."""

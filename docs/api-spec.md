@@ -225,7 +225,21 @@ launchers; the bundles are made under `--bundles`.
 The registry row has: id, workflow, version, kind, endpoint, status (`starting`, `running`,
 `failed`, `stopped`), the bundle path, the pid or container id, and the times. The events of the
 service's runs reach the core by the outbox of M7 (US-31, section 9); the log of the service is the
-source of truth for them, and the core's copy may lag. `POST /deployments` also shows the third
+source of truth for them, and the core's copy may lag.
+
+**Health of a service** (US-37, M9). The status above is what the core did to the process; a
+process that was killed, or a machine that restarted, left `running` in the row for ever. The core
+therefore asks every `running` service for `GET /health` (twice, so one lost request is not
+enough) when it starts and every `--probe-interval` seconds (default 10; 0 asks only at start). A
+service that does not answer is listed with the status `unreachable` and `answering: false`, and
+`answering_since` says since when; `detail` says what the core tried. When it answers again it is
+`running` and `answering: true`. `answering` is `null` for a service that is not running or was not
+asked yet. A row is written when the answer changes, not at every look, so a quiet registry
+causes no writes. A service that was stopped on purpose, that failed, or that is still starting
+is not asked. `unreachable` is not a stored word (the process was not stopped, so the database
+keeps `running` and an old file needs no change): the core shows it, and treats it as not running
+when a run is to be moved to it or called in it (section 10). An unreachable service can still be
+stopped (`DELETE`), because a hung process is not a gone one. `POST /deployments` also shows the third
 key, `ingest_key`; it is passed to the service by environment and its hash is in the registry row.
 
 ## 8. What is not in M6 or M7
@@ -233,7 +247,7 @@ key, `ingest_key`; it is passed to the service by environment and its hash is in
 User management endpoints; passwords and a login page; TLS (terminate it in front of the server,
 which matters more now that services send a key over the network); CORS (not needed, see section 9);
 rate limiting; token and key rotation (US-40); resuming runs when the app starts (done in US-36); the
-epoch fence and migration (done in M8); a health probe of the services from the registry (US-37); a
+epoch fence and migration (done in M8); a health probe of the services from the registry (done in US-37); a
 live refresh of the run list (US-42);
 more than one core process (the database is SQLite).
 

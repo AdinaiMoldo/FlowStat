@@ -104,7 +104,9 @@ CREATE TABLE IF NOT EXISTS deployments (
     updated_at TEXT    NOT NULL,
     ingest_key_sha256 TEXT,
     last_event_at     TEXT,
-    control_key       TEXT
+    control_key       TEXT,
+    answering         INTEGER,
+    answering_since   TEXT
 );
 
 CREATE TRIGGER IF NOT EXISTS run_events_no_update
@@ -149,6 +151,8 @@ _LATER_COLUMNS = [
     ("deployments", "ingest_key_sha256", "TEXT"),
     ("deployments", "last_event_at", "TEXT"),
     ("deployments", "control_key", "TEXT"),
+    ("deployments", "answering", "INTEGER"),
+    ("deployments", "answering_since", "TEXT"),
 ]
 
 

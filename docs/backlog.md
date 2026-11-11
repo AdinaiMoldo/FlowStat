@@ -59,7 +59,7 @@ Recount of 5 November: the baseline of 203 SP stays the zero point of the burndo
 | US-34 | As an admin, I see failure rate and average duration per workflow | A5 | 3 | Could | M8 | done |
 | US-35 | As an operator, steps on the longest chain that can really run start first | C3 | 5 | Should | M5 | done |
 | US-36 | As an operator, a run that was unfinished when a process stopped goes on when the process starts | C4 | 5 | Should | M9 | done |
-| US-37 | As an admin, the registry shows whether a deployed service answers | A6 | 3 | Should | M9 | not started |
+| US-37 | As an admin, the registry shows whether a deployed service answers | A6 | 3 | Should | M9 | done |
 | US-38 | As a designer, I give an approval a time limit | C3 | 8 | Should | M9 | done |
 | US-39 | As an admin, I limit the hosts that `http.call` may reach | B6 | 3 | Should | M9 | not started |
 | US-40 | As an admin, I replace the key of a deployment without stopping it | A3 | 5 | Should | M9 | not started |

@@ -81,7 +81,7 @@ class ServiceOwner:
     @classmethod
     def of(cls, deployment: Deployment) -> ServiceOwner:
         """The owner behind a running deployment; it needs its endpoint and its control key."""
-        if deployment.status != "running" or not deployment.endpoint or not deployment.control_key:
+        if deployment.state != "running" or not deployment.endpoint or not deployment.control_key:
             raise OwnerUnavailableError(f"the deployment {deployment.id} cannot be called")
         return cls(http_transport(deployment.endpoint, deployment.control_key))
 

@@ -265,6 +265,8 @@ class DeploymentOut(BaseModel):
     updated_at: str
     runs: int  # runs this service has shipped to the core
     last_event_at: str | None  # when the core last took events from it
+    answering: bool | None  # did it answer the last probe (None: not running or not yet asked)
+    answering_since: str | None  # since when it has given that answer
 
 
 class DeployedOut(DeploymentOut):
