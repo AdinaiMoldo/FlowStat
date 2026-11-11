@@ -399,3 +399,12 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Found: the permission `handover:control` is reused for the routes of the service (only the control key holds it); a new permission would have changed the table of section 3 for no new reader.
 - Found while testing: the unique hash of a user stops the swap of the two control users in one update; the next user is removed first, in one transaction with the move.
 - Measured by mutation (the stop at every call is the test): recovery that always completes, 2 tests fail; settle that does not move the key, 7; the core that takes only the current ingest hash, 1; ingest recovery that always completes, 2.
+
+## 2026-11-11 M9: US-41, the plan of a published version is compiled once for a process
+
+- The story is worded as "listing runs does not compile a plan for each run", and that was done in M6 (the list reads the status from the events). What remained is the report, the graph and the start of a run, which still compile. Measured those and kept the wording of the story in the matrix.
+- Chose: the rule for keeping the cache was written before the measurement (a report at least twice as fast, nothing slower). The result met it (2.4x to 2.8x), so it stays; if it had not, the cache would have been taken out and the note written all the same.
+- Chose: the key is `(workflow, number, text, catalogue snapshot)`, not the number alone. The plan of a published version cannot change, so the number would do, but with the text in the key a cache can never give the plan of another text, whatever happens to a database file. A draft is not kept.
+- Chose: the cache is held by the `Registry`, not by a global and not by the app: the places that build a `WorkflowService` (routes, the pool, resume, expiry) already have the registry, the plans depend on the registry's actions and signatures, and two apps in one test process get two caches.
+- Found while measuring: the first version of the benchmark measured the list after the start of runs that the cache-off pass had made, so the list seemed 30% slower with the cache. Two databases with 50 runs each, one for each pass, show the list unchanged. The table is from the fair one.
+- Measured by mutation: a draft that is kept, 1 test fails; a key of the name only, 1 fails; no move to the end on a hit, 1 fails.

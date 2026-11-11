@@ -12,3 +12,4 @@ Numbers, not impressions. Each benchmark ends with a one-page table and a conclu
 | api | B4, B5 | I5a | cost of a request, of listing runs, of a pool of threads and of a process deployment (`bench_api.py`) |
 | m7 | A2, A6, B3 | I5b | cost of a batch of events at the core, of shipping, of the graph function and of its drawing (`bench_m7.py`) |
 | migration | C5 | I6 | cost of the conformance check per history, and (US-33) the handover against stop-and-restart, and the counting of statistics (`bench_migration.py`) |
+| plan-cache | B4 | M9 | cost of a report, a graph, a list and a start with the plan compiled every time against kept (`bench_plan_cache.py`) |

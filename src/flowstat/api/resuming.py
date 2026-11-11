@@ -30,7 +30,10 @@ def resume_on_start(config: AppConfig, registry: Registry, locks: RunLocks) -> l
     try:
         db = connect(config.db_path)
         workflows = WorkflowService(
-            db, known_actions=registry.names(), signatures=registry.signatures()
+            db,
+            known_actions=registry.names(),
+            signatures=registry.signatures(),
+            plans=registry.plans,
         )
         ids = [run.run_id for run in interrupted(RunService(db, workflows))]
     except Exception:
