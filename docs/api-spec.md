@@ -59,7 +59,7 @@ walks the routes. `public` is the single exception (`GET /health`).
 | `deployments:write` | `POST /deployments`, `DELETE /deployments/{id}` | yes | no | no |
 | `runs:migrate` | `POST /runs/{id}/migrate`, `POST /migrations/recover` | yes | no | yes |
 | `statistics:read` | `GET /statistics` | yes | no | no |
-| `handover:control` | `/migration/{run_id}/...` of a deployed service | yes | no | no |
+| `handover:control` | `/migration/{run_id}/...` and `/keys...` of a deployed service | yes | no | no |
 | `events:ingest` | `POST /deployments/{id}/events` (the ingest key of that deployment, section 9) | no | no | no |
 
 "Publishing is restricted to designers" (US-29) is read as: the role that writes workflows publishes
@@ -227,6 +227,33 @@ The registry row has: id, workflow, version, kind, endpoint, status (`starting`,
 service's runs reach the core by the outbox of M7 (US-31, section 9); the log of the service is the
 source of truth for them, and the core's copy may lag.
 
+**Rotating the keys of a service** (US-40, M9). Two of the four keys of a service can be replaced
+without deploying it again, by an admin of the core: `POST /deployments/{id}/keys/control/rotate`
+and `POST /deployments/{id}/keys/ingest/rotate` (the core makes the new key; it is not shown). Only
+a service that is `running` and answers is rotated (409 otherwise).
+
+- *The control key* (the core presents it). The core writes the new key to the row, tells the service
+  its hash with the old key (`POST /keys/control/prepare`: the service now accepts both), then tells
+  it with the new key to keep that key alone (`POST /keys/control/settle`), and the row keeps the
+  new key. From then on the old key is refused (401).
+- *The ingest key* (the service presents it; the core holds its hash). The core writes the new hash
+  to the row and accepts both, gives the service the key with the control key
+  (`POST /keys/ingest`: the service stores it, ships with it from its next send, and keeps it over a
+  restart: the stored key wins over its environment), and then keeps only the new hash. From then
+  on the old key is refused.
+
+A stop of the core in the middle leaves a record in the row (`control_key_next`,
+`ingest_key_next_sha256`). **After the next look, exactly one key works:** the core asks the
+service, and if the service knows the new key the rotation is carried to its end, otherwise it is
+taken back and the old key is the only one. The look is made when the core starts, before a new
+rotation of the same deployment, and on request (`POST /deployments/{id}/keys/recover`, answers
+`nothing`, `completed`, `taken back` or `away`). Until it is made both keys work, which is what lets
+a send that is under way with the old key end. A service that does not answer is 503 `E-KEY-001`;
+the record stays and the look decides later. The routes of the service (`GET /keys`,
+`POST /keys/control/prepare`, `POST /keys/control/settle`, `POST /keys/ingest`) need `handover:control`,
+and each can be called again with the same effect. Not rotated here: the key that starts runs and
+the keys of the titles of a service (a new deployment is made for them).
+
 **Health of a service** (US-37, M9). The status above is what the core did to the process; a
 process that was killed, or a machine that restarted, left `running` in the row for ever. The core
 therefore asks every `running` service for `GET /health` (twice, so one lost request is not
@@ -253,7 +280,7 @@ the core reaches a service when it is deployed again.
 
 User management endpoints; passwords and a login page; TLS (terminate it in front of the server,
 which matters more now that services send a key over the network); CORS (not needed, see section 9);
-rate limiting; token and key rotation (US-40); resuming runs when the app starts (done in US-36); the
+rate limiting; rotation of the tokens of users (not planned) and of the control and ingest keys of a service (done in US-40); resuming runs when the app starts (done in US-36); the
 epoch fence and migration (done in M8); a health probe of the services from the registry (done in US-37); a
 live refresh of the run list (US-42);
 more than one core process (the database is SQLite).
@@ -432,7 +459,7 @@ permission `handover:control`, which only an admin holds, and the only admin of 
 core presents the *control key* of the deployment. It is a fourth key made with the others; its hash
 is in the manifest (`control_key_sha256`) and in the service's database, and the core keeps the key
 itself in the registry row because it has to present it. It is never shown, never in a listing and
-never in a bundle. Stated limit: a secret at rest in the core's database, no rotation.
+never in a bundle. Stated limit: a secret at rest in the core's database.
 
 Errors of a move: 404 `E-API-002` (no such run or version); 422 `E-API-001` (the run is on that
 version already); 409 `E-API-003` (a version is a draft, the target is not a running deployment of

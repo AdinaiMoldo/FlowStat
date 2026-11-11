@@ -36,6 +36,10 @@ class Deployment:
     # did to the process; this is what the process is seen to do.
     answering: bool | None = None
     answering_since: str | None = None
+    # A rotation that has begun and not ended (US-40): the next control key (kept as it is, like
+    # the current one, because the core has to present it) and the hash of the next ingest key.
+    control_key_next: str | None = None
+    ingest_key_next_sha256: str | None = None
 
     @property
     def state(self) -> str:
@@ -47,14 +51,15 @@ class Deployment:
 
 _COLUMNS = (
     "id, workflow, version, kind, status, bundle, created_at, updated_at, endpoint, handle, "
-    "detail, ingest_key_sha256, last_event_at, control_key, answering, answering_since"
+    "detail, ingest_key_sha256, last_event_at, control_key, answering, answering_since, "
+    "control_key_next, ingest_key_next_sha256"
 )
 
 
 def _row(row: tuple[object, ...]) -> Deployment:
-    *rest, answering, since = row
+    *rest, answering, since, control_next, ingest_next = row
     flag = None if answering is None else bool(answering)
-    return Deployment(*rest, flag, since)  # type: ignore[arg-type,call-arg]
+    return Deployment(*rest, flag, since, control_next, ingest_next)  # type: ignore[arg-type,call-arg]
 
 
 class DeploymentStore:
@@ -63,7 +68,7 @@ class DeploymentStore:
 
     def add(self, deployment: Deployment) -> None:
         self.db.execute(
-            f"INSERT INTO deployments ({_COLUMNS}) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            f"INSERT INTO deployments ({_COLUMNS}) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (
                 deployment.id,
                 deployment.workflow,
@@ -81,6 +86,8 @@ class DeploymentStore:
                 deployment.control_key,
                 None if deployment.answering is None else int(deployment.answering),
                 deployment.answering_since,
+                deployment.control_key_next,
+                deployment.ingest_key_next_sha256,
             ),
         )
 
@@ -97,7 +104,9 @@ class DeploymentStore:
         if not key_sha256:
             return None
         row = self.db.execute(
-            f"SELECT {_COLUMNS} FROM deployments WHERE ingest_key_sha256 = ?", (key_sha256,)
+            f"SELECT {_COLUMNS} FROM deployments"
+            " WHERE ingest_key_sha256 = ? OR ingest_key_next_sha256 = ?",
+            (key_sha256, key_sha256),
         ).fetchone()
         return _row(row) if row is not None else None
 
@@ -125,6 +134,39 @@ class DeploymentStore:
                 at or current.updated_at,
                 deployment_id,
             ),
+        )
+        return self.get(deployment_id)
+
+    # -- the two keys that can be rotated (US-40) ---------------------------------------------
+    def begin_control(self, deployment_id: str, key: str) -> None:
+        self.db.execute(
+            "UPDATE deployments SET control_key_next = ? WHERE id = ?", (key, deployment_id)
+        )
+
+    def end_control(self, deployment_id: str, now: str, *, keep_next: bool) -> Deployment:
+        """The rotation ends: the next key is the key (``keep_next``) or is dropped."""
+        row = self.get(deployment_id)
+        key = row.control_key_next if keep_next else row.control_key
+        self.db.execute(
+            "UPDATE deployments SET control_key = ?, control_key_next = NULL, updated_at = ?"
+            " WHERE id = ?",
+            (key, now, deployment_id),
+        )
+        return self.get(deployment_id)
+
+    def begin_ingest(self, deployment_id: str, key_sha256: str) -> None:
+        self.db.execute(
+            "UPDATE deployments SET ingest_key_next_sha256 = ? WHERE id = ?",
+            (key_sha256, deployment_id),
+        )
+
+    def end_ingest(self, deployment_id: str, now: str, *, keep_next: bool) -> Deployment:
+        row = self.get(deployment_id)
+        key = row.ingest_key_next_sha256 if keep_next else row.ingest_key_sha256
+        self.db.execute(
+            "UPDATE deployments SET ingest_key_sha256 = ?, ingest_key_next_sha256 = NULL,"
+            " updated_at = ? WHERE id = ?",
+            (key, now, deployment_id),
         )
         return self.get(deployment_id)
 

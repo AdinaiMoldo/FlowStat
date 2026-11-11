@@ -387,3 +387,15 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Found: a redirect with 307 on POST is not followed by `urllib` at all (it raises), so the redirect test uses 302, which becomes a GET.
 - Not covered, and said in the spec: a name that resolves to an address inside the network, and wildcards.
 - Measured by mutation: no redirect handler, 1 test fails; `netloc` for `hostname`, 8 fail; the check before sending removed, 3 fail.
+
+## 2026-11-11 M9: US-40, replacing the control key and the ingest key
+
+- Chose: the story says "a stop in the middle leaves exactly one key working". Read as: after the look that the core makes when it starts (or on request) exactly one key works. Before that look both work, on purpose: a send that is under way with the old key must be able to end, and a core that cannot tell whether the service heard the new key cannot take one away. Said so in the spec instead of promising an instant that no protocol can give.
+- Chose: the record is in the registry row and the service is asked. The core writes the intent first, the service is told, the row ends last. `recover` asks the service whether it knows the new key: yes, finish; no, take back. Both ends leave one key. The first plan, to keep a journal of calls as the handover does, was not needed: the service can say what it holds.
+- Chose: the control key is rotated with a second user (`control.next`) beside the first, and one call, `settle`, makes the key the caller holds the only one. The same call is the rollback when the old key makes it. That is why a rotation can be repeated from any point.
+- Chose: the ingest key is given to the service and kept in its database; the stored key wins over its environment, or a restart would go back to a key the core refuses. `http_send` takes a function for the key, read at every send, so the first send after the change already uses it.
+- Chose: the core makes the key (`config.new_token`), the admin never types it, and it is not shown: it is not needed by anyone but the two sides.
+- Not done: the key that starts runs and the title keys. They are shown to the person who deploys, so changing them is a decision of that person, and a new deployment does it. Said in the spec.
+- Found: the permission `handover:control` is reused for the routes of the service (only the control key holds it); a new permission would have changed the table of section 3 for no new reader.
+- Found while testing: the unique hash of a user stops the swap of the two control users in one update; the next user is removed first, in one transaction with the move.
+- Measured by mutation (the stop at every call is the test): recovery that always completes, 2 tests fail; settle that does not move the key, 7; the core that takes only the current ingest hash, 1; ingest recovery that always completes, 2.

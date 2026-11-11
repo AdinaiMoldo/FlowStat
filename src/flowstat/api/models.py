@@ -269,6 +269,17 @@ class DeploymentOut(BaseModel):
     answering_since: str | None  # since when it has given that answer
 
 
+class KeyRotationOut(BaseModel):
+    deployment_id: str
+    key: str  # which key was replaced: control or ingest
+    state: str  # rotated
+
+
+class KeyRecoveryOut(BaseModel):
+    deployment_id: str
+    outcome: str  # nothing, completed, taken back, or away (the service did not answer)
+
+
 class DeployedOut(DeploymentOut):
     api_key: str  # shown once: only its hash is kept
     title_keys: dict[str, str]  # one per title an approval names; shown once too
@@ -385,6 +396,20 @@ class SnapshotBody(BaseModel):
 class AdoptIn(Request):
     snapshot: SnapshotBody
     plan: PlanIn
+
+
+class NextControlKeyIn(Request):
+    sha256: str  # the SHA-256 of the control key that is to be accepted beside the current one
+
+
+class IngestKeyIn(Request):
+    key: str  # the ingest key the service ships with from now on
+
+
+class KeysOut(BaseModel):
+    caller: str  # which control user made the call: "control" or "control.next"
+    control_next: bool  # a second control key is accepted: a rotation is half done
+    ingest_sha256: str | None  # the hash of the ingest key the service ships with
 
 
 class MigrateIn(Request):
