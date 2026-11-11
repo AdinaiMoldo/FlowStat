@@ -74,3 +74,4 @@ class ActionSpec:
     output_types: Mapping[str, str] | None = None
     optional: Mapping[str, str] | None = None  # arguments the action may take, with their types
     effect: bool = False  # the action changes something outside the engine (docs/dsl-spec.md 10.5)
+    hosts: frozenset[str] | None = None  # hosts a call may reach; None: any (http.call, US-39)

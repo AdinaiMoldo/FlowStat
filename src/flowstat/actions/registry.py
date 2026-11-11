@@ -12,7 +12,7 @@ from dataclasses import replace
 from flowstat.actions.base import ActionContext, ActionError, ActionSpec
 from flowstat.actions.database import delete_batch, write_rows
 from flowstat.actions.email import send_email
-from flowstat.actions.http import call as http_call
+from flowstat.actions.http import calling as http_calling
 from flowstat.actions.statguard import validate
 from flowstat.actions.stats import aggregate
 from flowstat.actions.xlsx import read_form
@@ -70,6 +70,7 @@ class Registry:
                 optional,
                 outputs,
                 spec.effect,
+                spec.hosts,
             )
         return out
 
@@ -120,7 +121,9 @@ class Registry:
         return execute
 
 
-def default_registry() -> Registry:
+def default_registry(hosts: frozenset[str] | None = None) -> Registry:
+    """The actions of the engine. ``hosts`` is the list of hosts ``http.call`` may reach (US-39);
+    None: any host."""
     rows = "list<row>"
     return Registry(
         [
@@ -174,10 +177,11 @@ def default_registry() -> Registry:
                 "http.call",
                 {"url": str},
                 {"status": int},
-                http_call,
+                http_calling(hosts),
                 idempotent=True,
                 optional={"method": "string", "body": "any", "timeout": "float"},
                 effect=True,
+                hosts=hosts,
             ),
             # the outbox keeps one row per key, but a real mail server would send twice
             ActionSpec(

@@ -108,7 +108,12 @@ def drive_in_background(
             runs = RunService(db, workflows)
             launch, commands = prepare(runs)
             machine = Machine(
-                config.data_dir, config.target, config.workers, config.time, config.sleep
+                config.data_dir,
+                config.target,
+                config.workers,
+                config.time,
+                config.sleep,
+                config.allowed_hosts,
             )
             drive(runs, run_id, launch, machine, commands)
         except Exception:  # the log keeps what happened; the next start takes the run up

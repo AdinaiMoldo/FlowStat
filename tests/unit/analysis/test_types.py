@@ -427,3 +427,41 @@ def test_the_limit_is_judged_once_for_every_instance_of_a_foreach() -> None:
 def test_an_action_the_checker_does_not_know_is_not_judged() -> None:
     steps = "  x:\n    action: custom.thing\n    timeout: 5\n"
     assert "E-TYPE-006" not in codes(check(steps, "x"))
+
+
+# -- the hosts http.call may reach (US-39) ---------------------------------------------------------
+HOSTS = frozenset({"api.example.kg"})
+LISTED = default_registry(HOSTS).signatures()
+
+
+def call_step(url: str, hosts_given: bool = True) -> list[Diagnostic]:
+    steps = f"  z:\n    action: http.call\n    with: {{url: {url}}}\n"
+    return check_types(compile_plan(steps, "z", ""), LISTED if hosts_given else SIGNATURES)
+
+
+def test_a_constant_url_on_the_list_is_accepted() -> None:
+    assert call_step("'https://api.example.kg/v1/pay'") == []
+
+
+def test_a_constant_url_outside_the_list_is_an_error_that_names_the_host_and_the_list() -> None:
+    [found] = call_step("'https://other.example.kg/v1'")
+    assert found.code == "E-TYPE-007" and found.severity is Severity.ERROR
+    assert "other.example.kg" in found.message and "api.example.kg" in found.message
+
+
+def test_without_a_list_any_host_is_accepted() -> None:
+    assert call_step("'https://other.example.kg/v1'", hosts_given=False) == []
+
+
+def test_a_url_whose_host_is_built_from_a_reference_is_not_judged_here() -> None:
+    steps = "  z:\n    action: http.call\n    with: {url: 'https://${inputs.mode}.example.kg/v1'}\n"
+    plan = compile_plan(steps, "z", INPUTS)
+    assert "E-TYPE-007" not in codes(check_types(plan, LISTED))
+
+
+def test_a_url_whose_host_is_written_and_whose_path_is_a_reference_is_judged() -> None:
+    steps = (
+        "  z:\n    action: http.call\n    with: {url: 'https://other.example.kg/${inputs.mode}'}\n"
+    )
+    plan = compile_plan(steps, "z", INPUTS)
+    assert codes(check_types(plan, LISTED)) == ["E-TYPE-007"]

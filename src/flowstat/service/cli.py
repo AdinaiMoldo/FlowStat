@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import secrets
 import sqlite3
@@ -26,6 +27,7 @@ from flowstat.dsl.reader import read_yaml
 from flowstat.engine.scheduler import Command, Start
 from flowstat.model.diagnostics import Diagnostic
 from flowstat.model.history import RunReport
+from flowstat.model.hosts import hosts_from
 from flowstat.model.states import RunOutcome, StepState
 from flowstat.model.versions import VersionStatus
 from flowstat.repo.db import open_database
@@ -50,7 +52,7 @@ EXIT_OK, EXIT_NOT_DONE, EXIT_USAGE, EXIT_WAITING = 0, 1, 2, 3
 
 def open_services(db_path: str) -> tuple[WorkflowService, RunService]:
     db: sqlite3.Connection = open_database(db_path)
-    registry = default_registry()
+    registry = default_registry(hosts_from(os.environ))
     workflows = WorkflowService(
         db, known_actions=registry.names(), signatures=registry.signatures()
     )
@@ -228,7 +230,9 @@ def _drive(
     commands: list[Command] | None,
 ) -> int:
     """Run the scheduler on the thread pool; its events are stored before its commands run."""
-    machine = Machine(Path(args.data), args.target, args.workers, time.time, time.sleep)
+    machine = Machine(
+        Path(args.data), args.target, args.workers, time.time, time.sleep, hosts_from(os.environ)
+    )
     report = drive(runs, run_id, launch, machine, commands, _answerer(args.decision, runs))
     print(_format_report(report))
     return _exit_code(report)
@@ -257,7 +261,10 @@ def _resume(args: argparse.Namespace) -> int:
     _, runs = open_services(args.db)
     try:
         launch = runs.recover(
-            args.run_id, args.workers, time.time(), default_registry().is_idempotent
+            args.run_id,
+            args.workers,
+            time.time(),
+            default_registry(hosts_from(os.environ)).is_idempotent,
         )
     except RunNotFoundError:
         return _err(f"there is no run {args.run_id}")
@@ -288,7 +295,10 @@ def _resolve(args: argparse.Namespace) -> int:
     _, runs = open_services(args.db)
     try:
         launch = runs.recover(
-            args.run_id, args.workers, time.time(), default_registry().is_idempotent
+            args.run_id,
+            args.workers,
+            time.time(),
+            default_registry(hosts_from(os.environ)).is_idempotent,
         )
     except RunNotFoundError:
         return _err(f"there is no run {args.run_id}")

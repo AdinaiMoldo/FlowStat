@@ -31,6 +31,7 @@ class ActionSignature:
     optional: Mapping[str, str] = field(default_factory=dict)  # optional arguments -> type
     outputs: Mapping[str, str] | None = None  # field -> type; None: the output is not declared
     effect: bool = False  # the action changes something outside the engine
+    hosts: frozenset[str] | None = None  # hosts a constant ``url`` may name; None: any (US-39)
 
 
 Signatures = Mapping[str, ActionSignature]

@@ -193,3 +193,21 @@ def test_main_with_a_shipper_that_cannot_reach_the_core_still_serves_and_ends(
         env=settings,
     )
     assert code == 0 and order == ["served"]
+
+
+def test_main_gives_the_service_the_list_of_hosts_that_the_environment_names(
+    tmp_path: Path,
+) -> None:
+    env = make_service(tmp_path)
+    found: list[Any] = []
+    main(
+        ["--bundle", str(env.bundle)],
+        serve=lambda app, host, port: found.append(app.state.registry.signatures()["http.call"]),
+        env={"FLOWSTAT_ALLOWED_HOSTS": "a.kg,b.kg"},
+    )
+    main(
+        ["--bundle", str(env.bundle)],
+        serve=lambda app, host, port: found.append(app.state.registry.signatures()["http.call"]),
+        env={},
+    )
+    assert found[0].hosts == frozenset({"a.kg", "b.kg"}) and found[1].hosts is None
