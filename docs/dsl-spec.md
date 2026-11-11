@@ -360,7 +360,8 @@ How it is done, and what follows from it:
   that stops the run does the same. A run is not finished while a step is UNCERTAIN.
 - The report shows an UNCERTAIN step with its code and message, and the run as WAITING when nothing
   else is running (exit code 3 of the command line).
-- Command line: `flowstat resume RUN` takes up a run (all of the above; `--decision` gives the answer
+- A server that starts takes up the runs it owns without a command (api-spec section 5). Command
+  line: `flowstat resume RUN` takes up a run (all of the above; `--decision` gives the answer
   a waiting approval awaits) and `flowstat resolve RUN STEP --done [--output JSON]` or `--retry`
   decides about an uncertain step. `resolve` refuses while steps are still to be repeated: `resume`
   comes first. The run ends with the same exit codes as `run`.

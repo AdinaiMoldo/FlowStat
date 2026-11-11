@@ -347,3 +347,12 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Chose: the time limit of a waiting step is measured from the recorded time of the wait and judged by the clock that is passed in, as every other time in the engine. A limit from the clock of the process would make a restart reset it.
 - Not done by the author alone: NFR-06 (usability with a colleague). The matrix will say `not verified` and the exercise is prepared; no result is written for it.
 
+## 2026-11-11 M9: US-36, a process that starts takes up its own runs
+
+- Chose: a run is taken up when its status is `CREATED`, `RUNNING` or `COMPENSATING` and the store owns it. `WAITING` is left alone: nothing is running, an answer will come by the route, and resuming it would append a `RUN_RESUMED` to the log at every start for nothing.
+- Chose: no special path for a run that was stored and never started. `recover` of an empty history gives the same commands as a fresh launch and writes no `RUN_RESUMED`; a test says so, and the branch that was first written for it was removed when the mutation did not fail any test.
+- Chose: the driving goes through the same pool and the same lock as a request (`drive_in_background`), so a command that arrives while the start is taking the run up gets 409 and is sent again; no second lock.
+- Chose: the core's copy of a service's run is not taken up (its `origin` is the service); the service takes up its own at its own start. This is the whole answer to "which of several processes resumes which run": the one whose database holds the run, and owns it in the table of ownership.
+- Measured by the crash test (`tests/crash/test_resume_at_start.py`): the history of the nine-region example, answered `approved` and answered `rejected`, cut after each event, a new core started on the cut; every cut goes on to the end of the uninterrupted run. The step that is not idempotent (the mail on the rejected path) is `UNCERTAIN` when the cut falls while it was sent, and is not sent again. Breaking the rule (not taking `RUNNING` runs up) fails it at the first cut; so does leaving the call out of the service.
+- Found while writing the test: `git checkout FILE` to undo a mutation of a file that also had edits not yet committed undid the edits. Mutations are now made on a copy that is put back (`cp`), never with `checkout`.
+

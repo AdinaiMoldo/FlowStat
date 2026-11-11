@@ -111,7 +111,7 @@ def drive_in_background(
                 config.data_dir, config.target, config.workers, config.time, config.sleep
             )
             drive(runs, run_id, launch, machine, commands)
-        except Exception:  # the log keeps what happened; `flowstat resume` can take the run up
+        except Exception:  # the log keeps what happened; the next start takes the run up
             log.exception("the run %s stopped with an error", run_id)
         finally:
             if db is not None:

@@ -14,6 +14,7 @@ from flowstat.api import (
     errors,
     expiring,
     migrations,
+    resuming,
     runs,
     statistics,
     ui,
@@ -43,5 +44,6 @@ def create_app(config: AppConfig) -> FastAPI:
     app.include_router(statistics.router)
     ui.mount(app)
     migrations.recover_on_start(config, app.state.locks)
+    resuming.resume_on_start(config, app.state.registry, app.state.locks)
     expiring.expire_due(config, app.state.registry, app.state.locks)
     return app
