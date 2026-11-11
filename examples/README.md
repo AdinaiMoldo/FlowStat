@@ -4,6 +4,7 @@ Only synthetic data lives here. Real Committee data is never committed; the depa
 
 - `quarterly_consolidation.yaml`: the main example of the Project Proposal (22 steps after expansion).
 - `catalogue.yaml`: the catalogue snapshot used by `foreach`.
+- `exercise_one_region.yaml`: the reference solution of the usability exercise (`docs/research/nfr06-exercise.md`): one region, five steps. It is not given to the person who takes the exercise.
 
 ## Running the example
 
