@@ -26,6 +26,7 @@ from flowstat.solver.predicate import (
 )
 
 QUORUM_CAP = 64  # combinations of dependencies that an ``at_least`` may expand to
+RUN_CAP = 200  # nodes of a run condition; a larger one is given up (US-43)
 
 
 def run_conditions(plan: Plan, preds: Mapping[str, Pred]) -> dict[str, Pred]:
@@ -33,7 +34,8 @@ def run_conditions(plan: Plan, preds: Mapping[str, Pred]) -> dict[str, Pred]:
     for step in plan.steps:
         gate = _gate(step.join, [runs[d] for d in step.needs])
         guard = preds.get(step.id)
-        runs[step.id] = gate if guard is None else conj([gate, guard])
+        cond = gate if guard is None else conj([gate, guard])
+        runs[step.id] = cond if within(cond, RUN_CAP) else Opaque("a condition over many steps")
     return runs
 
 
@@ -113,6 +115,27 @@ def size(p: Pred) -> int:
             return 1
 
 
+def within(p: Pred, cap: int) -> bool:
+    """Whether a predicate has at most ``cap`` nodes; it stops counting past ``cap``, no recursion.
+
+    A run condition holds the conditions of the steps before it, so in a long chain it nests as
+    deep as the chain is long; a recursive count would fail on exactly the input it is asked about.
+    """
+    left = cap
+    stack = [p]
+    while stack:
+        node = stack.pop()
+        left -= 1
+        if left < 0:
+            return False
+        match node:
+            case And(items=items) | Or(items=items):
+                stack.extend(items)
+            case Not(item=item):
+                stack.append(item)
+    return True
+
+
 def negate(p: Pred) -> Pred:
     if p == TRUE:
         return FALSE
@@ -121,4 +144,4 @@ def negate(p: Pred) -> Pred:
     return nnf(p, True)
 
 
-__all__ = ["bounds", "conj", "disj", "negate", "run_conditions", "size"]
+__all__ = ["bounds", "conj", "disj", "negate", "run_conditions", "size", "within"]

@@ -300,6 +300,13 @@ Given the Runs page is open, when a run changes, then the table shows it within 
 Function B2 · 2 SP · Could
 
 
+### US-43: As a designer, a workflow of many guarded steps is analysed and not refused
+
+Given a chain of 1,000 steps in which each step runs only if the one before it says so, when the draft is saved, then the checks finish within 3 seconds and report no internal error
+
+Function C2 · 3 SP · Should
+
+
 ### DOC-7: As the author, I assemble the final report from the repository
 
 Given the repository, when the check of the report runs, then every story and every NFR has a row in the traceability matrix with evidence or the reason it has none, the burndown and the velocity chart are made from the backlog, the coverage of each of the C1-C6 packages is at least 90%, and the negative check is filled
