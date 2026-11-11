@@ -36,6 +36,7 @@ def test_the_root_sends_a_browser_to_the_page(env: Env) -> None:
         ("/ui/api.js", "text/javascript"),
         ("/ui/editor.js", "text/javascript"),
         ("/ui/ops.js", "text/javascript"),
+        ("/ui/live.js", "text/javascript"),
         ("/ui/style.css", "text/css"),
     ],
 )
