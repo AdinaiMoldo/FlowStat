@@ -66,7 +66,7 @@ Recount of 5 November: the baseline of 203 SP stays the zero point of the burndo
 | US-41 | As a user of the API, listing runs does not compile a plan for each run | B4 | 3 | Could | M9 | done |
 | US-42 | As an operator, the lists of runs and services update by themselves | B2 | 2 | Could | M9 | done |
 | DOC-7 | As the author, I assemble the final report from the repository | DOC | 5 | Must | M9 | not started |
-| DOC-8 | As a reader, I see the structure of the system in diagrams | DOC | 5 | Must | M9 | not started |
+| DOC-8 | As a reader, I see the structure of the system in diagrams | DOC | 5 | Must | M9 | done |
 | DOC-9 | As a reader, I see the behaviour of the system in diagrams | DOC | 8 | Must | M9 | not started |
 
 Acceptance criteria: `stories.md`. The same stories are GitHub issues, grouped by milestone.

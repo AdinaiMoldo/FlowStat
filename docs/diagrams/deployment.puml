@@ -1,0 +1,27 @@
+@startuml deployment
+' DOC-8. What runs where. A module named after "python -m" must exist (tests/architecture/test_diagrams.py).
+skinparam shadowing false
+
+node "Host of the core" {
+  component "python -m flowstat.serve" as core
+  database "core.sqlite" as coredb
+  folder "data directory" as data
+}
+
+node "Host of a service (process or Docker container)" as host {
+  component "python -m flowstat.api.service" as service
+  database "service.sqlite\n(own event log, source of truth)" as servicedb
+  artifact "bundle\n(plan, catalogue snapshot)" as bundle
+}
+
+actor "Browser" as browser
+
+browser --> core : HTTP
+core --> coredb
+core --> data
+core ..> bundle : build and start
+service --> servicedb
+service --> bundle
+core --> service : control key (run, decide, migrate, rotate)
+service --> core : ingest key (outbox, at least once)
+@enduml

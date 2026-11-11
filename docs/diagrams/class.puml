@@ -1,0 +1,208 @@
+@startuml class
+' DOC-8. The main classes. Each package block is a module of src/flowstat; every class, field and
+' operation drawn here must exist in the code (tests/architecture/test_diagrams.py). Fields are those
+' of the dataclass; a drawing may leave fields out, never invent them.
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "flowstat.model.versions" {
+  class Version {
+    +name
+    +number
+    +status
+    +text
+    +created_at
+    +published_at
+  }
+  enum VersionStatus
+}
+package "flowstat.model.events" {
+  class Event {
+    +seq
+    +kind
+    +at
+    +step
+    +state
+    +code
+  }
+  enum EventKind
+}
+package "flowstat.model.ownership" {
+  class Ownership {
+    +run_id
+    +epoch
+    +state
+    +peer
+    +version
+  }
+  enum OwnerState
+}
+package "flowstat.model.states" {
+  enum StepState
+  enum RunOutcome
+}
+package "flowstat.model.diagnostics" {
+  class Diagnostic {
+    +code
+    +severity
+    +message
+    +line
+    +column
+  }
+}
+package "flowstat.model.history" {
+  class RunReport {
+    +run_id
+    +workflow
+    +version
+    +status
+    +outcome
+    +steps
+  }
+}
+package "flowstat.compiler.plan" {
+  class "Plan" as CompiledPlan {
+    +name
+    +version
+    +steps
+    +goals
+  }
+  class PlanStep {
+    +id
+    +action
+    +needs
+    +join
+    +when
+    +retry
+    +compensate
+    +timeout
+  }
+}
+package "flowstat.engine.scheduler" {
+  class Scheduler {
+    +start()
+    +step_done()
+    +step_waiting()
+    +step_failed()
+    +signal()
+    +expire()
+    +restore()
+    +deadlines()
+  }
+  class Start {
+    +step
+    +action
+    +attempt
+    +compensation
+  }
+}
+package "flowstat.actions.base" {
+  class ActionSpec {
+    +name
+    +params
+    +output
+    +idempotent
+    +waits
+    +effect
+    +hosts
+  }
+}
+package "flowstat.actions.registry" {
+  class Registry
+}
+package "flowstat.compiler.cache" {
+  class PlanCache
+}
+package "flowstat.migration.handover" {
+  class "Plan" as HandoverPlan {
+    +run_id
+    +source
+    +target
+    +epoch
+    +version
+    +last_seq
+  }
+  class Snapshot {
+    +run_id
+    +workflow
+    +version
+    +events
+    +ownership
+  }
+}
+package "flowstat.repo.deployments" {
+  class Deployment {
+    +id
+    +workflow
+    +version
+    +kind
+    +status
+    +endpoint
+    +answering
+  }
+  class DeploymentStore
+}
+package "flowstat.service.runs" {
+  class RunService {
+    +start()
+    +answer()
+    +report()
+    +recover()
+  }
+}
+package "flowstat.service.workflows" {
+  class WorkflowService
+}
+package "flowstat.service.deployments" {
+  class DeploymentService {
+    +deploy()
+    +stop()
+    +probe()
+  }
+}
+package "flowstat.service.moving" {
+  class HandoverService {
+    +migrate()
+    +recover()
+    +owners()
+  }
+}
+package "flowstat.service.rotation" {
+  class KeyRotation {
+    +rotate()
+    +recover()
+  }
+}
+package "flowstat.api.edge" {
+  class Ticker {
+    +start()
+    +stop()
+  }
+}
+
+Version --> VersionStatus
+Event --> EventKind
+Event --> StepState
+Ownership --> OwnerState
+RunReport --> RunOutcome
+CompiledPlan *-- PlanStep
+Scheduler --> CompiledPlan
+Scheduler ..> Start : returns
+Scheduler o-- Event : history
+Registry o-- ActionSpec
+Registry *-- PlanCache
+Snapshot *-- Event
+Snapshot --> Ownership
+HandoverPlan ..> Snapshot : made from
+DeploymentStore o-- Deployment
+WorkflowService --> Version
+WorkflowService --> PlanCache : get_plan
+RunService --> WorkflowService
+RunService --> Scheduler
+RunService --> RunReport
+DeploymentService --> DeploymentStore
+HandoverService --> RunService
+HandoverService --> DeploymentStore
+HandoverService ..> HandoverPlan
+KeyRotation --> DeploymentStore
+@enduml
