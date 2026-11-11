@@ -282,7 +282,7 @@ User management endpoints; passwords and a login page; TLS (terminate it in fron
 which matters more now that services send a key over the network); CORS (not needed, see section 9);
 rate limiting; rotation of the tokens of users (not planned) and of the control and ingest keys of a service (done in US-40); resuming runs when the app starts (done in US-36); the
 epoch fence and migration (done in M8); a health probe of the services from the registry (done in US-37); a
-live refresh of the run list (US-42);
+live refresh of the run list (done in US-42);
 more than one core process (the database is SQLite).
 
 ## 9. M7: the editor, the graph, completion and the events of services
@@ -295,6 +295,16 @@ into the page and kept in `sessionStorage` of that tab. The page and the API hav
 **CORS stays off**. The editor and the graph library are not in the repository: `scripts/fetch_ui.py`
 puts the pinned packages (checked by SHA-512) in `src/flowstat/api/ui/vendor/`; without them the page
 falls back to a text area and a list of diagnostics.
+
+**The lists follow the server** (US-42, M9). While the Runs view is shown the page asks for the list
+of runs again every 4 seconds (and for the report of the run that is open), and while the Services
+view is shown it asks for the services: a change reaches the screen within one period and one answer,
+so within 5 seconds. It asks nothing while the tab is hidden (`visibilityState`) or another view is
+shown, and asks at once when the tab is shown again. A round that fails leaves the table as it was and
+says so in the status line; a 401 stops the refresh until the person signs in. The selected source,
+the open run and the scroll position are kept. The period is in `ui/ops.js` (`DEFAULT_LIVE_MS`), is
+published in `data-live-ms` of the status line, and `?live=MS` in the address changes it (the tests
+use it). No new route and no push from the server: the page asks, as it always did, only by itself.
 
 ### New routes
 
