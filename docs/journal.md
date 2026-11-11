@@ -417,3 +417,12 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Chose: the cache is held by the `Registry`, not by a global and not by the app: the places that build a `WorkflowService` (routes, the pool, resume, expiry) already have the registry, the plans depend on the registry's actions and signatures, and two apps in one test process get two caches.
 - Found while measuring: the first version of the benchmark measured the list after the start of runs that the cache-off pass had made, so the list seemed 30% slower with the cache. Two databases with 50 runs each, one for each pass, show the list unchanged. The table is from the fair one.
 - Measured by mutation: a draft that is kept, 1 test fails; a key of the name only, 1 fails; no move to the end on a hit, 1 fails.
+
+## 2026-11-11 M9: US-42, the lists follow the server
+
+- Chose: polling, not a push. A push (server-sent events, a websocket) needs a channel that stays open for each page, and the one reader of the list is a person with a tab; a request every 4 seconds from one visible tab costs less than a connection that the app has to keep, count and close. The period is 4 s, not 5: a change waits one period and one answer.
+- Chose: the poller asks only while its view is shown and the tab is visible, asks at once when the tab comes back, and does not start a round while one is under way. The three conditions of the story ("within 5 s", "no request while hidden") are three tests.
+- Chose: a refresh that the person did not ask for never empties the table when the server does not answer; a refresh that the person asked for does, as before. A 401 ends the refresh, because a page without a token would ask every 4 seconds for ever.
+- Found while testing: the sync API of Playwright delivers the events of a page only while a call into Playwright waits, not during `time.sleep`. The first version of the test for the hidden tab slept, got an empty list of requests, and passed for the wrong reason. They wait with `page.wait_for_timeout` now, and each of three faults (no check of visibility, no stop when another view is shown, no stop at a 401) fails its own test, which is how I know the empty lists are real.
+- Chose: the Services view follows too, since the status that US-37 made (`unreachable`) is what a person waits to see change there. The sources of the Runs view are not refreshed by the poller (they would move under the hand that is choosing).
+- Not done: a mark on a row that changed since the last round. The story does not ask for it.

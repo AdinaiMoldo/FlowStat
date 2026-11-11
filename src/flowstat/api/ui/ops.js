@@ -2,6 +2,7 @@
 // the services that were deployed. Everything that comes from a service (a message, an input) is
 // put into the page as text, never as markup.
 import { ApiError, call } from "./api.js";
+import { createLive } from "./live.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -46,19 +47,31 @@ function problem(error) {
   return String(error);
 }
 
+// A change of a run is shown within five seconds: one period, and the time of one answer.
+const DEFAULT_LIVE_MS = 4000;
+
+function livePeriod() {
+  const asked = Number(new URLSearchParams(location.search).get("live"));
+  return Number.isFinite(asked) && asked > 0 ? asked : DEFAULT_LIVE_MS;
+}
+
 export function createOps({ goTo }) {
   const state = { from: "", current: null, services: [] };
 
-  async function loadServices() {
+  // The table of services. ``quiet`` is a refresh the person did not ask for: when the server
+  // cannot be asked the table stays as it is. Returns false when asking again is pointless.
+  async function loadServices(quiet = false) {
     const rows = $("services-rows");
     try {
       state.services = await call("GET", "/deployments");
       $("services-status").textContent = `${state.services.length} service(s)`;
     } catch (error) {
-      state.services = [];
-      rows.replaceChildren();
+      if (!quiet) {
+        state.services = [];
+        rows.replaceChildren();
+      }
       $("services-status").textContent = problem(error);
-      return;
+      return !(error instanceof ApiError && error.status === 401);
     }
     rows.replaceChildren();
     for (const s of state.services) {
@@ -78,6 +91,7 @@ export function createOps({ goTo }) {
       });
       rows.append(tr);
     }
+    return true;
   }
 
   function fillSources() {
@@ -97,9 +111,16 @@ export function createOps({ goTo }) {
   }
 
   async function loadRuns() {
-    const rows = $("runs-rows");
     await loadServices();
     fillSources();
+    await showRuns(false);
+  }
+
+  // The table of runs. A refresh that is not asked for by the person (``quiet``) leaves the table
+  // as it is when the server cannot be asked, and says so in the status; it returns false when
+  // asking again is pointless (not signed in).
+  async function showRuns(quiet) {
+    const rows = $("runs-rows");
     // "this core" has no query of its own: the listing is filtered here
     const query = state.from && state.from !== "core" ? `?deployment=${encodeURIComponent(state.from)}` : "";
     try {
@@ -120,13 +141,28 @@ export function createOps({ goTo }) {
         tr.addEventListener("click", () => openRun(r.run_id));
         rows.append(tr);
       }
+      return true;
     } catch (error) {
-      rows.replaceChildren();
+      if (!quiet) rows.replaceChildren();
       $("runs-status").textContent = problem(error);
+      return !(error instanceof ApiError && error.status === 401);
     }
   }
 
-  async function openRun(id) {
+  // What the page asks for by itself while the runs are on the screen: the table and the report
+  // of the run that is open (its steps change as it goes).
+  async function refresh() {
+    const more = await showRuns(true);
+    if (more && state.current) await openRun(state.current, true);
+    return more;
+  }
+
+  const live = createLive({ work: refresh, every: livePeriod() });
+  $("runs-status").dataset.liveMs = String(live.every);
+  const liveServices = createLive({ work: () => loadServices(true), every: livePeriod() });
+  $("services-status").dataset.liveMs = String(liveServices.every);
+
+  async function openRun(id, quiet = false) {
     state.current = id;
     for (const tr of $("runs-rows").children) tr.classList.toggle("current", tr.dataset.id === id);
     const steps = $("run-steps");
@@ -143,6 +179,7 @@ export function createOps({ goTo }) {
         );
       }
     } catch (error) {
+      if (quiet) return; // a refresh that fails leaves what is shown; the next one tries again
       steps.replaceChildren();
       $("run-empty").hidden = false;
       $("run-empty").textContent = problem(error);
@@ -150,11 +187,11 @@ export function createOps({ goTo }) {
   }
 
   $("runs-refresh").addEventListener("click", loadRuns);
-  $("services-refresh").addEventListener("click", loadServices);
+  $("services-refresh").addEventListener("click", () => loadServices());
   $("runs-from").addEventListener("change", () => {
     state.from = $("runs-from").value;
     loadRuns();
   });
 
-  return { loadRuns, loadServices, openRun };
+  return { loadRuns, loadServices, openRun, live, liveServices };
 }
