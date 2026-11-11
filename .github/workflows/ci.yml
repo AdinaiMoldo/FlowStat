@@ -33,6 +33,10 @@ jobs:
         run: python -m pytest tests/architecture -q
       - name: Tests and coverage gate (at least 90 percent)
         run: python -m pytest --cov --cov-report=term-missing
+      - name: Coverage of each package of C1 to C6 (at least 90 percent each)
+        run: |
+          python -m coverage json -o coverage.json
+          python scripts/check_coverage.py
       - name: The container test must run on Linux, not be skipped
         if: runner.os == 'Linux'
         shell: bash
