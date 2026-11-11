@@ -1,0 +1,28 @@
+# The reference solution of the exercise of docs/research/nfr06-exercise.md: one region, five
+# steps. Synthetic. The person who takes the exercise does not see this file.
+workflow: one_region_publication
+version: 1
+inputs:
+  quarter: {type: string, pattern: "^20[0-9]{2}Q[1-4]$"}
+steps:
+  load:
+    action: xlsx.read
+    with: {path: "BIS/${inputs.quarter}.xlsx"}
+  check:
+    action: statguard.validate
+    needs: [load]
+    with: {rows: "${load.rows}"}
+  approve:
+    action: approval.wait
+    needs: [check]
+    with: {role: chief_statistician}
+  publish:
+    action: db.write
+    needs: [approve]
+    when: "${approve.decision} == 'approved'"
+    with: {rows: "${check.rows}"}
+  return_to_region:
+    action: email.send
+    needs: [approve]
+    when: "${approve.decision} == 'rejected'"
+goals: {any_of: [publish, return_to_region]}

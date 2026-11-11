@@ -11,6 +11,7 @@ dist/
 .ruff_cache/
 .hypothesis/
 .coverage
+coverage.json
 htmlcov/
 
 # Secrets and local state: real Committee data and credentials are never committed
