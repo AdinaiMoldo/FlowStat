@@ -1,0 +1,44 @@
+@startuml use-case
+' DOC-8. Who does what with FlowStat. The roles are those of the permission table in docs/api-spec.md.
+left to right direction
+skinparam shadowing false
+
+actor "Designer" as designer
+actor "Operator" as operator
+actor "Administrator" as admin
+actor "Deployed service" as service
+
+rectangle "FlowStat core" {
+  usecase "Save a workflow as a new version" as save
+  usecase "Check a workflow (diagnostics, reachability)" as check
+  usecase "Publish a version" as publish
+  usecase "Start a run" as start
+  usecase "Answer an approval" as decide
+  usecase "Cancel a run" as cancel
+  usecase "Read history and statistics" as read
+  usecase "Deploy a version as a service" as deploy
+  usecase "Move a run to another version" as migrate
+  usecase "Rotate the keys of a service" as rotate
+  usecase "Manage users" as users
+  usecase "Send events to the core" as ship
+}
+
+designer --> save
+designer --> check
+designer --> publish
+designer --> read
+operator --> start
+operator --> decide
+operator --> cancel
+operator --> read
+admin --> deploy
+admin --> migrate
+admin --> rotate
+admin --> users
+admin --> read
+service --> ship
+
+save ..> check : <<include>>
+publish ..> check : <<include>>
+migrate ..> check : <<include>>
+@enduml

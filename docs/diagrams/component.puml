@@ -1,0 +1,87 @@
+@startuml component
+' DOC-8. The packages of src/flowstat and the imports between them.
+' tests/architecture/test_diagrams.py compares every arrow with the real imports: the set must be equal.
+skinparam shadowing false
+skinparam componentStyle rectangle
+
+package "layer 9" {
+  component serve
+}
+package "layer 8" {
+  component api
+  component deploy
+}
+package "layer 7" {
+  component service
+}
+package "layer 6" {
+  component actions
+  component recovery
+  component migration
+}
+package "layer 5" {
+  component engine
+}
+package "layer 4" {
+  component analysis
+}
+package "layer 3" {
+  component compiler
+}
+package "layer 2" {
+  component solver
+  component repo
+}
+package "layer 1" {
+  component dsl
+}
+package "layer 0" {
+  component model
+}
+
+serve --> api
+serve --> deploy
+serve --> model
+serve --> repo
+api --> actions
+api --> engine
+api --> migration
+api --> model
+api --> repo
+api --> service
+deploy --> model
+deploy --> service
+service --> actions
+service --> analysis
+service --> compiler
+service --> dsl
+service --> engine
+service --> migration
+service --> model
+service --> recovery
+service --> repo
+actions --> analysis
+actions --> compiler
+actions --> engine
+actions --> model
+recovery --> compiler
+recovery --> model
+recovery --> repo
+migration --> analysis
+migration --> compiler
+migration --> dsl
+migration --> engine
+migration --> model
+engine --> compiler
+engine --> dsl
+engine --> model
+analysis --> compiler
+analysis --> dsl
+analysis --> model
+analysis --> solver
+compiler --> dsl
+compiler --> model
+solver --> dsl
+repo --> model
+dsl --> model
+@enduml

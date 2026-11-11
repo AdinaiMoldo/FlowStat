@@ -1,0 +1,29 @@
+@startuml c3-sequence
+' DOC-9. C3, the engine: the driver, the scheduler, the write-ahead log and the executor.
+' Card: docs/algorithms/C3.md#pseudocode
+' code: flowstat.engine.runner:run_threaded
+' code: flowstat.engine.scheduler:Scheduler.start
+' code: flowstat.engine.scheduler:Scheduler.step_done
+' code: flowstat.recovery.wal:WriteAheadLog.commit
+skinparam shadowing false
+
+participant "run_threaded (driver)" as driver
+participant "Scheduler" as scheduler
+participant "WriteAheadLog" as wal
+participant "executor (thread pool)" as pool
+
+driver -> scheduler : start(now)
+scheduler --> driver : Start(a), Start(b)
+driver -> wal : commit(events)
+note right: the events are stored before the commands run
+driver -> pool : run a, run b
+pool --> driver : result of a
+driver -> scheduler : step_done(a, output, now)
+scheduler --> driver : Start(c)
+driver -> wal : commit(events)
+driver -> pool : run c
+pool --> driver : result of b, c
+driver -> scheduler : step_done(b), step_done(c)
+scheduler --> driver : no more commands, outcome set
+driver -> wal : commit(events)
+@enduml

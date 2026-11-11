@@ -1,0 +1,34 @@
+@startuml c1-sequence
+' DOC-9. C1, the compiler: who calls whom when a workflow is saved.
+' Card: docs/algorithms/C1.md#what-is-ours-the-transformation-and-the-code-we-write
+' code: flowstat.compiler.compile:compile_workflow
+' code: flowstat.dsl.reader:read_yaml
+' code: flowstat.dsl.shape:check_shape
+' code: flowstat.compiler.workflow:build_workflow
+' code: flowstat.compiler.graph:strongly_connected_components
+' code: flowstat.compiler.graph:topological_order
+' code: flowstat.analysis.types:check_types
+skinparam shadowing false
+
+actor "WorkflowService" as caller
+participant "compile_workflow" as compile
+participant "read_yaml" as reader
+participant "check_shape" as shape
+participant "build_workflow" as build
+participant "graph" as graph
+participant "check_types" as types
+
+caller -> compile : text, catalogue
+compile -> reader : text
+reader --> compile : tree, diagnostics
+compile -> shape : tree
+shape --> compile : diagnostics
+compile -> build : tree
+build --> compile : workflow, diagnostics
+compile -> compile : expand, resolve
+compile -> graph : strongly_connected_components, topological_order
+graph --> compile : cycles, order
+compile --> caller : plan, or diagnostics
+caller -> types : plan, signatures
+types --> caller : diagnostics
+@enduml

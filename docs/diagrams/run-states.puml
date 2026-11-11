@@ -1,0 +1,28 @@
+@startuml run-states
+' DOC-9. The status of a run, as engine/scheduler.py (status) and model/history.py (_status) say it
+' from the events alone. A finished run has an outcome (RunOutcome): SUCCEEDED, GOAL_NOT_REACHED,
+' FAILED, CANCELLED, COMPENSATED or COMPENSATION_FAILED.
+skinparam shadowing false
+
+state CREATED
+state RUNNING
+state WAITING
+state COMPENSATING
+state FINISHED
+
+[*] --> CREATED
+
+CREATED --> RUNNING : RUN_STARTED
+CREATED --> FINISHED : cancelled before the start
+
+RUNNING --> WAITING : a step waits for an answer, or one is UNCERTAIN
+WAITING --> RUNNING : the answer came, or a person resolved the step
+RUNNING --> COMPENSATING : every step is final and a step failed under on_failure compensate
+COMPENSATING --> WAITING : an undo is UNCERTAIN and no other runs
+WAITING --> COMPENSATING : the person resolves the undo
+RUNNING --> FINISHED : every step is final; the outcome is set
+WAITING --> FINISHED : the time limit or a cancel ends the last step
+COMPENSATING --> FINISHED : every undo is final (COMPENSATED or COMPENSATION_FAILED)
+
+FINISHED --> [*]
+@enduml
