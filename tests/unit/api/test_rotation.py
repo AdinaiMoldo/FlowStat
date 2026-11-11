@@ -93,7 +93,8 @@ class Setup:
             db.close()
 
     def ingest_of_service(self) -> str | None:
-        return self.service.call(CONTROL, "GET", "/keys").json()["ingest_sha256"]
+        shown: str | None = self.service.call(CONTROL, "GET", "/keys").json()["ingest_sha256"]
+        return shown
 
 
 @pytest.fixture
