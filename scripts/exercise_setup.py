@@ -21,6 +21,7 @@ outside it.
 from __future__ import annotations
 
 import argparse
+import gc
 import json
 import shutil
 import subprocess
@@ -59,6 +60,7 @@ def clear(work: Path) -> None:
         return
     if any(work.iterdir()) and not (work / "tokens.json").is_file():
         raise demo.DemoError(f"{work} is not the folder of an earlier exercise; give another --dir")
+    gc.collect()  # a database connection of an earlier start in this process keeps a file locked on Windows
     try:
         shutil.rmtree(work)
     except OSError as error:
