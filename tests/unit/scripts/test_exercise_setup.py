@@ -92,6 +92,22 @@ def test_a_name_that_is_not_there_is_answered_with_the_names_that_are(
     assert "Published: one_region" in out and "Saved but not published: only_a_draft" in out
 
 
+def test_the_folder_of_an_earlier_exercise_is_cleared_with_everything_in_it(tmp_path: Path) -> None:
+    work = tmp_path / "data"
+    (work / "forms").mkdir(parents=True)
+    (work / "forms" / "a.xlsx").write_bytes(b"x")
+    (work / "flowstat.db").write_bytes(b"x")
+    (work / "tokens.json").write_text("{}", encoding="utf8")
+    exercise_setup.clear(work)
+    assert not work.exists()
+    exercise_setup.clear(work)  # nothing there: nothing to do
+
+
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="here the same process starts the core twice and keeps its database file locked; a "
+    "person starts the script in a new process each time (the clearing itself is tested above)",
+)
 def test_a_second_start_in_the_same_folder_gives_a_clean_core(tmp_path: Path) -> None:
     work = tmp_path / "data"
     first = exercise_setup.prepare(work, demo.free_port())
