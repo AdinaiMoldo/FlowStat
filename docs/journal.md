@@ -450,3 +450,10 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Found: 2,255 passed, 2 skipped, 37 errors, all in `tests/browser`. The driver of Playwright (`node`) does not start in the slim image: `libatomic.so.1` is missing. The fixture skipped only when Chromium could not be launched, not when the driver could not start, so the tests errored where their own comment says they skip.
 - Chose: the fixture skips in both cases. CI is unchanged and still strict: its browser step fails if any test is skipped, so a missing browser there cannot pass quietly. Checked by replacing `sync_playwright` with one that fails on start: three skips with the reason; with the real one, the same three tests pass.
 - Chose: the matrix keeps `partly verified` for NFR-07, and says what the container run did not cover (the tests of the page, the test that starts a container, the drawing of the diagrams).
+
+## 2026-11-15 M9: NFR-06, the first person
+
+- Run: one statistician of the department (3 years with data) took the exercise with the set-up of `scripts/exercise_setup.py`; the author was present and reports 30 minutes to publication and 3 requests for help. The check of the published workflow gave the right end for both answers, five steps. The record sheet was filled in only in part (no minutes to the first save, no errors, no account of what was hard), and the time is the author's report, not a measurement.
+- Chose: the result is written as `partly verified`, not as met. The rule written before the run asks for two people who all pass, and one pass at the limit with an unmeasured time is not that.
+- Chose: the equal names (workflow and steps equal to the reference solution) are written in the observation as a fact with the two things that can explain them (four of five step names are in the example of the introduction, which may be looked at), and not as a doubt about the person; the author states that he wrote the text himself.
+- Found: the set-up script did not clear an earlier start, an old core could answer instead of the new one, and a wrong name gave no help. See `research/nfr06-exercise.md`.

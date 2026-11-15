@@ -1,10 +1,11 @@
 # NFR-06: the usability exercise
 
-**Status: prepared, not run.** The requirement (Project Proposal, NFR-06) is that an analyst of the
-department writes a valid five-step workflow in at most 30 minutes after a 15-minute introduction.
-That is a test with a person, and the author cannot be that person: she knows the language. This
-file is everything needed to run it once a colleague is found. No result is in the repository, and
-`traceability.md` says `not verified` for NFR-06 until the record sheet at the end is filled in.
+**Status: run once (one person, 15 November 2026); a second person is needed.** The requirement
+(Project Proposal, NFR-06) is that an analyst of the department writes a valid five-step workflow in
+at most 30 minutes after a 15-minute introduction. That is a test with a person, and the author
+cannot be that person: she knows the language. This file is everything needed to run it. One
+person has taken it and the result is in the table at the end; the rule below asks for at least two,
+so `traceability.md` does not say that NFR-06 is met.
 
 ## Who, where, what is needed
 
@@ -111,7 +112,17 @@ the repository, and only the table of results below is copied in.
 
 | Person | Passed | Minutes to publication | Observation |
 | --- | --- | --- | --- |
-| (not run) | | | |
+| P1 | yes, at the limit | 30, as reported by the author, who was present; not timed to the minute | A statistician of the department, 3 years with data. Wrote the workflow himself, as the author tells it, and said that it was not difficult. Asked for help 3 times; what about was not written down. `exercise_setup.py check` on the published workflow: five steps; after *approved* the step that writes ran and the message step was skipped, after *rejected* the other way round; both runs `SUCCEEDED`. The workflow and its steps have the same names as the reference solution (`one_region_publication`, `load`, `check`, `approve`, `publish`, `return_to_region`); the task gives no names, and the example shown in the introduction has four of the five step names (`return_to_regions` for the last). Not recorded: the minutes to the first save and to a save with no error, the number of saves, the errors shown, what he found hard, and what the observer saw. |
+
+One person is not enough for the rule above (at least two, all of whom pass). NFR-06 is **not yet
+shown to be met**: one pass, at the limit of the time, with a time that was not measured exactly.
+The second person is open.
+
+What the first run showed about the exercise itself (not about the language): the set-up script
+did not clear the data of an earlier start although this file said it did (the dry run had left its
+users), a core of the dry run that was still running could answer in the place of the new one, and
+the check said only "there is no workflow" for a wrong name. The first is fixed, the third is
+fixed, and the second is to be fixed (the script is to refuse a port that already answers).
 
 When the table is filled: copy the counts into the row of NFR-06 in `traceability.md`, replace
 `not verified` by the result, and write what was learnt in the retrospective of the milestone in
