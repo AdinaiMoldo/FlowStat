@@ -35,3 +35,6 @@ docs/diagrams/out/
 
 # The editor and the graph library are fetched by scripts/fetch_ui.py
 src/flowstat/api/ui/vendor/
+
+# The data of one run of the usability exercise (synthetic, made by scripts/exercise_setup.py)
+exercise-data/

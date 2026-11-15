@@ -73,8 +73,10 @@ The exercise passes for a person if, within 30 minutes of the start of writing:
 - the workflow is saved with **no error** (a warning is allowed and is written down);
 - it is **published**;
 - it **does what the task says**: the observer starts a run with `2025Q1`, answers *approved*, and
-  the rows are written; starts another, answers *rejected*, and the message is sent. A workflow
-  that is valid but does something else does not pass;
+  the rows are written; starts another, answers *rejected*, and the message is sent. The command
+  `python scripts/exercise_setup.py check NAME` does both runs and prints the outcome and the state
+  of every step of each; the observer reads it (it does not judge). A workflow that is valid but
+  does something else does not pass;
 - it has **five steps**, as the Proposal says. A solution with more steps that does the task is
   recorded as such and does not count as a pass for the number of steps.
 
