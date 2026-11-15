@@ -58,13 +58,19 @@ def server(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Server]:
 
 @pytest.fixture(scope="session")
 def browser() -> Iterator[Browser]:
-    with sync_playwright() as playwright:
+    try:
+        playwright = sync_playwright().start()
+    except Exception as error:  # the driver of Playwright cannot start (a missing system library)
+        pytest.skip(f"Playwright cannot be started: {error}")
+    try:
         try:
             launched = playwright.chromium.launch()
         except Exception as error:  # the browser is not installed
             pytest.skip(f"Chromium cannot be started: {error}")
         yield launched
         launched.close()
+    finally:
+        playwright.stop()
 
 
 @pytest.fixture
