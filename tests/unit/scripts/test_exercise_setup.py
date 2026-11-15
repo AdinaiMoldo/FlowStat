@@ -66,3 +66,27 @@ def test_the_tokens_are_kept_for_the_observer(tmp_path: Path) -> None:
         setup.process.terminate()
     assert saved["base"] == setup.base
     assert set(saved["tokens"]) == {"admin", "designer", "chief", "operator"}
+
+
+def named(name: str) -> str:
+    """The reference solution under another name (the name of the text is the one of the URL)."""
+    return SOLUTION.replace(f"workflow: {NAME}", f"workflow: {name}")
+
+
+def test_a_name_that_is_not_there_is_answered_with_the_names_that_are(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    setup = exercise_setup.prepare(tmp_path / "data", demo.free_port())
+    try:
+        designer = setup.tokens["designer"]
+        for name in ("only_a_draft", "one_region"):
+            url = f"{setup.base}/workflows/{name}/versions"
+            assert demo.http("POST", url, designer, {"text": named(name)})[0] == 201
+        publish = f"{setup.base}/workflows/one_region/versions/1/publish"
+        assert demo.http("POST", publish, designer)[0] == 200
+        assert exercise_setup.main(["check", "one_regoin", "--dir", str(tmp_path / "data")]) == 1
+    finally:
+        setup.process.terminate()
+    out = capsys.readouterr().out
+    assert "no published workflow 'one_regoin'" in out
+    assert "Published: one_region" in out and "Saved but not published: only_a_draft" in out

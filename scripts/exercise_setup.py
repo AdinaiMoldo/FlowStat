@@ -74,6 +74,19 @@ def prepare(work: Path, port: int) -> Setup:
     return Setup(base, tokens, process)
 
 
+def known(base: str, tokens: dict[str, str]) -> str:
+    """The workflows of the core, for the observer who typed a name that is not there."""
+    status, items = demo.http("GET", f"{base}/workflows", tokens["designer"])
+    if status != 200 or not items:
+        return "The core has no workflows yet: has the person saved and published one?"
+    published = [i["name"] for i in items if i["latest_published"] is not None]
+    drafts = [i["name"] for i in items if i["latest_published"] is None]
+    return (
+        f"Published: {', '.join(published) or 'none'}. "
+        f"Saved but not published: {', '.join(drafts) or 'none'}."
+    )
+
+
 def run_once(base: str, tokens: dict[str, str], workflow: str, decision: str) -> dict[str, Any]:
     """Start a run, answer its approval as the chief statistician, return the finished report."""
     status, body = demo.http(
@@ -82,6 +95,8 @@ def run_once(base: str, tokens: dict[str, str], workflow: str, decision: str) ->
         tokens["operator"],
         {"inputs": {"quarter": QUARTER}},
     )
+    if status == 404:
+        raise demo.DemoError(f"there is no published workflow {workflow!r}. {known(base, tokens)}")
     if status != 202:
         raise demo.DemoError(f"the run did not start: {status} {body}")
     url = f"{base}/runs/{body['run_id']}"
