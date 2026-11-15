@@ -11,11 +11,12 @@ file is everything needed to run it once a colleague is found. No result is in t
 - One analyst of the department who has never written a FlowStat workflow. Not a developer. One
   person at a time; the exercise is run again for each person, and two or three people give a more
   honest answer than one.
-- One computer with the core running (`python -m flowstat.serve`), the page open at `/ui/`, the
-  editor fetched (`python scripts/fetch_ui.py`), a designer's token, and the synthetic catalogue
-  (`examples/catalogue.yaml`) loaded. Synthetic forms for the quarter `2025Q1` exist in the data
-  directory of the core; the helper of the tests makes them:
-  `PYTHONPATH=src python -c "from pathlib import Path; from tests.unit.actions.helpers import write_all_forms; write_all_forms(Path('forms'), '2025Q1')"`.
+- One computer with the editor fetched once (`python scripts/fetch_ui.py`) and the project
+  installed (`pip install -e ".[dev,api,deploy]"`). Then one command makes a clean core with the
+  synthetic catalogue, the synthetic forms of the quarter `2025Q1`, a designer, a chief statistician
+  and a clerk, starts it, and prints the address of the page and the designer's token:
+  `python scripts/exercise_setup.py start` (it runs until Ctrl+C, and each start is a clean
+  database in `exercise-data/`, so each person gets the same one).
 - A second person to keep time and to write on the record sheet: the observer. The observer does not
   help, and the author is not the observer if she can avoid it.
 - A timer. The exercise is on the clock only while the analyst writes.
@@ -72,8 +73,10 @@ The exercise passes for a person if, within 30 minutes of the start of writing:
 - the workflow is saved with **no error** (a warning is allowed and is written down);
 - it is **published**;
 - it **does what the task says**: the observer starts a run with `2025Q1`, answers *approved*, and
-  the rows are written; starts another, answers *rejected*, and the message is sent. A workflow
-  that is valid but does something else does not pass;
+  the rows are written; starts another, answers *rejected*, and the message is sent. The command
+  `python scripts/exercise_setup.py check NAME` does both runs and prints the outcome and the state
+  of every step of each; the observer reads it (it does not judge). A workflow that is valid but
+  does something else does not pass;
 - it has **five steps**, as the Proposal says. A solution with more steps that does the task is
   recorded as such and does not count as a pass for the number of steps.
 
