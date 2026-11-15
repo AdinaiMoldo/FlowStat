@@ -127,8 +127,8 @@ The next run, if there is one, records them.
 What the first run showed about the exercise itself (not about the language): the set-up script
 did not clear the data of an earlier start although this file said it did (the dry run had left its
 users), a core of the dry run that was still running could answer in the place of the new one, and
-the check said only "there is no workflow" for a wrong name. The first is fixed, the third is
-fixed, and the second is to be fixed (the script is to refuse a port that already answers).
+the check said only "there is no workflow" for a wrong name. All three are fixed: the script clears the folder of an earlier start, refuses a port that
+already answers (before it clears anything), and the check names the workflows that exist.
 
 When the table is filled: copy the counts into the row of NFR-06 in `traceability.md`, replace
 `not verified` by the result, and write what was learnt in the retrospective of the milestone in
