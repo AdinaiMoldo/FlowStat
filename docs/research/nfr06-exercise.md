@@ -1,10 +1,11 @@
 # NFR-06: the usability exercise
 
-**Status: prepared, not run.** The requirement (Project Proposal, NFR-06) is that an analyst of the
-department writes a valid five-step workflow in at most 30 minutes after a 15-minute introduction.
-That is a test with a person, and the author cannot be that person: she knows the language. This
-file is everything needed to run it once a colleague is found. No result is in the repository, and
-`traceability.md` says `not verified` for NFR-06 until the record sheet at the end is filled in.
+**Status: run with two people (15 November 2026); one passed and one did not, so NFR-06 is not met.** The requirement
+(Project Proposal, NFR-06) is that an analyst of the department writes a valid five-step workflow in
+at most 30 minutes after a 15-minute introduction. That is a test with a person, and the author
+cannot be that person: she knows the language. This file is everything needed to run it. Two
+people have taken it and the results are in the table at the end; the rule below asks for at least
+two who all pass, and one did not, so `traceability.md` says that NFR-06 is not met.
 
 ## Who, where, what is needed
 
@@ -111,7 +112,22 @@ the repository, and only the table of results below is copied in.
 
 | Person | Passed | Minutes to publication | Observation |
 | --- | --- | --- | --- |
-| (not run) | | | |
+| P1 | yes, at the limit | 30, as reported by the author, who was present; not timed to the minute | A statistician of the department, 3 years with data. Wrote the workflow himself, as the author tells it, and said that it was not difficult. Asked for help 3 times; what about was not written down. `exercise_setup.py check` on the published workflow: five steps; after *approved* the step that writes ran and the message step was skipped, after *rejected* the other way round; both runs `SUCCEEDED`. The workflow and its steps have the same names as the reference solution (`one_region_publication`, `load`, `check`, `approve`, `publish`, `return_to_region`); the task gives no names, and the example shown in the introduction has four of the five step names (`return_to_regions` for the last). Not recorded: the minutes to the first save and to a save with no error, the number of saves, the errors shown, what he found hard, and what the observer saw. |
+| P2 | no | 47, as reported by the author, who was present; over the 30 | An analyst of the department; her role and her experience were not recorded. Finished the workflow, but after the 30 minutes. Asked for help 5 times; what about was not written down. She said it was a little hard for a first time and that she is sure it would be easier the next time. Whether her workflow does what the task says was not checked with `exercise_setup.py check`, and the number of its steps was not recorded; the verdict does not depend on it, since the time criterion is not met. Not recorded: the minutes to the first save and to a save with no error, the number of saves, the errors shown. |
+
+By the rule above, one pass in two is 'not met', and so it is written: **NFR-06 is not met.**
+P1 passed at the limit of the time (30 minutes, reported and not measured exactly); P2 needed 47.
+Both asked for help (3 and 5 times). The numbers say that, for a person who sees the language for
+the first time, 30 minutes after a 15-minute introduction is tight for this task, and that the
+record sheet must be filled in during the exercise: without the topics of the requests for help
+and the errors shown, this file cannot say what to change in the editor or in the introduction.
+The next run, if there is one, records them.
+
+What the first run showed about the exercise itself (not about the language): the set-up script
+did not clear the data of an earlier start although this file said it did (the dry run had left its
+users), a core of the dry run that was still running could answer in the place of the new one, and
+the check said only "there is no workflow" for a wrong name. The first is fixed, the third is
+fixed, and the second is to be fixed (the script is to refuse a port that already answers).
 
 When the table is filled: copy the counts into the row of NFR-06 in `traceability.md`, replace
 `not verified` by the result, and write what was learnt in the retrospective of the milestone in
