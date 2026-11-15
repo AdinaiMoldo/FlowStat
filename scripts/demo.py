@@ -147,8 +147,8 @@ def start_core(work: Path, port: int, db: str) -> subprocess.Popen[bytes]:
         sys.executable, "-m", "flowstat.serve", "--db", db, "--data", str(work / "forms"),
         "--target", str(work / "results.db"), "--port", str(port),
     ]  # fmt: skip
-    log = open(work / "core.log", "wb")  # noqa: SIM115 - kept open for the child
-    process = subprocess.Popen(command, env=environment, stdout=log, stderr=subprocess.STDOUT)
+    with open(work / "core.log", "wb") as log:  # the child has its own copy of the handle
+        process = subprocess.Popen(command, env=environment, stdout=log, stderr=subprocess.STDOUT)
     for _ in range(300):
         if process.poll() is not None:
             raise DemoError(f"the core exited: {(work / 'core.log').read_text()[-500:]}")
