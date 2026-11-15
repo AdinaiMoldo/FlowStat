@@ -9,6 +9,8 @@ from __future__ import annotations
 import importlib
 import json
 import sys
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from types import ModuleType
 
@@ -131,3 +133,29 @@ def test_a_folder_that_is_not_an_earlier_exercise_is_not_cleared(tmp_path: Path)
     with pytest.raises(demo.DemoError, match="not the folder of an earlier exercise"):
         exercise_setup.prepare(work, demo.free_port())
     assert (work / "thesis.txt").read_text(encoding="utf8") == "not to be deleted"
+
+
+def test_a_port_that_already_answers_is_refused_and_nothing_is_cleared(tmp_path: Path) -> None:
+    class Answer(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:
+            self.send_response(200)
+            self.send_header("Content-Length", "2")
+            self.end_headers()
+            self.wfile.write(b"{}")
+
+        def log_message(self, *args: object) -> None:
+            return None
+
+    server = HTTPServer(("127.0.0.1", 0), Answer)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    work = tmp_path / "data"
+    work.mkdir()
+    (work / "tokens.json").write_text("{}", encoding="utf8")
+    try:
+        with pytest.raises(demo.DemoError, match="already answers on port"):
+            exercise_setup.prepare(work, server.server_address[1])
+    finally:
+        server.shutdown()
+        server.server_close()
+    assert (work / "tokens.json").is_file()  # the folder of the earlier start was left as it was

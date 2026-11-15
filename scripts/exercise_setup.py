@@ -73,6 +73,12 @@ def clear(work: Path) -> None:
 
 def prepare(work: Path, port: int) -> Setup:
     """A clean core in ``work`` listening on ``port``; the caller stops the process."""
+    if demo.http_ok(f"http://127.0.0.1:{port}/health"):
+        # A core of an earlier start would answer in the place of the new one, with its old users.
+        raise demo.DemoError(
+            f"something already answers on port {port}; stop the core of the earlier start "
+            "(Ctrl+C in its window) or give another --port"
+        )
     clear(work)
     work.mkdir(parents=True)
     db = str(work / "flowstat.db")
