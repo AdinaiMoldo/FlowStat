@@ -1,0 +1,68 @@
+"""The set-up of the usability exercise gives a core in which the reference solution works (NFR-06).
+
+A real core process is started, the reference solution is saved and published as a designer would
+do it on the page, and ``check`` runs it with both answers.
+"""
+
+from __future__ import annotations
+
+import importlib
+import json
+import sys
+from pathlib import Path
+from types import ModuleType
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[3]
+
+
+def load(name: str) -> ModuleType:
+    """A script of ``scripts/`` by name; the scripts import each other from their own folder."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    try:
+        return importlib.import_module(name)
+    finally:
+        sys.path.remove(str(ROOT / "scripts"))
+
+
+demo = load("demo")
+exercise_setup = load("exercise_setup")
+
+SOLUTION = (ROOT / "examples" / "exercise_one_region.yaml").read_text(encoding="utf8")
+NAME = "one_region_publication"
+
+
+def test_the_reference_solution_published_in_the_prepared_core_gives_both_ends(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    setup = exercise_setup.prepare(tmp_path / "data", demo.free_port())
+    try:
+        designer = setup.tokens["designer"]
+        saved = demo.http(
+            "POST", f"{setup.base}/workflows/{NAME}/versions", designer, {"text": SOLUTION}
+        )
+        assert (
+            saved[0] == 201 and saved[1]["diagnostics"] == []
+        )  # the catalogue and actions are there
+        published = demo.http("POST", f"{setup.base}/workflows/{NAME}/versions/1/publish", designer)
+        assert published[0] == 200
+        assert exercise_setup.check(tmp_path / "data", NAME) == 0
+    finally:
+        setup.process.terminate()
+    out = capsys.readouterr().out
+    assert "answer approved: status FINISHED" in out and "answer rejected: status FINISHED" in out
+    assert out.count("5 steps") == 2
+    approved = out.split("answer rejected")[0]
+    assert "publish SUCCEEDED" in approved and "return_to_region SKIPPED" in approved
+    assert "return_to_region SUCCEEDED" in out.split("answer rejected")[1]
+
+
+def test_the_tokens_are_kept_for_the_observer(tmp_path: Path) -> None:
+    setup = exercise_setup.prepare(tmp_path / "data", demo.free_port())
+    try:
+        saved = json.loads((tmp_path / "data" / "tokens.json").read_text(encoding="utf8"))
+    finally:
+        setup.process.terminate()
+    assert saved["base"] == setup.base
+    assert set(saved["tokens"]) == {"admin", "designer", "chief", "operator"}
