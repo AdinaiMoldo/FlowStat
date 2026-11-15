@@ -21,7 +21,9 @@ outside it.
 from __future__ import annotations
 
 import argparse
+import gc
 import json
+import shutil
 import subprocess
 import sys
 import time
@@ -48,9 +50,31 @@ class Setup:
     process: subprocess.Popen[bytes]
 
 
+def clear(work: Path) -> None:
+    """Remove what an earlier start left in ``work``, so that every person gets the same core.
+
+    Only a folder that this script made (it holds ``tokens.json``) or an empty one is cleared; any
+    other folder is not touched, since ``--dir`` is typed by a person.
+    """
+    if not work.exists():
+        return
+    if any(work.iterdir()) and not (work / "tokens.json").is_file():
+        raise demo.DemoError(f"{work} is not the folder of an earlier exercise; give another --dir")
+    # A database connection that an earlier start of this process left to the collector keeps
+    # its file locked on Windows.
+    gc.collect()
+    try:
+        shutil.rmtree(work)
+    except OSError as error:
+        raise demo.DemoError(
+            f"{work} could not be cleared ({error}); stop the core that is still running (Ctrl+C)"
+        ) from error
+
+
 def prepare(work: Path, port: int) -> Setup:
     """A clean core in ``work`` listening on ``port``; the caller stops the process."""
-    work.mkdir(parents=True, exist_ok=True)
+    clear(work)
+    work.mkdir(parents=True)
     db = str(work / "flowstat.db")
     tokens = {
         "admin": demo.make_user(db, "ada", "admin"),
