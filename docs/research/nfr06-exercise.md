@@ -15,8 +15,9 @@ file is everything needed to run it once a colleague is found. No result is in t
   installed (`pip install -e ".[dev,api,deploy]"`). Then one command makes a clean core with the
   synthetic catalogue, the synthetic forms of the quarter `2025Q1`, a designer, a chief statistician
   and a clerk, starts it, and prints the address of the page and the designer's token:
-  `python scripts/exercise_setup.py start` (it runs until Ctrl+C, and each start is a clean
-  database in `exercise-data/`, so each person gets the same one).
+  `python scripts/exercise_setup.py start` (it runs until Ctrl+C, and each start clears
+  `exercise-data/` and makes a new database, so each person gets the same one; it refuses to clear a
+  folder that an earlier start did not make).
 - A second person to keep time and to write on the record sheet: the observer. The observer does not
   help, and the author is not the observer if she can avoid it.
 - A timer. The exercise is on the clock only while the analyst writes.
