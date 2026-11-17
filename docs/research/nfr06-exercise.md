@@ -1,11 +1,12 @@
 # NFR-06: the usability exercise
 
-**Status: run with two people (15 November 2026); one passed and one did not, so NFR-06 is not met.** The requirement
+**Status: run with four people (the first two on 15 November 2026, the other two reported on 17 November); three passed and one did not, so NFR-06 is not met by the rule below.** The requirement
 (Project Proposal, NFR-06) is that an analyst of the department writes a valid five-step workflow in
 at most 30 minutes after a 15-minute introduction. That is a test with a person, and the author
-cannot be that person: she knows the language. This file is everything needed to run it. Two
+cannot be that person: she knows the language. This file is everything needed to run it. Four
 people have taken it and the results are in the table at the end; the rule below asks for at least
-two who all pass, and one did not, so `traceability.md` says that NFR-06 is not met.
+two people, all of whom pass, and one of the four did not, so `traceability.md` says that NFR-06 is
+not met.
 
 ## Who, where, what is needed
 
@@ -115,14 +116,26 @@ the repository, and only the table of results below is copied in.
 | --- | --- | --- | --- |
 | P1 | yes, at the limit | 30, as reported by the author, who was present; not timed to the minute | A statistician of the department, 3 years with data. Wrote the workflow himself, as the author tells it, and said that it was not difficult. Asked for help 3 times; what about was not written down. `exercise_setup.py check` on the published workflow: five steps; after *approved* the step that writes ran and the message step was skipped, after *rejected* the other way round; both runs `SUCCEEDED`. The workflow and its steps have the same names as the reference solution (`one_region_publication`, `load`, `check`, `approve`, `publish`, `return_to_region`); the task gives no names, and the example shown in the introduction has four of the five step names (`return_to_regions` for the last). Not recorded: the minutes to the first save and to a save with no error, the number of saves, the errors shown, what he found hard, and what the observer saw. |
 | P2 | no | 47, as reported by the author, who was present; over the 30 | An analyst of the department; her role and her experience were not recorded. Finished the workflow, but after the 30 minutes. Asked for help 5 times; what about was not written down. She said it was a little hard for a first time and that she is sure it would be easier the next time. Whether her workflow does what the task says was not checked with `exercise_setup.py check`, and the number of its steps was not recorded; the verdict does not depend on it, since the time criterion is not met. Not recorded: the minutes to the first save and to a save with no error, the number of saves, the errors shown. |
+| P3 | yes | 22, as reported to the author | A colleague of the department, 27 years old (role and experience with data not recorded). Asked for help 3 times; what about was not written down. Whether the published workflow was run with `exercise_setup.py check`, and its number of steps, were not recorded; the pass is the report that he managed it. Not recorded: the minutes to the first save and to a save with no error, the number of saves, the errors shown, what he found hard. |
+| P4 | yes | 29, as reported to the author | A colleague of the department, 37 years old (role and experience with data not recorded). Asked for help 4 times; what about was not written down. Check and number of steps not recorded, as for P3. Not recorded: the minutes to the first save and to a save with no error, the number of saves, the errors shown, what he found hard. |
 
-By the rule above, one pass in two is 'not met', and so it is written: **NFR-06 is not met.**
-P1 passed at the limit of the time (30 minutes, reported and not measured exactly); P2 needed 47.
-Both asked for help (3 and 5 times). The numbers say that, for a person who sees the language for
-the first time, 30 minutes after a 15-minute introduction is tight for this task, and that the
-record sheet must be filled in during the exercise: without the topics of the requests for help
-and the errors shown, this file cannot say what to change in the editor or in the introduction.
-The next run, if there is one, records them.
+By the rule above (all who take the exercise pass), the result is written as it stands:
+**NFR-06 is not met.** Three of the four passed (P1 at the limit, P3 in 22 minutes, P4 in 29) and one
+did not (P2, 47 minutes). The times as reported are 30, 47, 22 and 29 minutes (median 29.5, mean 32),
+and the requests for help are 3, 5, 3 and 4. The rule was written before the first run, and the two
+later runs do not change it: a person who did not pass is not cancelled by two who did. Two things
+can be said on the evidence: for a person who sees the language for the first time, 30 minutes after
+a 15-minute introduction is tight (two of the four finished in 29 and 30 minutes, one in 22, one in
+47), and every one of the four asked for help at least 3 times, so "without help" as the
+requirement words it was not reached by anyone. A different rule (for example, a share of the people
+who pass) would be a decision taken after seeing the results; if one is taken, it is written as
+that, with the date, and this verdict stays beside it.
+
+The record sheet must be filled in during the exercise: for P3 and P4, as for P1 and P2, the topics
+of the requests for help, the errors shown and the minutes to the first save were not written down,
+so this file cannot say what to change in the editor or in the introduction. The times are reports,
+not measurements, and the date of the second pair is the day it was reported. The next run, if there
+is one, records them.
 
 What the first run showed about the exercise itself (not about the language): the set-up script
 did not clear the data of an earlier start although this file said it did (the dry run had left its
