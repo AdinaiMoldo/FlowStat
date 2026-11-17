@@ -459,3 +459,9 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Chose: the result is written as `not met`. The rule written before the run asks for two people who all pass; one did, at the limit of the time with an unmeasured time, and the other needed 47 minutes. The rule said that one pass in two is not met before anyone was asked, and it is applied as written.
 - Chose: the equal names (workflow and steps equal to the reference solution) are written in the observation as a fact with the two things that can explain them (four of five step names are in the example of the introduction, which may be looked at), and not as a doubt about the person; the author states that he wrote the text himself.
 - Found: the set-up script did not clear an earlier start, an old core could answer instead of the new one, and a wrong name gave no help. See `research/nfr06-exercise.md`.
+
+## 2026-11-17 M9: NFR-06, two more people
+
+- Run: two more colleagues took the exercise; the author reported the results on 17 November (the date of the exercise itself was not recorded). The third, 27 years old, 22 minutes and 3 requests for help; the fourth, 37 years old, 29 minutes and 4 requests. Not recorded: role and experience, the check of the published workflow, the number of steps, the errors, the topics of the requests for help.
+- Chose: the result stays `not met`. The rule written before the first run asks for people who all pass; three of four did, and the one who did not (47 minutes) is not cancelled by the others. A rule changed after the results would be written as a decision of its own, with its date; none was taken.
+- Found: nobody of the four worked without asking for help (3 to 5 times each), and two of the four finished within one minute of the limit.
