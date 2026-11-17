@@ -451,6 +451,8 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Chose: the fixture skips in both cases. CI is unchanged and still strict: its browser step fails if any test is skipped, so a missing browser there cannot pass quietly. Checked by replacing `sync_playwright` with one that fails on start: three skips with the reason; with the real one, the same three tests pass.
 - Chose: the matrix keeps `partly verified` for NFR-07, and says what the container run did not cover (the tests of the page, the test that starts a container, the drawing of the diagrams).
 
+- Chose (later, on 17 November): `scripts/test-in-linux.sh` and `.ps1` install `libatomic1` and Chromium the way CI does, so that the tests of the page run in the container. Second run: 2299 passed, 0 errors, 2 skipped, 96.30%, 12 min 47 s. The matrix now says `verified` for NFR-07; the two skips are tests that need a Docker daemon and PlantUML, which the container does not have.
+
 ## 2026-11-15 M9: NFR-06, the first person
 
 - Run: two analysts of the department took the exercise with the set-up of `scripts/exercise_setup.py`; the author was present. The first, a statistician with 3 years with data, reports 30 minutes to publication and 3 requests for help; the second, 47 minutes and 5 requests, and said it was a little hard for a first time. The check of the published workflow gave the right end for both answers, five steps. The record sheet was filled in only in part (no minutes to the first save, no errors, no account of what was hard), and the time is the author's report, not a measurement.
