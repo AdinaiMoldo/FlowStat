@@ -12,6 +12,7 @@ from collections import Counter
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import ModuleType
+from typing import Any
 
 import pytest
 
@@ -50,11 +51,11 @@ def seeded(tmp_path: Path):  # type: ignore[no-untyped-def]
     return summary, client, tokens
 
 
-def runs(seeded) -> list[dict]:  # type: ignore[no-untyped-def]
+def runs(seeded) -> list[dict[str, Any]]:  # type: ignore[no-untyped-def]
     _, client, tokens = seeded
     reply = client.get("/runs", headers={"Authorization": f"Bearer {tokens['admin']}"})
     assert reply.status_code == 200
-    found: list[dict] = reply.json()
+    found: list[dict[str, Any]] = reply.json()
     return found
 
 
