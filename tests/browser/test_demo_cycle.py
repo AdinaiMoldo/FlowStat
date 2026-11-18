@@ -65,7 +65,13 @@ def start_run(page: Page) -> None:
     page.click("#workflows li >> nth=0")
     page.wait_for_function("!document.getElementById('run').disabled")
     page.click("#run")
-    page.click("#run-start")
+    # the run exists once the core has answered; the table of runs must not be read before that,
+    # or its first row is the run before this one
+    with page.expect_response(
+        lambda r: r.request.method == "POST" and r.url.endswith("/runs")
+    ) as started:
+        page.click("#run-start")
+    assert started.value.status == 202
 
 
 def open_latest_run(page: Page) -> None:
