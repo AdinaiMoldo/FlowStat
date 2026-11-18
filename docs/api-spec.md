@@ -327,7 +327,7 @@ falls back to a text area and a list of diagnostics.
 (`POST /login`) or an API token pasted under "Use an API token instead" (checked with `GET /me`
 before it is kept). Either way the token is kept in `sessionStorage` of the tab, as before. Where the
 person is lives in the part of the address after `#`, so that the server needs no route for a page:
-`#/home`, `#/editor[/<workflow>]`, `#/runs[/<run>]`, `#/services`, `#/migration`, `#/statistics` and
+`#/home`, `#/editor[/<workflow>]`, `#/forms`, `#/runs[/<run>]`, `#/services`, `#/migration`, `#/statistics` and
 `#/login?next=<address>`. An address other than the sign-in screen sends a person who is not signed
 in to `#/login?next=...` and the page opens it after the sign-in. The menu is built from the
 `permissions` of `GET /me`; it hides what the role may not use but does not replace the check of

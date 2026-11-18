@@ -466,5 +466,14 @@
     "sp": 8,
     "priority": "Should",
     "milestone": "M10"
+  },
+  {
+    "id": "US-50",
+    "story": "As an operator, I send the forms of the regions on a page, see which regions have sent theirs and which rules a form breaks, and then run the workflow on exactly those forms",
+    "criteria": "Given the page Forms and a quarter, when I choose several Excel files named by the code of a region, then each goes to its region, the table shows for the nine regions whether the form came, its rows and the rules it breaks, and says whether enough forms came for the run (7 of 9); a file that is not a form, or a name that is no region, is told in words and changes nothing; I can replace or remove a form; a designer sees the table and has nothing to send with; sample sets of synthetic forms (good, six regions, with a mistake) are made by a script; and the run that follows reads exactly what was sent, so a form with a mistake stops it at its check and names the region",
+    "function": "B2",
+    "sp": 8,
+    "priority": "Should",
+    "milestone": "M10"
   }
 ]

@@ -523,3 +523,12 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Found: the check of a form has no `on_failure: continue` in the example, so one form with a mistake fails the run at once and cancels the other checks; only a form that did not come at all is tolerated (up to two of nine). I wrote the test of the whole cycle to say that, instead of the opposite that I had assumed.
 - Not done: no history of forms, no record of who sent one, and a zip bomb is only limited by the size of the file. The page for it is the next story.
 
+## 2026-11-18 M10: US-50, the page Forms and the sample forms
+
+- Why: with the routes of US-49 the author can load the data herself on the page and see the whole cycle: send the forms, see which regions came, run, stop at a bad form, approve.
+- Did: the page `#/forms` (a table of the nine regions with the state of each form, its rows, the rules it breaks, a button to send, replace or remove one, and a place to choose or drop several files, each going to the region its name says); a menu item and a button on the home page; `scripts/make_forms.py` that writes three sets of synthetic forms (good, six regions, with a mistake) and is called by the start script into `sample-forms/`; `start --no-forms` leaves the folder of the forms empty so that the presenter sends them.
+- Chose: the name of the file decides the region (`BIS.xlsx`), because nine files with nine regions chosen one after another is not a demonstration. A file whose name is no region is not guessed at; it is named in the message and left out.
+- Chose: the default of the start script is unchanged (the forms of 2025Q1 are put in the folder), because the exercise of NFR-06 depends on it; the demonstration uses `--no-forms`.
+- Found: the sets with several mistakes that I first imagined do not show what I wanted. The check of a form has no `on_failure: continue`, so the first bad form fails the run and cancels the other checks; the mistake set has one mistake, and the set of six forms shows the other behaviour (a missing form is tolerated up to two).
+- Not done: the quarter is typed, not chosen; there is no progress bar for many files; a form cannot be downloaded back.
+

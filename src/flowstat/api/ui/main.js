@@ -3,6 +3,7 @@
 import { ApiError, call, session, whenUnauthorized } from "./api.js";
 import { PAUSE_MS, createEditor } from "./editor.js";
 import { EXAMPLE } from "./example.js";
+import { createForms } from "./forms.js";
 import { createGraph } from "./graph.js";
 import { createHome, displayName, roleLabel } from "./home.js";
 import { createMigration } from "./migration.js";
@@ -424,6 +425,7 @@ async function loadLogins() {
 const TITLES = {
   home: "Home",
   editor: "Editor",
+  forms: "Forms",
   runs: "Runs",
   services: "Services",
   migration: "Migration",
@@ -489,6 +491,7 @@ async function render() {
   }
   if (view === "home") state.home.load(state.user);
   if (view === "editor") enterEditor(route, same);
+  if (view === "forms") state.forms.load(state.user);
   if (view === "migration" && !same) state.migration.load();
   if (view === "statistics" && !same) state.statistics.load();
   return undefined;
@@ -512,6 +515,7 @@ async function main() {
   state.migration = createMigration();
   state.statistics = createStatistics();
   state.home = createHome();
+  state.forms = createForms();
   const plain = new URLSearchParams(location.search).has("plain");
   state.editor = await createEditor($("editor"), $("plain"), plain);
   if (state.editor.kind === "plain") {

@@ -52,18 +52,23 @@ export class ApiError extends Error {
   }
 }
 
-export async function call(method, path, body) {
+// One call. ``body`` is JSON unless ``raw`` is given: then it is sent as it is, with that type
+// (the forms of the regions are files).
+async function send(method, path, body, raw) {
   const headers = { Accept: "application/json" };
   const held = token();
   if (held) headers.Authorization = `Bearer ${held}`;
-  if (body !== undefined) headers["Content-Type"] = "application/json";
+  let payload;
+  if (raw) {
+    headers["Content-Type"] = raw;
+    payload = body;
+  } else if (body !== undefined) {
+    headers["Content-Type"] = "application/json";
+    payload = JSON.stringify(body);
+  }
   let response;
   try {
-    response = await fetch(path, {
-      method,
-      headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
+    response = await fetch(path, { method, headers, body: payload });
   } catch (error) {
     throw new ApiError(0, [{ code: "E-NET", message: "the server cannot be reached" }]);
   }
@@ -80,4 +85,13 @@ export async function call(method, path, body) {
     throw new ApiError(response.status, errors);
   }
   return data;
+}
+
+export function call(method, path, body) {
+  return send(method, path, body, null);
+}
+
+// A file as the body of a request (the form of a region).
+export function upload(path, file) {
+  return send("PUT", path, file, file.type || "application/octet-stream");
 }

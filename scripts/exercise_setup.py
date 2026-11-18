@@ -37,6 +37,7 @@ ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
 
 import demo  # noqa: E402  (the helpers of the demonstration: users, server, HTTP)
+import make_forms  # noqa: E402  (the sample forms to send through the page)
 from ruamel.yaml import YAML  # noqa: E402
 from tests.unit.actions.helpers import write_all_forms  # noqa: E402
 
@@ -86,11 +87,13 @@ def clear(work: Path) -> None:
         ) from error
 
 
-def prepare(work: Path, port: int, logins: bool = False) -> Setup:
+def prepare(work: Path, port: int, logins: bool = False, forms: bool = True) -> Setup:
     """A clean core in ``work`` listening on ``port``; the caller stops the process.
 
     With ``logins`` the page shows a button for each user (the core is started with
-    ``--demo-logins``); without it the person signs in with a name and a password.
+    ``--demo-logins``); without it the person signs in with a name and a password. With
+    ``forms`` false the folder of the forms is left empty, for a person who sends them on the page;
+    the sample sets to send are made in ``sample-forms`` either way.
     """
     if demo.http_ok(f"http://127.0.0.1:{port}/health"):
         # A core of an earlier start would answer in the place of the new one, with its old users.
@@ -110,7 +113,9 @@ def prepare(work: Path, port: int, logins: bool = False) -> Setup:
     users = UserService(open_database(db))
     for key, (name, _, _) in USERS.items():
         users.set_password(name, passwords[key], secrets.token_bytes(16))
-    write_all_forms(work / "forms", QUARTER)
+    if forms:
+        write_all_forms(work / "forms", QUARTER)
+    make_forms.write_sets(work / "sample-forms")
     base = f"http://127.0.0.1:{port}"
     (work / "tokens.json").write_text(  # before the core starts: --demo-logins reads it
         json.dumps({"base": base, "tokens": tokens, "passwords": passwords}, indent=2),
@@ -171,8 +176,8 @@ def describe(decision: str, report: dict[str, Any]) -> str:
     )
 
 
-def start(work: Path, port: int, logins: bool = False) -> int:
-    setup = prepare(work, port, logins)
+def start(work: Path, port: int, logins: bool = False, forms: bool = True) -> int:
+    setup = prepare(work, port, logins, forms)
     try:
         print(f"\nThe core is running. Open {setup.base}/ui/ in a browser.")
         print("Sign in on the page with a name and a password. The users of this start:")
@@ -181,6 +186,8 @@ def start(work: Path, port: int, logins: bool = False) -> int:
             print(f"    {name:<5} {setup.passwords[key]}   ({what})")
         if logins:
             print("The page also has a button for each user (a demonstration).")
+        print(f"Forms to send on the page Forms are in {work / 'sample-forms'} (good, six-regions,")
+        print("with-a-mistake): choose the files of a set together.")
         print(f"The tokens are also in {work / 'tokens.json'}.")
         print("The observer checks the result with:")
         print(f"    python scripts/exercise_setup.py check NAME_OF_THE_WORKFLOW --dir {work}")
@@ -216,13 +223,19 @@ def main(argv: list[str] | None = None) -> int:
         help="a demonstration: the page shows a button for each user instead of asking for a "
         "token (the core listens on 127.0.0.1 only)",
     )
+    begin.add_argument(
+        "--no-forms",
+        action="store_true",
+        help="do not put the forms of 2025Q1 in the folder: the presenter sends them on the page "
+        "Forms, from the sample sets that are made in sample-forms",
+    )
     look = kinds.add_parser("check", help="run the published workflow with both answers")
     look.add_argument("workflow")
     look.add_argument("--dir", type=Path, default=Path("exercise-data"))
     args = parser.parse_args(argv)
     try:
         if args.command == "start":
-            return start(args.dir, args.port, args.logins)
+            return start(args.dir, args.port, args.logins, not args.no_forms)
         return check(args.dir, args.workflow)
     except demo.DemoError as error:
         print(f"\nStopped: {error}")

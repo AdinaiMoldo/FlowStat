@@ -25,6 +25,7 @@
     <nav class="menu" aria-label="Pages">
       <a id="tab-home" href="#/home" data-view="home">Home</a>
       <a id="tab-editor" href="#/editor" data-view="editor" data-needs="workflows:read">Editor</a>
+      <a id="tab-forms" href="#/forms" data-view="forms" data-needs="forms:read">Forms</a>
       <a id="tab-runs" href="#/runs" data-view="runs" data-needs="runs:read">Runs</a>
       <a id="tab-services" href="#/services" data-view="services" data-needs="deployments:read">Services</a>
       <a id="tab-migration" href="#/migration" data-view="migration" data-needs="runs:migrate">Migration</a>
@@ -75,6 +76,7 @@
       <div class="actions" id="home-actions">
         <a class="button primary" href="#/editor?example" data-needs="workflows:write">Load the example</a>
         <a class="button" href="#/editor?new" data-needs="workflows:write">New workflow</a>
+        <a class="button" href="#/forms" data-needs="forms:write">Send the forms</a>
         <a class="button" href="#/runs" data-needs="runs:read">Open the runs</a>
       </div>
     </section>
@@ -158,6 +160,34 @@
         <span id="status" class="muted" aria-live="polite"></span>
       </div>
       <ul id="problems" class="list"></ul>
+    </section>
+  </main>
+
+  <main class="ops" id="view-forms" hidden>
+    <section class="panel wide">
+      <div class="row">
+        <h2>Forms of the regions</h2>
+        <label class="muted" for="forms-quarter">Quarter</label>
+        <input id="forms-quarter" value="2025Q1" size="7" autocomplete="off" spellcheck="false">
+        <button type="button" id="forms-refresh">Refresh</button>
+        <span id="forms-count" class="muted" aria-live="polite"></span>
+        <span class="spacer"></span>
+        <span id="forms-status" class="muted" aria-live="polite"></span>
+      </div>
+      <p id="forms-note" class="notice" hidden></p>
+      <ul id="forms-result" class="items errors"></ul>
+      <div id="forms-send" class="drop" hidden>
+        <div id="forms-drop" class="dropzone">
+          <strong>Send several forms at once</strong>
+          <span class="muted">Drop the files here, or choose them. A file is for the region its name says: BIS.xlsx is for BIS.</span>
+          <label class="button primary">Choose files<input id="forms-files" type="file" accept=".xlsx" multiple class="file"></label>
+        </div>
+      </div>
+      <table class="table static" aria-label="Forms of the regions">
+        <thead><tr><th>Region</th><th>Form</th><th>Rows</th><th>Size</th><th>Rules</th><th></th></tr></thead>
+        <tbody id="forms-rows"></tbody>
+      </table>
+      <p class="muted">A form is an Excel file with the columns code, name and value. It is stored where the workflow reads it. A form that breaks a rule (an empty or repeated code, a value that is not a number or is negative) is accepted and shown here; the check step of the run stops at it.</p>
     </section>
   </main>
 

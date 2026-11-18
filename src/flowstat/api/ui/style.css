@@ -187,3 +187,17 @@ input, select, textarea { font: inherit; padding: 6px 10px; border: 1px solid #c
   .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .top { gap: 12px; overflow-x: auto; }
 }
+
+/* the forms of the regions */
+.file { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+label.button { position: relative; cursor: pointer; }
+.dropzone {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 14px 16px;
+  border: 2px dashed #b8c4dc; border-radius: var(--radius); background: #f8faff;
+}
+.dropzone.over { border-color: var(--accent); background: var(--accent-soft); }
+.table.static tbody tr { cursor: default; }
+.table.static tbody tr:hover { background: transparent; }
+.table td .reasons { margin-top: 4px; font-size: 13px; color: var(--error); }
+.items.errors:empty { display: none; }
+.items.errors li { border-color: #fda29b; background: #fef3f2; color: var(--error); justify-content: flex-start; }

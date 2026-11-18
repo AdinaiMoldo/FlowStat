@@ -5,18 +5,20 @@
 <text x="64" y="40" font-size="12" fill="#617080">Story points still to do after each milestone. The grey line is the scope: it grew while the project ran.</text>
 <line x1="64" y1="364.0" x2="736" y2="364.0" stroke="#d9dee4"/>
 <text x="56" y="368.0" font-size="11" text-anchor="end" fill="#617080">0</text>
-<line x1="64" y1="311.3" x2="736" y2="311.3" stroke="#d9dee4"/>
-<text x="56" y="315.3" font-size="11" text-anchor="end" fill="#617080">50</text>
-<line x1="64" y1="258.7" x2="736" y2="258.7" stroke="#d9dee4"/>
-<text x="56" y="262.7" font-size="11" text-anchor="end" fill="#617080">100</text>
-<line x1="64" y1="206.0" x2="736" y2="206.0" stroke="#d9dee4"/>
-<text x="56" y="210.0" font-size="11" text-anchor="end" fill="#617080">150</text>
-<line x1="64" y1="153.3" x2="736" y2="153.3" stroke="#d9dee4"/>
-<text x="56" y="157.3" font-size="11" text-anchor="end" fill="#617080">200</text>
-<line x1="64" y1="100.7" x2="736" y2="100.7" stroke="#d9dee4"/>
-<text x="56" y="104.7" font-size="11" text-anchor="end" fill="#617080">250</text>
+<line x1="64" y1="318.9" x2="736" y2="318.9" stroke="#d9dee4"/>
+<text x="56" y="322.9" font-size="11" text-anchor="end" fill="#617080">50</text>
+<line x1="64" y1="273.7" x2="736" y2="273.7" stroke="#d9dee4"/>
+<text x="56" y="277.7" font-size="11" text-anchor="end" fill="#617080">100</text>
+<line x1="64" y1="228.6" x2="736" y2="228.6" stroke="#d9dee4"/>
+<text x="56" y="232.6" font-size="11" text-anchor="end" fill="#617080">150</text>
+<line x1="64" y1="183.4" x2="736" y2="183.4" stroke="#d9dee4"/>
+<text x="56" y="187.4" font-size="11" text-anchor="end" fill="#617080">200</text>
+<line x1="64" y1="138.3" x2="736" y2="138.3" stroke="#d9dee4"/>
+<text x="56" y="142.3" font-size="11" text-anchor="end" fill="#617080">250</text>
+<line x1="64" y1="93.1" x2="736" y2="93.1" stroke="#d9dee4"/>
+<text x="56" y="97.1" font-size="11" text-anchor="end" fill="#617080">300</text>
 <line x1="64" y1="48.0" x2="736" y2="48.0" stroke="#d9dee4"/>
-<text x="56" y="52.0" font-size="11" text-anchor="end" fill="#617080">300</text>
+<text x="56" y="52.0" font-size="11" text-anchor="end" fill="#617080">350</text>
 <text x="94.5" y="384" font-size="12" text-anchor="middle" fill="#1f2933">start</text>
 <text x="155.6" y="384" font-size="12" text-anchor="middle" fill="#1f2933">M1</text>
 <text x="216.7" y="384" font-size="12" text-anchor="middle" fill="#1f2933">M2</text>
@@ -29,24 +31,24 @@
 <text x="644.4" y="384" font-size="12" text-anchor="middle" fill="#1f2933">M9</text>
 <text x="705.5" y="384" font-size="12" text-anchor="middle" fill="#1f2933">M10</text>
 <text x="16" y="206" font-size="12" fill="#617080" transform="rotate(-90 16 206)" text-anchor="middle">story points</text>
-<polyline fill="none" stroke="#8a94a0" stroke-width="2" stroke-dasharray="6 4" points="94.5,150.2 155.6,150.2 155.6,143.9 216.7,143.9 216.7,143.9 277.8,143.9 277.8,143.9 338.9,143.9 338.9,143.9 400.0,143.9 400.0,138.6 461.1,138.6 461.1,138.6 522.2,138.6 522.2,138.6 583.3,138.6 583.3,138.6 644.4,138.6 644.4,85.9 705.5,85.9 705.5,49.1"/>
-<polyline fill="none" stroke="#2563a8" stroke-width="2.5" points="94.5,150.2 155.6,177.6 216.7,217.6 277.8,247.1 338.9,267.1 400.0,294.5 461.1,316.6 522.2,338.7 583.3,364.0 644.4,364.0 705.5,364.0"/>
-<circle cx="94.5" cy="150.2" r="4" fill="#2563a8"/>
-<text x="94.5" y="141.2" font-size="11" text-anchor="middle" fill="#1f2933">203</text>
-<circle cx="155.6" cy="177.6" r="4" fill="#2563a8"/>
-<text x="155.6" y="168.6" font-size="11" text-anchor="middle" fill="#1f2933">177</text>
-<circle cx="216.7" cy="217.6" r="4" fill="#2563a8"/>
-<text x="216.7" y="208.6" font-size="11" text-anchor="middle" fill="#1f2933">139</text>
-<circle cx="277.8" cy="247.1" r="4" fill="#2563a8"/>
-<text x="277.8" y="238.1" font-size="11" text-anchor="middle" fill="#1f2933">111</text>
-<circle cx="338.9" cy="267.1" r="4" fill="#2563a8"/>
-<text x="338.9" y="258.1" font-size="11" text-anchor="middle" fill="#1f2933">92</text>
-<circle cx="400.0" cy="294.5" r="4" fill="#2563a8"/>
-<text x="400.0" y="285.5" font-size="11" text-anchor="middle" fill="#1f2933">66</text>
-<circle cx="461.1" cy="316.6" r="4" fill="#2563a8"/>
-<text x="461.1" y="307.6" font-size="11" text-anchor="middle" fill="#1f2933">45</text>
-<circle cx="522.2" cy="338.7" r="4" fill="#2563a8"/>
-<text x="522.2" y="329.7" font-size="11" text-anchor="middle" fill="#1f2933">24</text>
+<polyline fill="none" stroke="#8a94a0" stroke-width="2" stroke-dasharray="6 4" points="94.5,180.7 155.6,180.7 155.6,175.3 216.7,175.3 216.7,175.3 277.8,175.3 277.8,175.3 338.9,175.3 338.9,175.3 400.0,175.3 400.0,170.8 461.1,170.8 461.1,170.8 522.2,170.8 522.2,170.8 583.3,170.8 583.3,170.8 644.4,170.8 644.4,125.6 705.5,125.6 705.5,86.8"/>
+<polyline fill="none" stroke="#2563a8" stroke-width="2.5" points="94.5,180.7 155.6,204.2 216.7,238.5 277.8,263.8 338.9,280.9 400.0,304.4 461.1,323.4 522.2,342.3 583.3,364.0 644.4,364.0 705.5,364.0"/>
+<circle cx="94.5" cy="180.7" r="4" fill="#2563a8"/>
+<text x="94.5" y="171.7" font-size="11" text-anchor="middle" fill="#1f2933">203</text>
+<circle cx="155.6" cy="204.2" r="4" fill="#2563a8"/>
+<text x="155.6" y="195.2" font-size="11" text-anchor="middle" fill="#1f2933">177</text>
+<circle cx="216.7" cy="238.5" r="4" fill="#2563a8"/>
+<text x="216.7" y="229.5" font-size="11" text-anchor="middle" fill="#1f2933">139</text>
+<circle cx="277.8" cy="263.8" r="4" fill="#2563a8"/>
+<text x="277.8" y="254.8" font-size="11" text-anchor="middle" fill="#1f2933">111</text>
+<circle cx="338.9" cy="280.9" r="4" fill="#2563a8"/>
+<text x="338.9" y="271.9" font-size="11" text-anchor="middle" fill="#1f2933">92</text>
+<circle cx="400.0" cy="304.4" r="4" fill="#2563a8"/>
+<text x="400.0" y="295.4" font-size="11" text-anchor="middle" fill="#1f2933">66</text>
+<circle cx="461.1" cy="323.4" r="4" fill="#2563a8"/>
+<text x="461.1" y="314.4" font-size="11" text-anchor="middle" fill="#1f2933">45</text>
+<circle cx="522.2" cy="342.3" r="4" fill="#2563a8"/>
+<text x="522.2" y="333.3" font-size="11" text-anchor="middle" fill="#1f2933">24</text>
 <circle cx="583.3" cy="364.0" r="4" fill="#2563a8"/>
 <text x="583.3" y="355.0" font-size="11" text-anchor="middle" fill="#1f2933">0</text>
 <circle cx="644.4" cy="364.0" r="4" fill="#2563a8"/>
