@@ -72,7 +72,6 @@
     <section class="hero">
       <p class="eyebrow" id="home-role"></p>
       <h1 id="home-hello">Welcome</h1>
-      <p class="lead">FlowStat runs the repeating work of a statistical office, such as the quarterly consolidation of forms from the regions, as a process that is written down once, checked before it starts, and followed step by step.</p>
       <div class="actions" id="home-actions">
         <a class="button primary" href="#/editor?example" data-needs="workflows:write">Load the example</a>
         <a class="button" href="#/editor?new" data-needs="workflows:write">New workflow</a>
@@ -82,38 +81,26 @@
     </section>
 
     <section class="stats" aria-label="Summary">
-      <a class="stat" href="#/editor" data-needs="workflows:read"><span class="num" id="count-workflows">–</span><span class="label">workflows</span></a>
-      <a class="stat" href="#/runs" data-needs="runs:read"><span class="num" id="count-runs">–</span><span class="label">runs</span></a>
-      <a class="stat accent" href="#/runs" data-needs="runs:read"><span class="num" id="count-waiting">–</span><span class="label">waiting for an answer</span></a>
-      <a class="stat" href="#/services" data-needs="deployments:read"><span class="num" id="count-services">–</span><span class="label">services</span></a>
+      <a class="stat" href="#/editor" data-needs="workflows:read"><span class="num" id="count-workflows">–</span><span class="label">workflows</span><span class="hint" id="hint-workflows"></span></a>
+      <a class="stat" href="#/runs" data-needs="runs:read"><span class="num" id="count-runs">–</span><span class="label">runs</span><span class="hint" id="hint-runs"></span></a>
+      <a class="stat accent" href="#/runs" data-needs="runs:read"><span class="num" id="count-waiting">–</span><span class="label">waiting for an answer</span><span class="hint" id="hint-waiting"></span></a>
+      <a class="stat" href="#/services" data-needs="deployments:read"><span class="num" id="count-services">–</span><span class="label">services</span><span class="hint" id="hint-services"></span></a>
     </section>
 
     <div class="columns">
-      <section class="card" id="home-waiting-card">
-        <h2>Waiting for an answer</h2>
-        <ul id="home-waiting" class="items"></ul>
-        <p id="home-waiting-empty" class="muted" hidden>Nothing waits for an answer.</p>
+      <section class="card" id="home-main">
+        <div class="row"><h2 id="home-main-title"></h2><span id="home-main-note" class="muted"></span></div>
+        <div id="home-main-body"></div>
       </section>
-      <section class="card">
+      <section class="card" id="home-latest">
         <h2>Latest runs</h2>
-        <table class="table" aria-label="Latest runs">
-          <thead><tr><th>Run</th><th>Workflow</th><th>Status</th></tr></thead>
+        <table class="table static" aria-label="Latest runs">
+          <thead><tr><th>Run</th><th>Workflow</th><th>Status</th><th>Started</th></tr></thead>
           <tbody id="home-recent"></tbody>
         </table>
-        <p id="home-recent-empty" class="muted" hidden>No runs yet. Publish a workflow and start one.</p>
+        <p id="home-recent-empty" class="muted" hidden>No runs yet.</p>
       </section>
     </div>
-
-    <section class="card">
-      <h2>How it works</h2>
-      <ol class="steps">
-        <li><svg class="icon"><use href="#i-write"/></svg><strong>Write</strong><span>The process is a short text: steps, what each one needs, and the goal.</span></li>
-        <li><svg class="icon"><use href="#i-check"/></svg><strong>Check</strong><span>Mistakes show while you type: a missing input, a loop, a goal that can never be reached.</span></li>
-        <li><svg class="icon"><use href="#i-run"/></svg><strong>Run</strong><span>Publish a version and start it. Steps that do not depend on each other run together.</span></li>
-        <li><svg class="icon"><use href="#i-approve"/></svg><strong>Approve</strong><span>A step can wait for a person, such as the chief statistician, and the answer is kept.</span></li>
-      </ol>
-    </section>
-    <footer class="foot muted">FlowStat, a workflow engine for official statistics. This demonstration uses synthetic data only.</footer>
   </main>
 
   <main class="layout" id="view-editor" hidden>
@@ -188,7 +175,6 @@
         <thead><tr><th>Region</th><th>Form</th><th>Rows</th><th>Size</th><th>Rules</th><th></th></tr></thead>
         <tbody id="forms-rows"></tbody>
       </table>
-      <p class="muted">A form is an Excel file with the columns code, name and value. A form that breaks a rule (an empty or repeated code, a value that is not a number or is negative) is accepted and marked here; the check step of the run stops at it.</p>
       <p id="forms-readonly" class="muted" hidden>Forms are sent by the operators of the regions. This page shows what arrived.</p>
     </section>
   </main>
@@ -217,7 +203,7 @@
         <div id="run-graph" class="graph" aria-label="Graph of the run"></div>
         <p class="legend muted">Green: succeeded. Yellow: running or waiting. Red: failed. Grey: skipped.</p>
       </div>
-      <table class="table" aria-label="Steps of the run">
+      <table class="table static" id="run-steps-table" aria-label="Steps of the run" hidden>
         <thead><tr><th>Step</th><th>State</th><th>Attempts</th><th>Error</th></tr></thead>
         <tbody id="run-steps"></tbody>
       </table>
@@ -239,7 +225,6 @@
         <thead><tr><th>Service</th><th>Workflow</th><th>Kind</th><th>Status</th><th>Endpoint</th><th>Runs</th><th>Last event</th></tr></thead>
         <tbody id="services-rows"></tbody>
       </table>
-      <p id="services-hint" class="muted" hidden>Click a service to see the runs it has shipped to this core.</p>
     </section>
   </main>
 
@@ -261,7 +246,6 @@
         <thead><tr><th>Run</th><th>Owner</th><th>Status</th><th>Verdict</th><th>Reasons</th><th>Steps</th><th>Move</th></tr></thead>
         <tbody id="migration-rows"></tbody>
       </table>
-      <p class="muted">The check reads the history of each run and changes nothing. A run that is moved goes on under the version and the owner chosen.</p>
     </section>
   </main>
 
@@ -278,10 +262,9 @@
         <span>Start a run of a published workflow, and its numbers appear here.</span>
       </div>
       <table class="table" id="statistics-table" aria-label="Statistics" hidden>
-        <thead><tr><th>Workflow</th><th>Runs</th><th>Running</th><th>Finished</th><th>Succeeded</th><th>Goal not reached</th><th>Failed</th><th>Failure rate</th><th>Average duration</th><th>Versions</th></tr></thead>
+        <thead><tr><th>Workflow</th><th>Runs</th><th>Running</th><th>Finished</th><th>Succeeded</th><th title="The run ended without reaching its goal. A result, not a failure.">Goal not reached</th><th title="The run ended FAILED, COMPENSATED or COMPENSATION_FAILED.">Failed</th><th>Failure rate</th><th>Average duration</th><th>Versions</th></tr></thead>
         <tbody id="statistics-rows"></tbody>
       </table>
-      <p class="muted">A failure is a run that ended FAILED, COMPENSATED or COMPENSATION_FAILED. A goal that was not reached is a result, not a failure.</p>
     </section>
   </main>
 

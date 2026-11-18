@@ -108,12 +108,12 @@ def test_the_run_that_is_open_and_the_choice_of_source_stay_as_they_were(
     row = page.locator("[data-testid=run][data-id=live-open]")
     row.wait_for(timeout=5000)
     row.click()
-    page.wait_for_function("document.getElementById('run-title').textContent === 'Run live-open'")
+    page.wait_for_function("document.getElementById('run-title').dataset.runId === 'live-open'")
     page.select_option("#runs-from", "core")
     page.wait_for_timeout(1000)  # several rounds of the refresh
     assert page.locator("#runs-from").input_value() == "core"
     assert page.locator("[data-testid=run][data-id=live-open].current").count() == 1
-    assert page.locator("#run-title").text_content() == "Run live-open"
+    assert page.locator("#run-title").get_attribute("data-run-id") == "live-open"
     db.close()
     page.close()
 

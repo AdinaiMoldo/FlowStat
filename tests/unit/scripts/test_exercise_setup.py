@@ -218,3 +218,37 @@ def test_a_start_without_forms_leaves_the_folder_empty_and_still_makes_the_sampl
         assert len(list((tmp_path / "full" / "forms").glob("*/2025Q1.xlsx"))) == 9  # the exercise
     finally:
         full.process.terminate()
+
+
+def test_with_history_the_core_starts_with_runs_and_a_service_that_has_shipped_one(
+    tmp_path: Path,
+) -> None:
+    """A real core process: the history is there, and the service of the history is running."""
+    from datetime import UTC, datetime
+
+    setup = exercise_setup.prepare(
+        tmp_path / "data", demo.free_port(), history=True, now=datetime.now(UTC)
+    )
+    try:
+        admin = setup.tokens["admin"]
+        status, runs = demo.http("GET", f"{setup.base}/runs", admin)
+        assert status == 200
+        core = [r for r in runs if r["origin"] is None]
+        assert len(core) == 9
+        assert sum(r["status"] == "WAITING" for r in core) == 1
+        status, services = demo.http("GET", f"{setup.base}/deployments", admin)
+        assert status == 200 and [s["status"] for s in services] == ["running"]
+        assert setup.service == services[0]["id"]
+        assert services[0]["runs"] == 1  # the run that the service did, shipped to the core
+    finally:
+        exercise_setup.stop(setup)
+
+
+def test_without_the_option_the_core_starts_empty(tmp_path: Path) -> None:
+    setup = exercise_setup.prepare(tmp_path / "data", demo.free_port())
+    try:
+        assert demo.http("GET", f"{setup.base}/runs", setup.tokens["admin"])[1] == []
+        assert demo.http("GET", f"{setup.base}/workflows", setup.tokens["admin"])[1] == []
+        assert setup.service is None
+    finally:
+        exercise_setup.stop(setup)

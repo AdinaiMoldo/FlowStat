@@ -1,6 +1,7 @@
 // The view of statistics: the failure rate and the duration of the runs of each workflow.
 // Numbers come from the server and are put into the page as text, never as markup.
 import { ApiError, call } from "./api.js";
+import { duration } from "./format.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -21,8 +22,7 @@ export function percent(rate) {
 }
 
 export function seconds(value) {
-  if (value === null || value === undefined) return "-";
-  return `${value.toFixed(1)} s`;
+  return duration(value);
 }
 
 function versions(map) {
