@@ -552,3 +552,10 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Found: a goal that is not reached had the red of a failure, and the run that is on a version waiting for an answer was hard to tell from the finished ones; the first is amber now, as the statistics already had it.
 - Found: an administrator can approve from the list, because the check of the title is not made for an administrator; only an operator without the title is refused, and that operator has no list of approvals to press the button in. The test of a refusal from the home page was written for a case that cannot happen and was removed.
 - Not done: no check under 1280 px; the Ubuntu segfault in the browser tests (sqlite statement cache) still has no cause, and a failed Ubuntu job is run again.
+
+## 2026-11-18 M10: DOC-10, the target scenario
+
+- Why: the presenter wanted to say that in theory the data come from Tunduk, are checked on the platform and are published on the website. The system does the middle of that and has the means for the ends, so the claim had to be written with its limits before it was said to a professor.
+- Did: `docs/target-scenario.md` tells the four steps, says for each what in the system does it and whether it is built, and lists what is missing (a certificate and headers in `http.call`, a step that turns an answer into rows, a publication to the website).
+- Chose: to mark receiving and publishing as not built instead of describing them as done. `http.call` has no client certificate and fixed headers; I do not know the protocol of Tunduk, and the page says so.
+- Not done: nothing was tried against Tunduk or a website, and the repository holds only synthetic data.

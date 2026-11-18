@@ -493,5 +493,14 @@
     "sp": 8,
     "priority": "Should",
     "milestone": "M10"
+  },
+  {
+    "id": "DOC-10",
+    "story": "As a reader, I see in one page how data would come from Tunduk, be checked on the platform and be published, and which parts exist",
+    "criteria": "Given the repository, when I open `docs/target-scenario.md`, then the scenario (receive, check, approve, publish) is told in four steps, each step names the part of the system that does it and says whether it is done or not built, what is missing for Tunduk and for the website is listed with what it needs, and the page says that no part was tried against a real service",
+    "function": "DOC",
+    "sp": 2,
+    "priority": "Could",
+    "milestone": "M10"
   }
 ]

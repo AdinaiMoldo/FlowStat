@@ -15,5 +15,6 @@
 | `journal.md` | Decision journal |
 | `backlog.md` | Live backlog, statuses, burndown |
 | `traceability.md` | UR/DR, story, function, design element, test, result |
+| `target-scenario.md` | Where the system is meant to go: data from Tunduk, checked here, published on the website; what is built and what is not |
 | `reuse.md` | Reuse ledger and the allow-list of third-party imports |
 | `negative-check.md` | Functions we do not count as complex, with the reason |

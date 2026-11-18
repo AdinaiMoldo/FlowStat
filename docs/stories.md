@@ -387,3 +387,9 @@ Function B2 · 5 SP · Should
 Given a core started with a history, when any role signs in, then the home page has no paragraph that carries neither data nor an action, greets by name and role, and shows what that role has to do now: the designer the workflows with their version, state and runs and the buttons to write one or load the example, the operator how many of the nine regions have sent their forms and how many break the rules with a button to send them, the chief statistician the runs that wait with Review and Approve in the list, the administrator the runs of the week, how many failed and the latest runs; the counters give a context (how many this week, how many failed, how old the oldest waiting run is); one command (`exercise_setup.py start --logins --with-history`) makes the published workflow and a second version, nine runs over two weeks started by two operators (six reached the goal, one stopped at the check of BAT, one did not reach the goal, one waits for the approval and can be moved to the second version) and one service, so that no page of the menu is empty, while a start without the option stays empty; times are written as a person says them, run numbers are shortened to 8 characters with the whole one in the tooltip and copied by a click, each page has its own title of the tab, and no page puts an error or a warning into the console
 
 Function B2 · 8 SP · Should
+
+### DOC-10: As a reader, I see in one page how data would come from Tunduk, be checked on the platform and be published, and which parts exist
+
+Given the repository, when I open `docs/target-scenario.md`, then the scenario (receive, check, approve, publish) is told in four steps, each step names the part of the system that does it and says whether it is done or not built, what is missing for Tunduk and for the website is listed with what it needs, and the page says that no part was tried against a real service
+
+Function DOC · 2 SP · Could
