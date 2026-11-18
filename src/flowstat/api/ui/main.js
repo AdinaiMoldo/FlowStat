@@ -1,6 +1,6 @@
 // The page: signing in, the addresses of the pages, and the editor (workflows, a text with live
 // diagnostics, save and publish). The other pages are in their own files.
-import { ApiError, call, session, whenUnauthorized } from "./api.js";
+import { ApiError, call, logout, session, whenUnauthorized } from "./api.js";
 import { PAUSE_MS, createEditor } from "./editor.js";
 import { EXAMPLE } from "./example.js";
 import { createForms } from "./forms.js";
@@ -391,12 +391,7 @@ async function signIn(attempt, tokenForm = false) {
 }
 
 async function signOut() {
-  try {
-    await call("POST", "/logout");
-  } catch {
-    /* the session ends at the core by itself; here it is forgotten in any case */
-  }
-  session.clear();
+  await logout();
   location.hash = href("login");
   location.reload(); // nothing of the last person stays in the page
 }

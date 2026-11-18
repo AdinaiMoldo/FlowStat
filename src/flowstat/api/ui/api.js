@@ -52,11 +52,19 @@ export class ApiError extends Error {
   }
 }
 
+// The routes that answer without a token. Any other call without one would only be refused, and
+// the refusal would show in the console of the browser (a refresh that is still on its way when
+// the person signs out, say), so it is not sent.
+const PUBLIC = new Set(["/login", "/health", "/demo/logins"]);
+
 // One call. ``body`` is JSON unless ``raw`` is given: then it is sent as it is, with that type
 // (the forms of the regions are files).
 async function send(method, path, body, raw) {
   const headers = { Accept: "application/json" };
   const held = token();
+  if (!held && !PUBLIC.has(path)) {
+    throw new ApiError(401, [{ code: "E-AUTH", message: "sign in first" }]);
+  }
   if (held) headers.Authorization = `Bearer ${held}`;
   let payload;
   if (raw) {
@@ -94,4 +102,20 @@ export function call(method, path, body) {
 // A file as the body of a request (the form of a region).
 export function upload(path, file) {
   return send("PUT", path, file, file.type || "application/octet-stream");
+}
+
+// Sign out: the token is forgotten first, so that nothing else is sent with it, and then the core
+// is told to end the session (if it cannot be reached the session ends there by itself).
+export async function logout() {
+  const held = token();
+  session.clear();
+  if (!held) return;
+  try {
+    await fetch("/logout", {
+      method: "POST",
+      headers: { Accept: "application/json", Authorization: `Bearer ${held}` },
+    });
+  } catch {
+    /* the session ends at the core by itself */
+  }
 }

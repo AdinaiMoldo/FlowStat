@@ -91,6 +91,7 @@ def test_the_demonstration_runs_through_every_role_without_a_problem(
     go(designer, "forms")
     assert designer.is_hidden("#forms-send")
     assert "sent by the operators" in designer.inner_text("#forms-readonly")
+    designer.close()
 
     # the operator sends nine good forms: green note, every form passes, the run waits for approval
     operator = open_as(browser, server, "operator", "forms", problems)
@@ -111,6 +112,7 @@ def test_the_demonstration_runs_through_every_role_without_a_problem(
         "document.getElementById('run-summary').textContent.includes('SUCCEEDED')", timeout=20000
     )
     assert chief.is_hidden("[data-testid=failure]")
+    chief.close()  # it holds the token of the operator too: signing out below ends that session
 
     # a form with a mistake: the run stops at the check of that form, and the page says where
     send(operator, sets["with-a-mistake"])
@@ -153,3 +155,19 @@ def test_the_demonstration_runs_through_every_role_without_a_problem(
     assert admin.is_disabled("#migration-check")
 
     assert problems == []
+
+
+def test_signing_out_while_a_page_refreshes_leaves_nothing_in_the_console(
+    browser: Browser, server: Server
+) -> None:
+    for _ in range(5):  # a refresh that is on its way when the session ends is a matter of timing
+        problems: list[str] = []
+        page = watch(browser.new_page(), problems)
+        page.goto(f"{server.url}/ui/?live=10")  # the runs are asked for a hundred times a second
+        page.wait_for_selector("body[data-ready]")
+        use_token(page, TOKENS["clerk"], "runs")
+        page.wait_for_timeout(300)
+        sign_out(page)
+        page.wait_for_timeout(600)
+        assert problems == []
+        page.close()
