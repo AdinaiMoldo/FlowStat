@@ -10,3 +10,4 @@ Every C function has two levels: a known algorithm with our transformation, and 
 | C3 | DAG scheduler with four join rules | Feasible critical path | C2 and C6 |
 | C4 | Write-ahead log and replay | Saga compensation plan | the replayed state |
 | C5 | Trace conformance | Epoch-fence handover | the conformance verdict |
+| B1 (US-54) | Exact decimal reading of cells and one pass over the rows | Relations and sums over the figures that no rule refused | the figures kept by the first pass |

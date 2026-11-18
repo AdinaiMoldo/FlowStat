@@ -230,6 +230,7 @@ def seed(work: Path, db: str, tokens: dict[str, str], now: datetime) -> dict[str
                     "deadline": (now + timedelta(days=days)).date().isoformat(),
                     "workflow": NAME,
                     "workflow_version": 2,
+                    "rules": "regional-indicators-v1",
                 },
             )
             expect(made, 201, f"make the campaign {name}")

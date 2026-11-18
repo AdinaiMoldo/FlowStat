@@ -17,6 +17,8 @@ import re
 from dataclasses import dataclass
 from datetime import date
 
+from flowstat.model import rules as content_rules
+
 DRAFT = "DRAFT"
 OPEN = "OPEN"
 COLLECTING = "COLLECTING"
@@ -124,6 +126,9 @@ def checked(settings: Settings, known_regions: set[str]) -> Settings:
         ) from None
     if not settings.workflow.strip() or settings.workflow_version < 1:
         raise CampaignError("E-CAMP-001", "name a workflow and its version", "workflow")
+    if not content_rules.known(settings.rules.strip()):
+        known = ", ".join(sorted(content_rules.SETS))
+        raise CampaignError("E-CAMP-001", f"the rules must be one of: {known}", "rules")
     if not settings.approver.strip():
         raise CampaignError("E-CAMP-001", "name the title that approves", "approver")
     low, high = default_thresholds(len(regions))

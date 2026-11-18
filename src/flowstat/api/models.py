@@ -453,6 +453,20 @@ class StatisticsOut(BaseModel):
     workflows: list[WorkflowStatisticsOut]
 
 
+class FindingOut(BaseModel):
+    code: str  # VAL-<group>-<number>
+    severity: str  # error blocks the form; warning and info are told only
+    message: str
+    region: str
+    file: str
+    sheet: str
+    row: int | None
+    cell: str  # C5; empty for something that is not in the form
+    indicator: str
+    actual: str
+    expected: str
+
+
 class FormOut(BaseModel):
     region: str
     name: str
@@ -461,6 +475,7 @@ class FormOut(BaseModel):
     rows: int | None  # the rows of the form, when it was received and can be read
     size: int | None  # bytes
     problems: list[str]  # the statistical rules the form breaks, or why it cannot be read
+    findings: list[FindingOut] = []  # all that the content rules found (US-54)
 
 
 class FormsOut(BaseModel):
@@ -513,6 +528,7 @@ class RegionProgressOut(BaseModel):
     received: bool
     valid: bool
     problems: int
+    warnings: int = 0
 
 
 class ProgressOut(BaseModel):

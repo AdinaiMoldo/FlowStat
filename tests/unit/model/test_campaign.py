@@ -105,6 +105,7 @@ def test_the_thresholds_default_to_about_three_quarters_and_all() -> None:
         ({"name": "x" * 81}, "name"),
         ({"year": 1999}, "year"),
         ({"quarter": 5}, "quarter"),
+        ({"rules": "strict"}, "rules"),
         ({"regions": ()}, "regions"),
         ({"regions": ("BIS", "BIS")}, "regions"),
         ({"regions": ("BIS", "NOWHERE")}, "regions"),

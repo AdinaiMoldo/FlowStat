@@ -972,8 +972,86 @@
         "title": "EventIn",
         "type": "object"
       },
+      "FindingOut": {
+        "properties": {
+          "actual": {
+            "title": "Actual",
+            "type": "string"
+          },
+          "cell": {
+            "title": "Cell",
+            "type": "string"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "expected": {
+            "title": "Expected",
+            "type": "string"
+          },
+          "file": {
+            "title": "File",
+            "type": "string"
+          },
+          "indicator": {
+            "title": "Indicator",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "region": {
+            "title": "Region",
+            "type": "string"
+          },
+          "row": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Row"
+          },
+          "severity": {
+            "title": "Severity",
+            "type": "string"
+          },
+          "sheet": {
+            "title": "Sheet",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "severity",
+          "message",
+          "region",
+          "file",
+          "sheet",
+          "row",
+          "cell",
+          "indicator",
+          "actual",
+          "expected"
+        ],
+        "title": "FindingOut",
+        "type": "object"
+      },
       "FormOut": {
         "properties": {
+          "findings": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/FindingOut"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -1697,6 +1775,11 @@
           "valid": {
             "title": "Valid",
             "type": "boolean"
+          },
+          "warnings": {
+            "default": 0,
+            "title": "Warnings",
+            "type": "integer"
           }
         },
         "required": [

@@ -271,7 +271,7 @@ workflow text does not repeat these schemas.
 | Action | Arguments | Output | Notes |
 | --- | --- | --- | --- |
 | `xlsx.read` | `path: string` | `rows: list<row>`, `count: int` | first sheet; header `code, name, value`; empty rows ignored; path is relative to the data directory |
-| `statguard.validate` | `rows: list<row>` | `rows: list<row>`, `checked: int` | codes non-empty and unique, values numbers and not negative, at least one row |
+| `statguard.validate` | `rows: list<row>`; optional `rules: string` | `rows: list<row>`, `checked: int` | codes non-empty and unique, values numbers and not negative, at least one row; with `rules: regional-indicators-v1` also every indicator present, ranges, relations between indicators and exact sums (`model/rules.py`, api-spec 11); only errors fail the step |
 | `stats.aggregate` | `parts: list<list<row>>` | `rows: list<row>`, `regions: int` | sum of `value` by `code`, in code order |
 | `approval.wait` | `role: string`; optional `decisions: list<string>` | `decision: string`, `by: string` | pauses the step; the driver supplies the answer |
 | `db.write` | `rows: list<row>` | `written: int`, `batch: string` | batch is the run id; writing again replaces (idempotent); has an effect (10.5) |
@@ -456,7 +456,7 @@ for steps that came from `foreach` expansion, through the source map).
 | E-ACT-005 | error | `statguard.validate`: rows break a rule; the message names the first rows | actions |
 | E-ACT-006 | error | the target database cannot be opened, or the rows cannot be written | actions |
 | E-ACT-007 | error | a path leads outside the data directory | actions |
-| E-ACT-009 | error | an argument of the action is missing or has the wrong type | actions |
+| E-ACT-009 | error | an argument of the action is missing or has the wrong type (also: `statguard.validate` is given a rule set that does not exist) | actions |
 | E-REC-001 | error | the outcome of a non-idempotent step is unknown after a crash (the step is UNCERTAIN) | recovery |
 | E-COMP-001 | error | a compensation failed after its retries (the step is COMPENSATION_FAILED) | recovery |
 | E-ACT-008 | error | an HTTP call failed in transport, timed out or got a 5xx answer (transient) | actions |

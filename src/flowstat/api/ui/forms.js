@@ -29,6 +29,22 @@ function badge(text, kind) {
   return span;
 }
 
+// One finding of the content rules: the message, its code, and what was found and expected.
+function finding(f) {
+  const item = document.createElement("li");
+  item.dataset.severity = f.severity;
+  item.dataset.code = f.code;
+  item.append(document.createTextNode(`${f.message} `));
+  const tag = document.createElement("span");
+  tag.className = `muted code ${f.severity}`;
+  tag.textContent = f.code;
+  tag.title = [f.actual && `found ${f.actual}`, f.expected && `expected ${f.expected}`, f.sheet && `sheet ${f.sheet}`]
+    .filter(Boolean)
+    .join(", ");
+  item.append(tag);
+  return item;
+}
+
 export function createForms() {
   const state = { forms: [], canWrite: false, quarter: "2025Q1" };
 
@@ -72,17 +88,32 @@ export function createForms() {
     rules.dataset.testid = "rules";
     if (!form.received) {
       rules.textContent = "";
-    } else if (form.problems.length === 0) {
-      rules.append(badge("passes the rules", "good"));
     } else {
+      const notes = (form.findings || []).filter((f) => f.severity !== "error");
+      if (form.problems.length === 0) {
+        const count = notes.filter((f) => f.severity === "warning").length;
+        rules.append(badge(count ? `passes the rules, ${count} ${count === 1 ? "warning" : "warnings"}` : "passes the rules", "good"));
+      } else {
+        rules.append(badge("breaks the rules", "bad"));
+      }
       const list = document.createElement("ul");
       list.className = "reasons";
-      for (const text of form.problems) {
+      const errors = (form.findings || []).filter((f) => f.severity === "error");
+      // what blocks the form first, the cut list when the file could not be read at all
+      for (const f of errors.length ? errors.slice(0, 5) : []) list.append(finding(f));
+      if (errors.length === 0) {
+        for (const text of form.problems) {
+          const item = document.createElement("li");
+          item.textContent = text;
+          list.append(item);
+        }
+      } else if (errors.length > 5) {
         const item = document.createElement("li");
-        item.textContent = text;
+        item.textContent = `and ${errors.length - 5} more`;
         list.append(item);
       }
-      rules.append(badge("breaks the rules", "bad"), list);
+      for (const f of notes) list.append(finding(f));
+      if (list.children.length) rules.append(list);
     }
     const actions = cell("");
     if (state.canWrite) {

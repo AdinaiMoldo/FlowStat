@@ -147,6 +147,7 @@ def default_registry(hosts: frozenset[str] | None = None) -> Registry:
                 validate,
                 idempotent=True,
                 param_types={"rows": rows},
+                optional={"rules": "string"},
                 output_types={"rows": rows},
             ),
             ActionSpec(

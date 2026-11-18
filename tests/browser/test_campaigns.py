@@ -6,7 +6,7 @@ import pytest
 from playwright.sync_api import Browser, ConsoleMessage, Page
 
 from tests.browser.conftest import Server, use_token
-from tests.unit.actions.helpers import write_all_forms
+from tests.unit.actions.helpers import FIVE_ROWS, write_all_forms
 from tests.unit.api.helpers import EXAMPLE, NAME, TOKENS
 
 pytestmark = pytest.mark.browser
@@ -99,7 +99,10 @@ def test_the_page_offers_the_changes_the_server_allows_and_follows_the_forms(
     page.click("[data-testid=move][data-to=COLLECTING]")
     page.wait_for_selector("[data-testid=move][data-to=VALIDATING]")
 
-    write_all_forms(forms_server.env.config.data_dir, "2026Q3", missing=("JAL", "ISK"))
+    # the form of the page asks for the rules of the template: a form needs all five indicators
+    write_all_forms(
+        forms_server.env.config.data_dir, "2026Q3", missing=("JAL", "ISK"), rows=FIVE_ROWS
+    )
     page.reload()
     page.wait_for_selector("[data-testid=campaign-region]")
     assert page.inner_text("#campaign-counts") == "7 of 9 received, 7 valid, 2 missing"

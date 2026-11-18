@@ -62,7 +62,7 @@ def test_the_listing_tells_for_each_region_whether_its_form_came(env: Env, tmp_p
     assert [f["region"] for f in forms if f["received"]] == ["OSC"]
     assert forms[0] == {
         "region": "BIS", "name": "Bis", "quarter": "2025Q1", "received": False,
-        "rows": None, "size": None, "problems": [],
+        "rows": None, "size": None, "problems": [], "findings": [],
     }  # fmt: skip
     assert (
         env.call("operator", "GET", "/forms?quarter=2024Q4").json()["forms"][1]["received"] is False
