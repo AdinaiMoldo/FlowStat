@@ -37,13 +37,12 @@ def bearer(token: str) -> dict[str, str]:
 def set_clock(env: Env, now: str | None = None, seconds: float | None = None) -> None:
     """Move the clock of the running app (``clock`` is the text of the time, ``time`` seconds)."""
     config = env.client.app.state.config  # type: ignore[attr-defined]
-    changes = {}
     if now is not None:
-        changes["clock"] = lambda: now
+        config = replace(config, clock=lambda: now)
     if seconds is not None:
         counter = itertools.count()
-        changes["time"] = lambda: seconds + next(counter) * 0.001
-    env.client.app.state.config = replace(config, **changes)  # type: ignore[attr-defined]
+        config = replace(config, time=lambda: seconds + next(counter) * 0.001)
+    env.client.app.state.config = config  # type: ignore[attr-defined]
 
 
 def test_a_sign_in_gives_a_token_that_works_as_the_user(env: Env) -> None:
