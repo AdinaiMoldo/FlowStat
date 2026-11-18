@@ -80,5 +80,6 @@ Recount of 5 November: the baseline of 203 SP stays the zero point of the burndo
 | US-51 | As a presenter, I show the whole cycle (sign in, send forms, check, a form that fails, approve) on pages that look finished, with no error in the console of the browser | B2 | 5 | Should | M10 | done |
 | US-52 | As a presenter, I show pages that are never empty and a home page that gives each role what it has to do now, with the text and the look of a working system | B2 | 8 | Should | M10 | done |
 | DOC-10 | As a reader, I see in one page how data would come from Tunduk, be checked on the platform and be published, and which parts exist | DOC | 2 | Could | M10 | done |
+| US-53 | As an administrator, I create a reporting campaign for a quarter and move it through a life cycle in which only the allowed changes can be made | A1 | 8 | Must | M11 | done |
 
 Acceptance criteria: `stories.md`. The same stories are GitHub issues, grouped by milestone.

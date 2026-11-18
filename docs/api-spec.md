@@ -82,6 +82,8 @@ walks the routes. `public` is the exception, for `GET /health` and `POST /login`
 | `statistics:read` | `GET /statistics` | yes | no | no |
 | `forms:read` | `GET /forms` | yes | yes | yes |
 | `forms:write` | `PUT /forms/{region}/{quarter}`, `DELETE /forms/{region}/{quarter}` | yes | no | yes |
+| `campaigns:read` | `GET /campaigns`, `GET /campaigns/{id}` | yes | yes | yes |
+| `campaigns:write` | `POST /campaigns`, `PUT /campaigns/{id}`, `POST /campaigns/{id}/transitions` | yes | no | no |
 | `handover:control` | `/migration/{run_id}/...` and `/keys...` of a deployed service | yes | no | no |
 | `events:ingest` | `POST /deployments/{id}/events` (the ingest key of that deployment, section 9) | no | no | no |
 
@@ -575,3 +577,44 @@ forms there, so that a person can do it from the page and nobody needs a shell o
 - Not done: the form is not signed or versioned, and the route keeps no record of who sent it. A
   region that sends twice overwrites its first form; the history of what a run read is in its
   events (`xlsx.read` output), not in the directory.
+
+## 12. Reporting campaigns (US-53)
+
+A campaign is one period of collecting the regional reports: a name, a year and a quarter, the
+regions that are expected, a deadline, the workflow and its version, the type of the form, the set
+of validation rules, the thresholds of completeness and the title that approves. Its `period`
+(`2026Q3`) is the quarter of the forms, so the forms of section 11 and a campaign meet there.
+
+- `POST /campaigns` (`campaigns:write`: admin) makes a campaign in `DRAFT`: 201 with the body below,
+  422 `E-CAMP-001` with the `field` that is wrong, 409 `E-CAMP-005` when the name is used. The
+  body has `name`, `year`, `quarter`, `regions` (codes of the catalogue), `deadline` (a date),
+  `workflow`, `workflow_version` (the version must exist; a draft version is accepted for a draft
+  campaign), and optionally `template`, `rules`, `preliminary_min`, `final_min` and `approver`.
+  The thresholds default to about three quarters of the regions and to all of them; they must
+  satisfy `1 <= preliminary_min <= final_min <= number of regions`. A field that is not listed is
+  422.
+- `GET /campaigns` and `GET /campaigns/{id}` (`campaigns:read`: every role) answer with the
+  settings, the `status`, `next` (the changes a person may ask for now) and `progress`: `expected`,
+  `received`, `valid`, `invalid`, `missing` (codes), `regions` (for each: `received`, `valid`,
+  `problems`) and `preliminary_ready` and `final_ready` (whether enough forms are valid). Only the
+  regions of the campaign count, and only the forms of its period. 404 `E-API-002` when there is no
+  such campaign.
+- `PUT /campaigns/{id}` (`campaigns:write`) replaces the settings of a campaign that is still a
+  `DRAFT`; any other status is 409 `E-CAMP-004`.
+- `POST /campaigns/{id}/transitions` with `{"to": "<status>"}` (`campaigns:write`) makes a change
+  that a person may make: 409 `E-CAMP-002` when the table has no such change, 409 `E-CAMP-003`
+  when the change belongs to the system, 409 `E-CAMP-008` when the campaign cannot open because
+  the version of its workflow is not published, 409 `E-CAMP-007` when the campaign changed while
+  the request was made.
+
+The life cycle (`model/campaign.py`). Changes of a person: `DRAFT` to `OPEN` or `ARCHIVED` (a
+cancelled draft), `OPEN` to `COLLECTING`, `COLLECTING` to `VALIDATING`, `VALIDATING` back to
+`COLLECTING`, `APPROVED` to `FINALIZED`, `REJECTED` to `COLLECTING` or `ARCHIVED`, `FINALIZED` to
+`ARCHIVED`. Changes of the system, which no route accepts and which the stories of consolidation
+and approval will make: `VALIDATING` to `READY_FOR_CONSOLIDATION`, then `PRELIMINARY`,
+`PENDING_APPROVAL`, `APPROVED` or `REJECTED`, and back to `COLLECTING` when a correction is
+needed. `ARCHIVED` has no way out, and nothing goes back to `DRAFT`.
+
+Forms and campaigns. When a campaign of a quarter is `APPROVED`, `FINALIZED` or `ARCHIVED`, a form
+of that quarter cannot be replaced or removed: `PUT` and `DELETE` of section 11 answer 409
+`E-CAMP-006`, and reading is free. A quarter that has no campaign is as free as before.

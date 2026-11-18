@@ -118,6 +118,26 @@ CREATE TABLE IF NOT EXISTS deployments (
     ingest_key_next_sha256 TEXT
 );
 
+CREATE TABLE IF NOT EXISTS campaigns (
+    id              TEXT    PRIMARY KEY,
+    name            TEXT    NOT NULL UNIQUE,
+    year            INTEGER NOT NULL,
+    quarter         INTEGER NOT NULL CHECK (quarter BETWEEN 1 AND 4),
+    regions         TEXT    NOT NULL,
+    deadline        TEXT    NOT NULL,
+    workflow        TEXT    NOT NULL,
+    workflow_version INTEGER NOT NULL,
+    template        TEXT    NOT NULL,
+    rules           TEXT    NOT NULL,
+    preliminary_min INTEGER NOT NULL,
+    final_min       INTEGER NOT NULL,
+    approver        TEXT    NOT NULL,
+    status          TEXT    NOT NULL,
+    created_by      TEXT    NOT NULL,
+    created_at      TEXT    NOT NULL,
+    updated_at      TEXT    NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS service_settings (
     name  TEXT PRIMARY KEY,
     value TEXT NOT NULL

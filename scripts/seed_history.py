@@ -4,7 +4,9 @@
 the history in this process, through the same API the page uses, with a clock that is given to it:
 the example workflow published, and nine runs of it over the last two weeks (six reached the goal,
 one stopped at a form with a mistake, one did not reach the goal, one waits for the chief
-statistician), then a second version, so that the run that waits can be moved to it. The runs
+statistician), then a second version, so that the run that waits can be moved to it, and two
+campaigns (the quarter of the last run is being validated, the quarter of the live demonstration is
+collecting). The runs
 belong to the quarters 2022Q4 to 2024Q4, so the quarter 2025Q1 of the live demonstration stays
 empty. Only synthetic data.
 """
@@ -53,6 +55,19 @@ PLAN = (
     Item(2, "13:45", "2023Q2", "ok", "operator2", 9),
     Item(0, "", "2024Q4", "waiting", "operator"),  # started 40 minutes before ``now``
 )
+
+
+# name, year, quarter, deadline in days from now, the changes made after the draft
+CAMPAIGNS = (
+    (
+        "Quarterly Regional Statistics, Q4 2024", 2024, 4, -6,
+        ("OPEN", "COLLECTING", "VALIDATING"),
+    ),
+    (
+        "Quarterly Regional Statistics, Q1 2025", 2025, 1, 12,
+        ("OPEN", "COLLECTING"),
+    ),
+)  # fmt: skip
 
 
 class Timeline:
@@ -198,12 +213,43 @@ def seed(work: Path, db: str, tokens: dict[str, str], now: datetime) -> dict[str
             200,
             "publish v2",
         )
+        # two campaigns, so that the page Campaigns has something to show: the quarter of the last
+        # run (collecting is closed and the forms are being validated) and the quarter of the live
+        # demonstration, which is still collecting
+        line.set(now - timedelta(minutes=15))
+        admin = bearer(tokens["admin"])
+        for name, year, quarter, days, path in CAMPAIGNS:
+            made = client.post(
+                "/campaigns",
+                headers=admin,
+                json={
+                    "name": name,
+                    "year": year,
+                    "quarter": quarter,
+                    "regions": [r["code"] for r in regions],
+                    "deadline": (now + timedelta(days=days)).date().isoformat(),
+                    "workflow": NAME,
+                    "workflow_version": 2,
+                },
+            )
+            expect(made, 201, f"make the campaign {name}")
+            for to in path:
+                expect(
+                    client.post(
+                        f"/campaigns/{made.json()['id']}/transitions",
+                        headers=admin,
+                        json={"to": to},
+                    ),
+                    200,
+                    f"move the campaign {name} to {to}",
+                )
         line.set(now)
     finally:
         client.close()
         gc.collect()  # a connection left to the collector keeps the file locked on Windows
     return {
         "runs": len(PLAN),
+        "campaigns": len(CAMPAIGNS),
         "quarters": sorted({i.quarter for i in PLAN}),
         "started_by": sorted(set(started_by)),
     }

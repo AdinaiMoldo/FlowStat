@@ -24,6 +24,7 @@
     </a>
     <nav class="menu" aria-label="Pages">
       <a id="tab-home" href="#/home" data-view="home">Home</a>
+      <a id="tab-campaigns" href="#/campaigns" data-view="campaigns" data-needs="campaigns:read">Campaigns</a>
       <a id="tab-editor" href="#/editor" data-view="editor" data-needs="workflows:read">Editor</a>
       <a id="tab-forms" href="#/forms" data-view="forms" data-needs="forms:read">Forms</a>
       <a id="tab-runs" href="#/runs" data-view="runs" data-needs="runs:read">Runs</a>
@@ -101,6 +102,65 @@
         <p id="home-recent-empty" class="muted" hidden>No runs yet.</p>
       </section>
     </div>
+  </main>
+
+  <main class="ops" id="view-campaigns" hidden>
+    <section class="panel">
+      <div class="row">
+        <h2>Campaigns</h2>
+        <span class="spacer"></span>
+        <span id="campaigns-status" class="muted" aria-live="polite"></span>
+        <button type="button" id="campaigns-new" class="primary" data-needs="campaigns:write">New campaign</button>
+      </div>
+      <form id="campaign-form" class="fields" hidden>
+        <h3 id="campaign-form-title">New campaign</h3>
+        <label for="campaign-name">Name</label>
+        <input id="campaign-name" maxlength="80" autocomplete="off" required>
+        <div class="pair">
+          <span><label for="campaign-year">Year</label><input id="campaign-year" type="number" min="2000" max="2100" required></span>
+          <span><label for="campaign-quarter">Quarter</label>
+            <select id="campaign-quarter"><option>1</option><option>2</option><option>3</option><option>4</option></select></span>
+          <span><label for="campaign-deadline">Deadline</label><input id="campaign-deadline" type="date" required></span>
+        </div>
+        <div class="pair">
+          <span><label for="campaign-workflow">Workflow</label><select id="campaign-workflow"></select></span>
+          <span><label for="campaign-preliminary">Preliminary from</label><input id="campaign-preliminary" type="number" min="1" placeholder="forms"></span>
+          <span><label for="campaign-final">Final needs</label><input id="campaign-final" type="number" min="1" placeholder="forms"></span>
+        </div>
+        <fieldset><legend>Regions</legend><div id="campaign-regions" class="checks"></div></fieldset>
+        <p id="campaign-form-note" class="notice" hidden role="alert"></p>
+        <div class="row">
+          <span class="spacer"></span>
+          <button type="button" id="campaign-cancel">Cancel</button>
+          <button type="submit" id="campaign-save" class="primary">Save as a draft</button>
+        </div>
+      </form>
+      <div id="campaigns-empty" class="empty" hidden>
+        <strong>No campaigns yet</strong>
+        <span id="campaigns-empty-action"></span>
+      </div>
+      <table class="table" id="campaigns-table" aria-label="Campaigns" hidden>
+        <thead><tr><th>Campaign</th><th>Period</th><th>Status</th><th class="r">Forms</th><th>Deadline</th></tr></thead>
+        <tbody id="campaigns-rows"></tbody>
+      </table>
+    </section>
+    <section class="panel" id="campaign-detail">
+      <div class="row"><h2 id="campaign-title">Campaign</h2><span id="campaign-state"></span></div>
+      <p id="campaign-choose" class="muted">Choose a campaign.</p>
+      <div id="campaign-body" hidden>
+        <p id="campaign-deadline-line" class="muted"></p>
+        <div class="progress" role="progressbar" id="campaign-bar" aria-label="Valid forms"><span></span></div>
+        <p id="campaign-counts" data-testid="campaign-counts"></p>
+        <p id="campaign-ready" class="notice good" hidden></p>
+        <table class="table static" aria-label="Regions of the campaign">
+          <thead><tr><th>Region</th><th>Form</th></tr></thead>
+          <tbody id="campaign-regions-rows"></tbody>
+        </table>
+        <p id="campaign-settings" class="muted"></p>
+        <p id="campaign-note" class="notice" hidden role="alert"></p>
+        <div id="campaign-actions" class="row actions" data-needs="campaigns:write"></div>
+      </div>
+    </section>
   </main>
 
   <main class="layout" id="view-editor" hidden>

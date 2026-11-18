@@ -174,3 +174,18 @@ def test_durations_numbers_and_greetings(formatting: Page) -> None:
     for hour, word in hours.items():
         assert format_call(formatting, f"f.greeting(new Date(2026, 10, 18, {hour}))") == word
     formatting.close()
+
+
+def test_dates_without_a_time_are_written_and_counted_in_days(formatting: Page) -> None:
+    now = "Date.parse('2026-11-18T12:00:00Z')"
+    assert format_call(formatting, f"f.day('2026-11-30', {now})") == "30 Nov"
+    assert format_call(formatting, f"f.day('2027-02-01', {now})") == "1 Feb 2027"
+    assert format_call(formatting, "f.day('soon')") == "soon"
+    assert format_call(formatting, f"f.daysTo('2026-11-30', {now})") == 12
+    assert format_call(formatting, f"f.daysTo('2026-11-18', {now})") == 0
+    assert format_call(formatting, f"f.deadlineWords('2026-11-30', {now})") == "12 days left"
+    assert format_call(formatting, f"f.deadlineWords('2026-11-19', {now})") == "1 day left"
+    assert format_call(formatting, f"f.deadlineWords('2026-11-18', {now})") == "due today"
+    assert format_call(formatting, f"f.deadlineWords('2026-11-15', {now})") == "3 days overdue"
+    assert format_call(formatting, "f.deadlineWords('soon')") == ""
+    formatting.close()

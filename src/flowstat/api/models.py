@@ -486,3 +486,64 @@ class MeOut(BaseModel):
     role: str
     titles: list[str]
     permissions: list[str]  # what the role may do, for a page that shows only what works
+
+
+class CampaignIn(Request):
+    name: str
+    year: int
+    quarter: int
+    regions: list[str]
+    deadline: str  # a date, YYYY-MM-DD
+    workflow: str
+    workflow_version: int
+    template: str = "regional-indicators-v1"
+    rules: str = "basic"
+    preliminary_min: int | None = None  # default: about three quarters of the regions
+    final_min: int | None = None  # default: all of them
+    approver: str = "chief_statistician"
+
+
+class TransitionIn(Request):
+    to: str
+
+
+class RegionProgressOut(BaseModel):
+    region: str
+    name: str
+    received: bool
+    valid: bool
+    problems: int
+
+
+class ProgressOut(BaseModel):
+    expected: int
+    received: int
+    valid: int
+    invalid: int
+    missing: list[str]
+    regions: list[RegionProgressOut]
+    preliminary_ready: bool
+    final_ready: bool
+
+
+class CampaignOut(BaseModel):
+    id: str
+    name: str
+    year: int
+    quarter: int
+    period: str  # 2026Q3: the quarter of the forms
+    regions: list[str]
+    deadline: str
+    workflow: str
+    workflow_version: int
+    template: str
+    rules: str
+    preliminary_min: int
+    final_min: int
+    approver: str
+    status: str
+    next: list[str]  # the changes a person may ask for now
+    created_by: str
+    created_at: str
+    updated_at: str
+    progress: ProgressOut

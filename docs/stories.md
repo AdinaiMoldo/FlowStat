@@ -393,3 +393,9 @@ Function B2 · 8 SP · Should
 Given the repository, when I open `docs/target-scenario.md`, then the scenario (receive, check, approve, publish) is told in four steps, each step names the part of the system that does it and says whether it is done or not built, what is missing for Tunduk and for the website is listed with what it needs, and the page says that no part was tried against a real service
 
 Function DOC · 2 SP · Could
+
+### US-53: As an administrator, I create a reporting campaign for a quarter and move it through a life cycle in which only the allowed changes can be made
+
+Given the catalogue and a workflow, when an administrator creates a campaign with a name, a year, a quarter, the regions, a deadline, the workflow and its version and thresholds of completeness, then it is stored as a DRAFT, wrong settings are refused with the field that is wrong, and a name is used once; a draft can be edited and a campaign that has left DRAFT cannot; it opens only when its workflow version is published; a person can make only the changes the table of the life cycle gives to a person (open, start collecting, close collecting and validate, collect again, finalize, archive), and a change that follows from a consolidation or an approval, or is not in the table, is refused with its own code; every role can read the campaigns and only an administrator can change them, checked on the server; the page Campaigns lists them with the forms that have come and the days to the deadline, shows for one campaign how many forms are received, valid, with errors and missing, which region is which, whether there are enough valid forms for a preliminary and for the final result, and offers only the changes the server allows; and the forms of a quarter whose campaign is approved, finalized or archived cannot be replaced or removed, while a quarter with no campaign is as free as before
+
+Function A1 · 8 SP · Must

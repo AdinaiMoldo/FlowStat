@@ -1,0 +1,308 @@
+// The view of reporting campaigns (US-53): the list, the state of one campaign (how many forms
+// have come, how many are valid, what is missing), the changes a person may make now, and the
+// form that makes or edits a draft. What the server sends is put into the page as text, never as
+// markup. The rules of the life cycle are the server's: the page only offers what ``next`` says.
+import { ApiError, call } from "./api.js";
+import { day, deadlineWords, plural } from "./format.js";
+
+const $ = (id) => document.getElementById(id);
+
+const KINDS = {
+  APPROVED: "good",
+  FINALIZED: "good",
+  REJECTED: "bad",
+  PRELIMINARY: "wait",
+  PENDING_APPROVAL: "wait",
+  DRAFT: "off",
+  ARCHIVED: "off",
+};
+
+const WORDS = {
+  READY_FOR_CONSOLIDATION: "ready to consolidate",
+  PENDING_APPROVAL: "waits for approval",
+};
+
+// What the button of a change says. A cancelled draft and an archived campaign both end in ARCHIVED.
+function label(from, to) {
+  if (from === "DRAFT" && to === "ARCHIVED") return "Cancel campaign";
+  return (
+    {
+      OPEN: "Open for collecting",
+      COLLECTING: from === "OPEN" ? "Start collecting" : "Collect again",
+      VALIDATING: "Close collecting and validate",
+      FINALIZED: "Finalize",
+      ARCHIVED: "Archive",
+    }[to] || to
+  );
+}
+
+const ASKS_TWICE = new Set(["FINALIZED", "ARCHIVED"]);
+
+function element(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+export function statusBadge(status) {
+  return element("span", `badge ${KINDS[status] || ""}`, WORDS[status] || status.toLowerCase().replaceAll("_", " "));
+}
+
+function problem(error) {
+  if (error instanceof ApiError) {
+    if (error.status === 401) return "your session has ended: sign in again";
+    if (error.status === 0) return "the server cannot be reached";
+    return error.message;
+  }
+  return String(error);
+}
+
+export function createCampaigns({ goTo }) {
+  let user = null;
+  let campaigns = [];
+  let shown = null; // the id of the campaign in the right panel
+  let editing = null; // the id of the draft being edited, or null for a new campaign
+  let regionsCache = null;
+  let pending = null; // the change that asked to be pressed twice
+
+  const can = (permission) => user !== null && user.permissions.includes(permission);
+
+  // -- the list ------------------------------------------------------------------------------
+  function row(c) {
+    const tr = element("tr");
+    tr.dataset.testid = "campaign";
+    tr.dataset.id = c.id;
+    const name = element("td", "", c.name);
+    const status = element("td");
+    status.append(statusBadge(c.status));
+    const forms = element("td", "r", `${c.progress.valid} of ${c.progress.expected}`);
+    forms.title = `${c.progress.received} received, ${c.progress.valid} valid`;
+    const due = element("td", "", day(c.deadline));
+    due.title = c.deadline;
+    tr.append(name, element("td", "", c.period), status, forms, due);
+    tr.classList.toggle("current", c.id === shown);
+    tr.addEventListener("click", () => goTo(`campaigns/${encodeURIComponent(c.id)}`));
+    return tr;
+  }
+
+  function renderList() {
+    $("campaigns-rows").replaceChildren(...campaigns.map(row));
+    $("campaigns-table").hidden = campaigns.length === 0;
+    $("campaigns-empty").hidden = campaigns.length > 0;
+    $("campaigns-empty-action").textContent = can("campaigns:write")
+      ? "Press New campaign to make the first one."
+      : "An administrator makes the campaigns.";
+    $("campaigns-status").textContent = campaigns.length ? plural(campaigns.length, "campaign") : "";
+  }
+
+  // -- one campaign --------------------------------------------------------------------------
+  function counts(p) {
+    const words = [`${p.received} of ${p.expected} received`, `${p.valid} valid`];
+    if (p.invalid) words.push(`${p.invalid} with errors`);
+    if (p.missing.length) words.push(`${p.missing.length} missing`);
+    return words.join(", ");
+  }
+
+  function readiness(c) {
+    const p = c.progress;
+    const note = $("campaign-ready");
+    note.hidden = false;
+    note.classList.remove("good");
+    if (p.final_ready) {
+      note.classList.add("good");
+      note.textContent = "Enough valid forms for the final result";
+    } else if (p.preliminary_ready) {
+      note.textContent = `Enough for a preliminary result. The final one needs ${c.final_min} valid forms (${p.valid} now).`;
+    } else {
+      note.textContent = `A preliminary result needs ${c.preliminary_min} valid forms (${p.valid} now).`;
+    }
+  }
+
+  function regionRow(r) {
+    const tr = element("tr");
+    tr.dataset.testid = "campaign-region";
+    tr.dataset.region = r.region;
+    const state = element("td");
+    let badge;
+    if (!r.received) badge = element("span", "badge wait", "missing");
+    else if (r.valid) badge = element("span", "badge good", "valid");
+    else badge = element("span", "badge bad", plural(r.problems, "error"));
+    state.append(badge);
+    tr.append(element("td", "", `${r.region} ${r.name}`), state);
+    return tr;
+  }
+
+  function actions(c) {
+    const box = $("campaign-actions");
+    box.replaceChildren();
+    if (!can("campaigns:write")) return;
+    box.append(element("span", "spacer"));
+    if (c.status === "DRAFT") {
+      const edit = element("button", "", "Edit");
+      edit.type = "button";
+      edit.dataset.testid = "edit";
+      edit.addEventListener("click", () => openForm(c));
+      box.append(edit);
+    }
+    for (const to of c.next) {
+      const button = element("button", to === "OPEN" ? "primary" : "", label(c.status, to));
+      button.type = "button";
+      button.dataset.testid = "move";
+      button.dataset.to = to;
+      button.addEventListener("click", () => change(c, to, button));
+      box.append(button);
+    }
+  }
+
+  function renderDetail() {
+    const c = campaigns.find((x) => x.id === shown);
+    $("campaign-choose").hidden = c !== undefined;
+    $("campaign-body").hidden = c === undefined;
+    $("campaign-title").textContent = c ? c.name : "Campaign";
+    $("campaign-state").replaceChildren(...(c ? [statusBadge(c.status)] : []));
+    if (!c) return;
+    const words = deadlineWords(c.deadline);
+    $("campaign-deadline-line").textContent = `Deadline ${day(c.deadline)}${words ? ` · ${words}` : ""}`;
+    const p = c.progress;
+    const bar = $("campaign-bar");
+    bar.setAttribute("aria-valuenow", String(p.valid));
+    bar.setAttribute("aria-valuemax", String(p.expected));
+    bar.firstElementChild.style.width = `${p.expected ? (100 * p.valid) / p.expected : 0}%`;
+    $("campaign-counts").textContent = counts(p);
+    readiness(c);
+    $("campaign-regions-rows").replaceChildren(...p.regions.map(regionRow));
+    $("campaign-settings").textContent =
+      `${c.workflow} v${c.workflow_version} · preliminary from ${c.preliminary_min}, final needs ${c.final_min} · approved by ${c.approver.replaceAll("_", " ")}`;
+    $("campaign-note").hidden = true;
+    actions(c);
+  }
+
+  async function change(c, to, button) {
+    const note = $("campaign-note");
+    if (ASKS_TWICE.has(to) && pending !== `${c.id}:${to}`) {
+      pending = `${c.id}:${to}`;
+      button.textContent = `Press again to ${label(c.status, to).toLowerCase()}`;
+      return;
+    }
+    pending = null;
+    try {
+      await call("POST", `/campaigns/${encodeURIComponent(c.id)}/transitions`, { to });
+      await reload(c.id);
+    } catch (error) {
+      note.textContent = problem(error);
+      note.hidden = false;
+    }
+  }
+
+  // -- the form ------------------------------------------------------------------------------
+  async function regionList() {
+    if (regionsCache === null) {
+      const found = await call("GET", "/forms?quarter=2025Q1");
+      regionsCache = found.forms.map((f) => ({ code: f.region, name: f.name }));
+    }
+    return regionsCache;
+  }
+
+  async function openForm(c) {
+    editing = c ? c.id : null;
+    const note = $("campaign-form-note");
+    note.hidden = true;
+    $("campaign-form-title").textContent = c ? "Edit the draft" : "New campaign";
+    const [workflows, regions] = await Promise.all([call("GET", "/workflows"), regionList()]);
+    const select = $("campaign-workflow");
+    select.replaceChildren();
+    for (const w of workflows) {
+      const number = w.latest_published ?? w.latest;
+      const option = element("option", "", `${w.name} v${number}${w.latest_published === null ? " (draft)" : ""}`);
+      option.value = JSON.stringify([w.name, number]);
+      select.append(option);
+    }
+    const now = new Date();
+    const quarter = c ? c.quarter : Math.floor(now.getMonth() / 3) + 1;
+    const year = c ? c.year : now.getFullYear();
+    const soon = new Date(now.getTime() + 30 * 86400000).toISOString().slice(0, 10);
+    $("campaign-name").value = c ? c.name : `Quarterly Regional Statistics, Q${quarter} ${year}`;
+    $("campaign-year").value = String(year);
+    $("campaign-quarter").value = String(quarter);
+    $("campaign-deadline").value = c ? c.deadline : soon;
+    if (c) select.value = JSON.stringify([c.workflow, c.workflow_version]);
+    $("campaign-preliminary").value = c ? String(c.preliminary_min) : "";
+    $("campaign-final").value = c ? String(c.final_min) : "";
+    const box = $("campaign-regions");
+    box.replaceChildren();
+    for (const r of regions) {
+      const label_ = element("label", "check");
+      const input = element("input");
+      input.type = "checkbox";
+      input.value = r.code;
+      input.checked = c ? c.regions.includes(r.code) : true;
+      label_.append(input, document.createTextNode(` ${r.code}`));
+      label_.title = r.name;
+      box.append(label_);
+    }
+    $("campaign-form").hidden = false;
+    $("campaign-name").focus();
+  }
+
+  function closeForm() {
+    $("campaign-form").hidden = true;
+    editing = null;
+  }
+
+  async function save(event) {
+    event.preventDefault();
+    const note = $("campaign-form-note");
+    const [workflow, version] = JSON.parse($("campaign-workflow").value || '["",0]');
+    const number = (id) => ($(id).value === "" ? null : Number($(id).value));
+    const body = {
+      name: $("campaign-name").value,
+      year: Number($("campaign-year").value),
+      quarter: Number($("campaign-quarter").value),
+      regions: [...$("campaign-regions").querySelectorAll("input:checked")].map((i) => i.value),
+      deadline: $("campaign-deadline").value,
+      workflow,
+      workflow_version: version,
+      preliminary_min: number("campaign-preliminary"),
+      final_min: number("campaign-final"),
+    };
+    try {
+      const saved = editing
+        ? await call("PUT", `/campaigns/${encodeURIComponent(editing)}`, body)
+        : await call("POST", "/campaigns", body);
+      closeForm();
+      await reload(saved.id);
+      goTo(`campaigns/${encodeURIComponent(saved.id)}`);
+    } catch (error) {
+      note.textContent = problem(error);
+      note.hidden = false;
+    }
+  }
+
+  // -- loading -------------------------------------------------------------------------------
+  async function reload(select) {
+    try {
+      campaigns = await call("GET", "/campaigns");
+    } catch (error) {
+      $("campaigns-status").textContent = problem(error);
+      return;
+    }
+    if (select !== undefined) shown = select;
+    renderList();
+    renderDetail();
+  }
+
+  async function load(who, id) {
+    user = who;
+    for (const node of $("view-campaigns").querySelectorAll("[data-needs]")) {
+      node.hidden = !can(node.dataset.needs);
+    }
+    if (!can("campaigns:write")) closeForm();
+    await reload(id ?? shown);
+  }
+
+  $("campaigns-new").addEventListener("click", () => openForm(null));
+  $("campaign-cancel").addEventListener("click", closeForm);
+  $("campaign-form").addEventListener("submit", save);
+  return { load };
+}

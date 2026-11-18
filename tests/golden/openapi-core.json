@@ -1,6 +1,203 @@
 {
   "components": {
     "schemas": {
+      "CampaignIn": {
+        "additionalProperties": false,
+        "properties": {
+          "approver": {
+            "default": "chief_statistician",
+            "title": "Approver",
+            "type": "string"
+          },
+          "deadline": {
+            "title": "Deadline",
+            "type": "string"
+          },
+          "final_min": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Final Min"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "preliminary_min": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preliminary Min"
+          },
+          "quarter": {
+            "title": "Quarter",
+            "type": "integer"
+          },
+          "regions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Regions",
+            "type": "array"
+          },
+          "rules": {
+            "default": "basic",
+            "title": "Rules",
+            "type": "string"
+          },
+          "template": {
+            "default": "regional-indicators-v1",
+            "title": "Template",
+            "type": "string"
+          },
+          "workflow": {
+            "title": "Workflow",
+            "type": "string"
+          },
+          "workflow_version": {
+            "title": "Workflow Version",
+            "type": "integer"
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "year",
+          "quarter",
+          "regions",
+          "deadline",
+          "workflow",
+          "workflow_version"
+        ],
+        "title": "CampaignIn",
+        "type": "object"
+      },
+      "CampaignOut": {
+        "properties": {
+          "approver": {
+            "title": "Approver",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "title": "Created By",
+            "type": "string"
+          },
+          "deadline": {
+            "title": "Deadline",
+            "type": "string"
+          },
+          "final_min": {
+            "title": "Final Min",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "next": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Next",
+            "type": "array"
+          },
+          "period": {
+            "title": "Period",
+            "type": "string"
+          },
+          "preliminary_min": {
+            "title": "Preliminary Min",
+            "type": "integer"
+          },
+          "progress": {
+            "$ref": "#/components/schemas/ProgressOut"
+          },
+          "quarter": {
+            "title": "Quarter",
+            "type": "integer"
+          },
+          "regions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Regions",
+            "type": "array"
+          },
+          "rules": {
+            "title": "Rules",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "template": {
+            "title": "Template",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "workflow": {
+            "title": "Workflow",
+            "type": "string"
+          },
+          "workflow_version": {
+            "title": "Workflow Version",
+            "type": "integer"
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "year",
+          "quarter",
+          "period",
+          "regions",
+          "deadline",
+          "workflow",
+          "workflow_version",
+          "template",
+          "rules",
+          "preliminary_min",
+          "final_min",
+          "approver",
+          "status",
+          "next",
+          "created_by",
+          "created_at",
+          "updated_at",
+          "progress"
+        ],
+        "title": "CampaignOut",
+        "type": "object"
+      },
       "CatalogueIn": {
         "additionalProperties": false,
         "properties": {
@@ -1336,6 +1533,60 @@
         "title": "Previewed",
         "type": "object"
       },
+      "ProgressOut": {
+        "properties": {
+          "expected": {
+            "title": "Expected",
+            "type": "integer"
+          },
+          "final_ready": {
+            "title": "Final Ready",
+            "type": "boolean"
+          },
+          "invalid": {
+            "title": "Invalid",
+            "type": "integer"
+          },
+          "missing": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing",
+            "type": "array"
+          },
+          "preliminary_ready": {
+            "title": "Preliminary Ready",
+            "type": "boolean"
+          },
+          "received": {
+            "title": "Received",
+            "type": "integer"
+          },
+          "regions": {
+            "items": {
+              "$ref": "#/components/schemas/RegionProgressOut"
+            },
+            "title": "Regions",
+            "type": "array"
+          },
+          "valid": {
+            "title": "Valid",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expected",
+          "received",
+          "valid",
+          "invalid",
+          "missing",
+          "regions",
+          "preliminary_ready",
+          "final_ready"
+        ],
+        "title": "ProgressOut",
+        "type": "object"
+      },
       "Published": {
         "properties": {
           "findings": {
@@ -1423,6 +1674,39 @@
           "recovered"
         ],
         "title": "Recovered",
+        "type": "object"
+      },
+      "RegionProgressOut": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "problems": {
+            "title": "Problems",
+            "type": "integer"
+          },
+          "received": {
+            "title": "Received",
+            "type": "boolean"
+          },
+          "region": {
+            "title": "Region",
+            "type": "string"
+          },
+          "valid": {
+            "title": "Valid",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "region",
+          "name",
+          "received",
+          "valid",
+          "problems"
+        ],
+        "title": "RegionProgressOut",
         "type": "object"
       },
       "RunOut": {
@@ -1768,6 +2052,20 @@
         "title": "TextIn",
         "type": "object"
       },
+      "TransitionIn": {
+        "additionalProperties": false,
+        "properties": {
+          "to": {
+            "title": "To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "to"
+        ],
+        "title": "TransitionIn",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -2053,6 +2351,429 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/campaigns": {
+      "get": {
+        "operationId": "list_campaigns_campaigns_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CampaignOut"
+                  },
+                  "title": "Response List Campaigns Campaigns Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no valid token (E-AUTH-001)"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the role lacks the permission (E-AUTH-002)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "not found (E-API-002)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "conflict with the state of the resource (E-API-003)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the request is invalid (E-API-001, E-API-004, E-API-005, E-INPUT-*)"
+          }
+        },
+        "summary": "The campaigns, newest period first",
+        "tags": [
+          "campaigns"
+        ],
+        "x-permission": "campaigns:read"
+      },
+      "post": {
+        "operationId": "create_campaign_campaigns_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CampaignIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no valid token (E-AUTH-001)"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the role lacks the permission (E-AUTH-002)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "not found (E-API-002)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "conflict with the state of the resource (E-API-003)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the request is invalid (E-API-001, E-API-004, E-API-005, E-INPUT-*)"
+          }
+        },
+        "summary": "Create a campaign (a draft)",
+        "tags": [
+          "campaigns"
+        ],
+        "x-permission": "campaigns:write"
+      }
+    },
+    "/campaigns/{campaign_id}": {
+      "get": {
+        "operationId": "get_campaign_campaigns__campaign_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "title": "Campaign Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no valid token (E-AUTH-001)"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the role lacks the permission (E-AUTH-002)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "not found (E-API-002)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "conflict with the state of the resource (E-API-003)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the request is invalid (E-API-001, E-API-004, E-API-005, E-INPUT-*)"
+          }
+        },
+        "summary": "One campaign",
+        "tags": [
+          "campaigns"
+        ],
+        "x-permission": "campaigns:read"
+      },
+      "put": {
+        "operationId": "put_campaign_campaigns__campaign_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "title": "Campaign Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CampaignIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no valid token (E-AUTH-001)"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the role lacks the permission (E-AUTH-002)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "not found (E-API-002)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "conflict with the state of the resource (E-API-003)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the request is invalid (E-API-001, E-API-004, E-API-005, E-INPUT-*)"
+          }
+        },
+        "summary": "Replace the settings of a campaign that is still a draft",
+        "tags": [
+          "campaigns"
+        ],
+        "x-permission": "campaigns:write"
+      }
+    },
+    "/campaigns/{campaign_id}/transitions": {
+      "post": {
+        "operationId": "transition_campaign_campaigns__campaign_id__transitions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "title": "Campaign Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransitionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no valid token (E-AUTH-001)"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the role lacks the permission (E-AUTH-002)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "not found (E-API-002)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "conflict with the state of the resource (E-API-003)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the request is invalid (E-API-001, E-API-004, E-API-005, E-INPUT-*)"
+          }
+        },
+        "summary": "Move a campaign to the next status; only the changes a person may make are accepted",
+        "tags": [
+          "campaigns"
+        ],
+        "x-permission": "campaigns:write"
+      }
+    },
     "/catalogue/{list_name}": {
       "put": {
         "operationId": "put_catalogue_catalogue__list_name__put",

@@ -63,3 +63,31 @@ export function copyable(element, full) {
   });
   return element;
 }
+
+// A date without a time ("2026-10-31") as "31 Oct", with the year when it is not this one.
+export function day(text, now = Date.now()) {
+  const found = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(text));
+  if (!found) return String(text);
+  const [, year, month, date] = found;
+  const shown = `${Number(date)} ${MONTHS[Number(month) - 1]}`;
+  return Number(year) === new Date(now).getFullYear() ? shown : `${shown} ${year}`;
+}
+
+// Whole days from today to a date: positive is ahead, negative is past, 0 is today.
+export function daysTo(text, now = Date.now()) {
+  const found = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(text));
+  if (!found) return null;
+  const today = new Date(now);
+  const start = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+  const end = Date.UTC(Number(found[1]), Number(found[2]) - 1, Number(found[3]));
+  return Math.round((end - start) / 86400000);
+}
+
+// "12 days left", "due today", "3 days overdue".
+export function deadlineWords(text, now = Date.now()) {
+  const n = daysTo(text, now);
+  if (n === null) return "";
+  if (n === 0) return "due today";
+  if (n > 0) return `${plural(n, "day")} left`;
+  return `${plural(-n, "day")} overdue`;
+}

@@ -1,7 +1,7 @@
 // The addresses of the pages (US-47). The page is one HTML file; where the person is lives in the
 // part after "#", so that the back and forward buttons, a reload and a link all work:
 //
-//   #/home   #/editor[/<workflow>]   #/forms   #/runs[/<run>]   #/services   #/migration
+//   #/home   #/campaigns[/<campaign>]   #/editor[/<workflow>]   #/forms   #/runs[/<run>]   #/services   #/migration
 //   #/statistics
 //   #/login?next=<address to go to after signing in>
 //
@@ -9,7 +9,7 @@
 // address once it has been done.
 
 export const VIEWS = [
-  "home", "editor", "forms", "runs", "services", "migration", "statistics", "login",
+  "home", "campaigns", "editor", "forms", "runs", "services", "migration", "statistics", "login",
 ];
 
 function decode(text) {

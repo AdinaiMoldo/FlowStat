@@ -13,10 +13,12 @@ from flowstat.api.deps import config_of, get_db
 from flowstat.api.errors import fail
 from flowstat.api.models import FormOut, FormsOut
 from flowstat.api.secured import SecuredRouter
+from flowstat.repo.campaigns import CampaignRepo
 from flowstat.repo.catalogue import CatalogueRepo
 from flowstat.service.forms import (
     MAX_BYTES,
     FormInfo,
+    FormLocked,
     FormNotFound,
     FormRefused,
     FormService,
@@ -29,7 +31,13 @@ BODY = {"required": True, "content": {XLSX: {"schema": {"type": "string", "forma
 
 
 def service_of(request: Request, db: sqlite3.Connection) -> FormService:
-    return FormService(config_of(request).data_dir, CatalogueRepo(db))
+    campaigns = CampaignRepo(db)
+
+    def locking(quarter: str) -> str | None:
+        found = campaigns.locking(quarter)
+        return None if found is None else found.settings.name
+
+    return FormService(config_of(request).data_dir, CatalogueRepo(db), locking)
 
 
 def out_of(info: FormInfo) -> FormOut:
@@ -44,7 +52,9 @@ def out_of(info: FormInfo) -> FormOut:
     )
 
 
-def refused(error: FormNotFound | FormRefused) -> Exception:
+def refused(error: FormNotFound | FormRefused | FormLocked) -> Exception:
+    if isinstance(error, FormLocked):
+        return fail(409, "E-CAMP-006", str(error))
     if isinstance(error, FormNotFound):
         return fail(404, "E-API-002", str(error))
     return fail(422, "E-FORM-001", str(error))
@@ -69,7 +79,7 @@ async def read_body(request: Request) -> bytes:
 async def work(call: Callable[[], Any]) -> Any:
     try:
         return await run_in_threadpool(call)
-    except (FormNotFound, FormRefused) as error:
+    except (FormNotFound, FormRefused, FormLocked) as error:
         raise refused(error) from None
 
 
