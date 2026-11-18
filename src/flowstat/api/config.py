@@ -36,3 +36,6 @@ class AppConfig:
     ingest_url: str | None = None  # where services ship their runs (the address of this core)
     allowed_hosts: frozenset[str] | None = None  # hosts http.call may reach; None: any (US-39)
     health: Callable[[str], bool] | None = None  # asks a service if it answers; None: not probed
+    demo_logins: Mapping[str, str] | None = (
+        None  # name -> token, for the page; None: no route (US-45)
+    )

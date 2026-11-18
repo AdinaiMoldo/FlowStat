@@ -1,7 +1,7 @@
 """Set up and check the usability exercise of NFR-06 (docs/research/nfr06-exercise.md).
 
 Usage:
-    python scripts/exercise_setup.py start [--dir exercise-data] [--port 8000]
+    python scripts/exercise_setup.py start [--dir exercise-data] [--port 8000] [--logins]
     python scripts/exercise_setup.py check WORKFLOW [--dir exercise-data]
 
 ``start`` makes a clean database with three users, the nine regions of the synthetic catalogue and
@@ -71,8 +71,12 @@ def clear(work: Path) -> None:
         ) from error
 
 
-def prepare(work: Path, port: int) -> Setup:
-    """A clean core in ``work`` listening on ``port``; the caller stops the process."""
+def prepare(work: Path, port: int, logins: bool = False) -> Setup:
+    """A clean core in ``work`` listening on ``port``; the caller stops the process.
+
+    With ``logins`` the page shows a button for each user (the core is started with
+    ``--demo-logins``); without it the person pastes a token, as the exercise asks.
+    """
     if demo.http_ok(f"http://127.0.0.1:{port}/health"):
         # A core of an earlier start would answer in the place of the new one, with its old users.
         raise demo.DemoError(
@@ -89,8 +93,12 @@ def prepare(work: Path, port: int) -> Setup:
         "operator": demo.make_user(db, "kira", "operator"),
     }
     write_all_forms(work / "forms", QUARTER)
-    process = demo.start_core(work, port, db)
     base = f"http://127.0.0.1:{port}"
+    (work / "tokens.json").write_text(  # before the core starts: --demo-logins reads it
+        json.dumps({"base": base, "tokens": tokens}, indent=2), encoding="utf8"
+    )
+    extra = ["--demo-logins", str(work / "tokens.json")] if logins else []
+    process = demo.start_core(work, port, db, extra)
     regions = YAML(typ="safe").load(CATALOGUE.read_text(encoding="utf8"))["regions"]
     status, body = demo.http(
         "PUT", f"{base}/catalogue/regions", tokens["admin"], {"items": regions}
@@ -98,9 +106,6 @@ def prepare(work: Path, port: int) -> Setup:
     if status != 200:
         process.terminate()
         raise demo.DemoError(f"the catalogue was not loaded: {status} {body}")
-    (work / "tokens.json").write_text(
-        json.dumps({"base": base, "tokens": tokens}, indent=2), encoding="utf8"
-    )
     return Setup(base, tokens, process)
 
 
@@ -147,11 +152,14 @@ def describe(decision: str, report: dict[str, Any]) -> str:
     )
 
 
-def start(work: Path, port: int) -> int:
-    setup = prepare(work, port)
+def start(work: Path, port: int, logins: bool = False) -> int:
+    setup = prepare(work, port, logins)
     try:
         print(f"\nThe core is running. Open {setup.base}/ui/ in a browser.")
-        print(f"Token of the designer (paste it into the page): {setup.tokens['designer']}")
+        if logins:
+            print("The page has a button for each user (Designer, Chief statistician, ...).")
+        else:
+            print(f"Token of the designer (paste it into the page): {setup.tokens['designer']}")
         print(f"The tokens are also in {work / 'tokens.json'}.")
         print("The observer checks the result with:")
         print(f"    python scripts/exercise_setup.py check NAME_OF_THE_WORKFLOW --dir {work}")
@@ -181,13 +189,19 @@ def main(argv: list[str] | None = None) -> int:
     begin = kinds.add_parser("start", help="make a clean core and run it")
     begin.add_argument("--dir", type=Path, default=Path("exercise-data"))
     begin.add_argument("--port", type=int, default=8000)
+    begin.add_argument(
+        "--logins",
+        action="store_true",
+        help="a demonstration: the page shows a button for each user instead of asking for a "
+        "token (the core listens on 127.0.0.1 only)",
+    )
     look = kinds.add_parser("check", help="run the published workflow with both answers")
     look.add_argument("workflow")
     look.add_argument("--dir", type=Path, default=Path("exercise-data"))
     args = parser.parse_args(argv)
     try:
         if args.command == "start":
-            return start(args.dir, args.port)
+            return start(args.dir, args.port, args.logins)
         return check(args.dir, args.workflow)
     except demo.DemoError as error:
         print(f"\nStopped: {error}")

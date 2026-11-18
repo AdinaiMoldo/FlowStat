@@ -125,3 +125,71 @@ def test_without_the_option_the_environment_gives_the_list_and_without_both_any_
     assert served_config(tmp_path).allowed_hosts == frozenset({"a.kg", "b.kg"})  # type: ignore[attr-defined]
     monkeypatch.delenv("FLOWSTAT_ALLOWED_HOSTS")
     assert served_config(tmp_path).allowed_hosts is None  # type: ignore[attr-defined]
+
+
+def _serve_with(tmp_path: Path, *extra: str) -> list[FastAPI]:
+    served: list[FastAPI] = []
+    main(
+        ["--db", str(tmp_path / "f.db"), "--data", str(tmp_path), "--target", "t.db", *extra],
+        serve=lambda app, host, port: served.append(app),
+    )
+    return served
+
+
+def _logins_file(tmp_path: Path) -> Path:
+    path = tmp_path / "tokens.json"
+    path.write_text(
+        '{"base": "http://127.0.0.1:8000", "tokens": {"designer": "d-token", "chief": "c-token"}}',
+        encoding="utf8",
+    )
+    return path
+
+
+def test_without_the_option_the_core_has_no_route_that_gives_tokens(tmp_path: Path) -> None:
+    from fastapi.testclient import TestClient
+
+    [app] = _serve_with(tmp_path)
+    assert TestClient(app).get("/demo/logins").status_code == 404
+
+
+def test_with_the_option_the_page_can_ask_for_the_logins_of_the_demonstration(
+    tmp_path: Path,
+) -> None:
+    from fastapi.testclient import TestClient
+
+    [app] = _serve_with(tmp_path, "--demo-logins", str(_logins_file(tmp_path)))
+    reply = TestClient(app).get("/demo/logins")
+    assert reply.status_code == 200
+    assert reply.headers["cache-control"] == "no-store"
+    assert reply.json() == {
+        "logins": [
+            {"name": "designer", "token": "d-token"},
+            {"name": "chief", "token": "c-token"},
+        ]
+    }
+    assert "/demo/logins" not in TestClient(app).get("/openapi.json").text  # not advertised
+
+
+@pytest.mark.parametrize("host", ["0.0.0.0", "192.168.1.5", "example.org"])
+def test_the_logins_are_refused_where_others_could_read_them(tmp_path: Path, host: str) -> None:
+    with pytest.raises(SystemExit) as stopped:
+        _serve_with(tmp_path, "--host", host, "--demo-logins", str(_logins_file(tmp_path)))
+    assert stopped.value.code == 2
+
+
+@pytest.mark.parametrize("host", ["127.0.0.1", "localhost", "::1"])
+def test_the_logins_are_allowed_on_the_loopback(tmp_path: Path, host: str) -> None:
+    assert (
+        len(_serve_with(tmp_path, "--host", host, "--demo-logins", str(_logins_file(tmp_path))))
+        == 1
+    )
+
+
+def test_a_file_that_has_no_tokens_is_refused(tmp_path: Path) -> None:
+    broken = tmp_path / "broken.json"
+    for text in ("not json", '{"other": 1}', '{"tokens": [1, 2]}'):
+        broken.write_text(text, encoding="utf8")
+        with pytest.raises(SystemExit):
+            _serve_with(tmp_path, "--demo-logins", str(broken))
+    with pytest.raises(SystemExit):
+        _serve_with(tmp_path, "--demo-logins", str(tmp_path / "missing.json"))

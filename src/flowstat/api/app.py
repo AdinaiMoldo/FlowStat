@@ -10,6 +10,7 @@ from fastapi import FastAPI
 
 from flowstat.actions.registry import default_registry
 from flowstat.api import (
+    demo,
     deployments,
     errors,
     expiring,
@@ -42,6 +43,8 @@ def create_app(config: AppConfig) -> FastAPI:
     app.include_router(deployments.router)
     app.include_router(migrations.router)
     app.include_router(statistics.router)
+    if config.demo_logins is not None:  # only a demonstration has this route
+        app.include_router(demo.router)
     ui.mount(app)
     migrations.recover_on_start(config, app.state.locks)
     deployments.recover_keys_on_start(config)
