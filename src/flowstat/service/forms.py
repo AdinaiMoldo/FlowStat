@@ -20,9 +20,10 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from flowstat.actions.base import ActionContext, ActionError
-from flowstat.actions.statguard import violations
-from flowstat.actions.xlsx import read_form, rows_of
+from flowstat.actions.base import ActionError
+from flowstat.actions.xlsx import read_sheet, rows_of
+from flowstat.model import rules as content
+from flowstat.model.rules import Finding
 from flowstat.repo.catalogue import CatalogueRepo
 
 MAX_BYTES = 2_000_000
@@ -51,7 +52,8 @@ class FormInfo:
     received: bool
     rows: int | None = None
     size: int | None = None
-    problems: tuple[str, ...] = ()
+    problems: tuple[str, ...] = ()  # what blocks the form: the errors, cut to the first few
+    findings: tuple[Finding, ...] = ()  # everything the rules found, with where and why
 
 
 class FormService:
@@ -60,11 +62,14 @@ class FormService:
         data_dir: Path,
         catalogue: CatalogueRepo,
         locking: Callable[[str], str | None] | None = None,
+        rules_of: Callable[[str], str] | None = None,
     ) -> None:
         self.data_dir = data_dir
         self.catalogue = catalogue
         # a function that names the campaign that locks a quarter, or None (the forms are free)
         self.locking = locking
+        # a function that names the set of content rules for a quarter (the one of its campaign)
+        self.rules_of = rules_of
 
     def _unlocked(self, quarter: str) -> None:
         held = None if self.locking is None else self.locking(quarter)
@@ -97,26 +102,50 @@ class FormService:
         return self.data_dir / region / f"{quarter}.xlsx"
 
     # -- reading a form that is there ----------------------------------------------------------
-    def _describe(self, region: str, name: str, quarter: str) -> FormInfo:
+    def _rules(self, quarter: str, rules: str | None) -> content.RuleSet:
+        name = rules or (self.rules_of(quarter) if self.rules_of else "") or content.BASIC.name
+        return content.named(name) if content.known(name) else content.BASIC
+
+    def _describe(self, region: str, name: str, quarter: str, rules: str | None = None) -> FormInfo:
+        file = f"{region}/{quarter}.xlsx"
         path = self._path(region, quarter)
         if not path.is_file():
             return FormInfo(region, name, quarter, received=False)
         size = path.stat().st_size
-        context = ActionContext("forms", "forms", self.data_dir, None)
         try:
-            read = read_form({"path": f"{region}/{quarter}.xlsx"}, context)
+            with open(path, "rb") as stream:
+                sheet = read_sheet(stream, file)
+        except FileNotFoundError:  # removed while we looked
+            return FormInfo(region, name, quarter, received=False)
         except ActionError as error:
             return FormInfo(region, name, quarter, True, None, size, (error.message,))
-        rows = read["rows"]
-        assert isinstance(rows, list)
-        found = violations(rows)
-        more = [f"and {len(found) - SHOWN} more"] if len(found) > SHOWN else []
-        return FormInfo(region, name, quarter, True, len(rows), size, (*found[:SHOWN], *more))
+        found = content.check(
+            sheet.rows,
+            self._rules(quarter, rules),
+            region=region,
+            file=file,
+            sheet=sheet.title,
+            positions=sheet.positions,
+            sheets=sheet.sheets,
+            extra_columns=sheet.extra_columns,
+        )
+        errors = [f.message for f in content.blocking(found)]
+        more = [f"and {len(errors) - SHOWN} more"] if len(errors) > SHOWN else []
+        return FormInfo(
+            region,
+            name,
+            quarter,
+            True,
+            len(sheet.rows),
+            size,
+            (*errors[:SHOWN], *more),
+            tuple(found),
+        )
 
     # -- the operations ---------------------------------------------------------------------------
-    def listing(self, quarter: str) -> list[FormInfo]:
+    def listing(self, quarter: str, rules: str | None = None) -> list[FormInfo]:
         self._quarter(quarter)
-        return [self._describe(code, name, quarter) for code, name in self.regions().items()]
+        return [self._describe(code, name, quarter, rules) for code, name in self.regions().items()]
 
     def save(self, region: str, quarter: str, content: bytes) -> FormInfo:
         name = self._known(region)

@@ -164,3 +164,63 @@ def test_the_forms_sent_on_the_page_are_what_the_run_reads(
         timeout=20000,
     )
     page.close()
+
+
+def test_the_rules_of_a_campaign_tell_where_a_form_is_wrong_and_why(
+    browser: Browser, forms_server: Server, tmp_path: Path
+) -> None:
+    from tests.unit.actions.helpers import write_form
+
+    env = forms_server.env
+    assert (
+        env.call(
+            "designer", "POST", f"/workflows/{NAME}/versions", json={"text": EXAMPLE}
+        ).status_code
+        == 201
+    )
+    made = env.call(
+        "admin",
+        "POST",
+        "/campaigns",
+        json={
+            "name": "Q1 2025",
+            "year": 2025,
+            "quarter": 1,
+            "regions": ["BIS", "OSC", "BAT"],
+            "deadline": "2025-04-30",
+            "workflow": NAME,
+            "workflow_version": 1,
+            "rules": "regional-indicators-v1",
+        },
+    )
+    assert made.status_code == 201, made.text
+    five = [
+        ("I01", "Population", 400), ("I02", "Households", 111.5), ("I03", "Births", 6.5),
+        ("I04", "Deaths", 2.5), ("I05", "Marriages", 2.75),
+    ]  # fmt: skip
+    write_form(tmp_path / "BIS.xlsx", five)
+    write_form(
+        tmp_path / "OSC.xlsx", [*five[:2], ("I03", "Births", 450), *five[3:]]
+    )  # births > people
+    write_form(tmp_path / "BAT.xlsx", [*five[:3], ("X9", "Other", 1)])  # two missing, one unknown
+    page = open_forms(browser, forms_server)
+    page.set_input_files(
+        "#forms-files", [str(tmp_path / f"{r}.xlsx") for r in ("BIS", "OSC", "BAT")]
+    )
+    page.wait_for_function(
+        "document.getElementById('forms-count').textContent.startsWith('3 of 9')"
+    )
+    bis = page.locator("[data-testid=form][data-region=BIS] [data-testid=rules]")
+    assert "passes the rules" in bis.inner_text()
+    osc = page.locator("[data-testid=form][data-region=OSC] [data-testid=rules]")
+    assert "breaks the rules" in osc.inner_text()
+    assert "C4 (I03): 450 is more than 400 in I01" in osc.inner_text()
+    tag = osc.locator("li[data-code=VAL-REL-001] .code")
+    assert tag.inner_text() == "VAL-REL-001"
+    assert "found 450" in (tag.get_attribute("title") or "")
+    assert "expected at most 400 (I01)" in (tag.get_attribute("title") or "")
+    bat = page.locator("[data-testid=form][data-region=BAT] [data-testid=rules]")
+    assert "I04 Deaths is missing" in bat.inner_text()
+    assert bat.locator("li[data-severity=warning]").count() == 1  # the code X9
+    assert bat.locator("li[data-severity=error]").count() == 2
+    page.close()

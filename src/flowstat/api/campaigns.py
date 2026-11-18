@@ -93,7 +93,7 @@ def out_of(service: CampaignService, campaign: Campaign) -> CampaignOut:
             regions=[
                 RegionProgressOut(
                     region=r.region, name=r.name, received=r.received, valid=r.valid,
-                    problems=r.problems,
+                    problems=r.problems, warnings=r.warnings,
                 )
                 for r in p.regions
             ],

@@ -126,7 +126,7 @@ export function createCampaigns({ goTo }) {
     const state = element("td");
     let badge;
     if (!r.received) badge = element("span", "badge wait", "missing");
-    else if (r.valid) badge = element("span", "badge good", "valid");
+    else if (r.valid) badge = element("span", "badge good", r.warnings ? `valid, ${plural(r.warnings, "warning")}` : "valid");
     else badge = element("span", "badge bad", plural(r.problems, "error"));
     state.append(badge);
     tr.append(element("td", "", `${r.region} ${r.name}`), state);
@@ -173,7 +173,7 @@ export function createCampaigns({ goTo }) {
     readiness(c);
     $("campaign-regions-rows").replaceChildren(...p.regions.map(regionRow));
     $("campaign-settings").textContent =
-      `${c.workflow} v${c.workflow_version} · preliminary from ${c.preliminary_min}, final needs ${c.final_min} · approved by ${c.approver.replaceAll("_", " ")}`;
+      `${c.workflow} v${c.workflow_version} · preliminary from ${c.preliminary_min}, final needs ${c.final_min} · approved by ${c.approver.replaceAll("_", " ")} · rules ${c.rules}`;
     $("campaign-note").hidden = true;
     actions(c);
   }
@@ -229,6 +229,7 @@ export function createCampaigns({ goTo }) {
     if (c) select.value = JSON.stringify([c.workflow, c.workflow_version]);
     $("campaign-preliminary").value = c ? String(c.preliminary_min) : "";
     $("campaign-final").value = c ? String(c.final_min) : "";
+    $("campaign-rules").value = c ? c.rules : "regional-indicators-v1";
     const box = $("campaign-regions");
     box.replaceChildren();
     for (const r of regions) {
@@ -265,6 +266,7 @@ export function createCampaigns({ goTo }) {
       workflow_version: version,
       preliminary_min: number("campaign-preliminary"),
       final_min: number("campaign-final"),
+      rules: $("campaign-rules").value,
     };
     try {
       const saved = editing

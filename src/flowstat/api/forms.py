@@ -11,8 +11,9 @@ from fastapi.concurrency import run_in_threadpool
 
 from flowstat.api.deps import config_of, get_db
 from flowstat.api.errors import fail
-from flowstat.api.models import FormOut, FormsOut
+from flowstat.api.models import FindingOut, FormOut, FormsOut
 from flowstat.api.secured import SecuredRouter
+from flowstat.model.campaign import ARCHIVED
 from flowstat.repo.campaigns import CampaignRepo
 from flowstat.repo.catalogue import CatalogueRepo
 from flowstat.service.forms import (
@@ -37,7 +38,12 @@ def service_of(request: Request, db: sqlite3.Connection) -> FormService:
         found = campaigns.locking(quarter)
         return None if found is None else found.settings.name
 
-    return FormService(config_of(request).data_dir, CatalogueRepo(db), locking)
+    def rules_of(quarter: str) -> str:
+        # the rules of the campaign of the period that is still alive; the basic ones without one
+        alive = [c for c in campaigns.of_period(quarter) if c.status != ARCHIVED]
+        return alive[0].settings.rules if alive else "basic"
+
+    return FormService(config_of(request).data_dir, CatalogueRepo(db), locking, rules_of)
 
 
 def out_of(info: FormInfo) -> FormOut:
@@ -49,6 +55,22 @@ def out_of(info: FormInfo) -> FormOut:
         rows=info.rows,
         size=info.size,
         problems=list(info.problems),
+        findings=[
+            FindingOut(
+                code=f.code,
+                severity=f.severity.value,
+                message=f.message,
+                region=f.region,
+                file=f.file,
+                sheet=f.sheet,
+                row=f.row,
+                cell=f.cell,
+                indicator=f.indicator,
+                actual=f.actual,
+                expected=f.expected,
+            )
+            for f in info.findings
+        ],
     )
 
 

@@ -248,3 +248,5 @@ tr.failed td { background: #fef3f2; }
 .checks { display: flex; flex-wrap: wrap; gap: 4px 14px; }
 .checks .check { color: var(--ink); font-size: 14px; }
 .actions { margin-top: 6px; }
+.reasons li[data-severity="warning"], .reasons li[data-severity="info"] { color: var(--muted); }
+.reasons .code { font-size: 11px; font-family: ui-monospace, monospace; }

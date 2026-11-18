@@ -127,6 +127,13 @@
           <span><label for="campaign-preliminary">Preliminary from</label><input id="campaign-preliminary" type="number" min="1" placeholder="forms"></span>
           <span><label for="campaign-final">Final needs</label><input id="campaign-final" type="number" min="1" placeholder="forms"></span>
         </div>
+        <div class="pair">
+          <span><label for="campaign-rules">Rules for the forms</label>
+            <select id="campaign-rules">
+              <option value="regional-indicators-v1">Regional indicators (completeness, ranges, relations)</option>
+              <option value="basic">Basic (codes and numbers only)</option>
+            </select></span>
+        </div>
         <fieldset><legend>Regions</legend><div id="campaign-regions" class="checks"></div></fieldset>
         <p id="campaign-form-note" class="notice" hidden role="alert"></p>
         <div class="row">

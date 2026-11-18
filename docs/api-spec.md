@@ -565,11 +565,40 @@ forms there, so that a person can do it from the page and nobody needs a shell o
   must be a readable xlsx with the first row `code, name, value` (422 `E-FORM-001`, and the message
   says which); it is written beside its place and moved there only after it was read, so a file
   that is not a form never replaces a good one. A second form for the same region and quarter
-  replaces the first. Answer: `{region, name, quarter, received, rows, size, problems}`.
+  replaces the first. Answer: `{region, name, quarter, received, rows, size, problems, findings}`.
 - A form that reads but breaks the statistical rules of `statguard.validate` (empty or repeated
   code, a value that is not a number, a negative value) is **accepted**, and the reasons are in
   `problems` (the first 5, then "and N more"). It is not refused because the check of the rules is a
   step of the workflow, and what a run does with a bad form is what a demonstration wants to show.
+- US-54: `findings` is everything the content rules found, in the order of the rows, then what is
+  missing, then the relations between indicators. Each finding is `{code, severity, message, region,
+  file, sheet, row, cell, indicator, actual, expected}`: `code` is `VAL-<group>-<number>` and stays
+  the same; `severity` is `error`, `warning` or `info`; `cell` is `C5` and is empty for something
+  that is not in the form (a missing indicator). Only an `error` blocks the form: `problems` holds
+  the messages of the errors (the first 5, then "and N more"), so a form with warnings only has
+  `problems: []`. The rules are the set that the campaign of the quarter asks for (`rules`, section
+  12); a quarter without a campaign gets the basic rules, which are the ones of US-49.
+
+  | Code | Severity | Meaning |
+  | --- | --- | --- |
+  | `VAL-STR-001` | error | the form has no rows |
+  | `VAL-STR-002` | error | a row is not a record |
+  | `VAL-STR-003` | error | the code is empty |
+  | `VAL-STR-004` | error | a code is used twice |
+  | `VAL-STR-005` | warning | the name differs from the template |
+  | `VAL-STR-006` | warning | the file has more than one sheet; only the first is read |
+  | `VAL-STR-007` | warning | there are cells right of the column `value` |
+  | `VAL-STR-008` | warning | the code is not in the template |
+  | `VAL-COMP-001` | error | an indicator of the template is missing |
+  | `VAL-COMP-002` | error | the value cell is empty |
+  | `VAL-COMP-003` | info | zero is reported (a figure, not a missing value) |
+  | `VAL-COMP-004` | error / info | `n/a` where the template does not / does allow it |
+  | `VAL-TYPE-001` | error | the value is not a number (text, a boolean, not finite) |
+  | `VAL-RANGE-001` | error | the value is negative |
+  | `VAL-RANGE-002` | error | the value is out of the range of its indicator |
+  | `VAL-REL-001` | error | a part is more than its whole |
+  | `VAL-ARITH-001` | error | a total is not the sum of its parts (exact; the gap is told) |
+
 - `GET /forms?quarter=2025Q1` (`forms:read`) lists the regions of the catalogue in its order, each
   with `received` and, when received, `rows`, `size` and `problems` (or the reason the file cannot be
   read, when it was put there by hand). It reads the files, so it shows what a run would read.
@@ -589,14 +618,16 @@ of validation rules, the thresholds of completeness and the title that approves.
   422 `E-CAMP-001` with the `field` that is wrong, 409 `E-CAMP-005` when the name is used. The
   body has `name`, `year`, `quarter`, `regions` (codes of the catalogue), `deadline` (a date),
   `workflow`, `workflow_version` (the version must exist; a draft version is accepted for a draft
-  campaign), and optionally `template`, `rules`, `preliminary_min`, `final_min` and `approver`.
+  campaign), and optionally `template`, `rules` (`basic` or `regional-indicators-v1`; another name is
+  422 `E-CAMP-001` with the field `rules`; the set decides which findings the forms of the quarter get,
+  section 11), `preliminary_min`, `final_min` and `approver`.
   The thresholds default to about three quarters of the regions and to all of them; they must
   satisfy `1 <= preliminary_min <= final_min <= number of regions`. A field that is not listed is
   422.
 - `GET /campaigns` and `GET /campaigns/{id}` (`campaigns:read`: every role) answer with the
   settings, the `status`, `next` (the changes a person may ask for now) and `progress`: `expected`,
   `received`, `valid`, `invalid`, `missing` (codes), `regions` (for each: `received`, `valid`,
-  `problems`) and `preliminary_ready` and `final_ready` (whether enough forms are valid). Only the
+  `problems` (the errors that block the form), `warnings`) and `preliminary_ready` and `final_ready` (whether enough forms are valid). Only the
   regions of the campaign count, and only the forms of its period. 404 `E-API-002` when there is no
   such campaign.
 - `PUT /campaigns/{id}` (`campaigns:write`) replaces the settings of a campaign that is still a

@@ -1,41 +1,31 @@
-"""statguard.validate: statistical rules for the rows of a form."""
+"""statguard.validate: the content rules of a form, as a step of a workflow (US-54).
+
+The rules are ``flowstat.model.rules``; this module only turns what they find into the failure of
+a step. Without the argument ``rules`` the basic rules apply, as they always did.
+"""
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from flowstat.actions.base import ActionContext, ActionError, Args
+from flowstat.model import rules as content
 
 SHOWN = 3  # violations quoted in the message; the count tells how many there are
 
 
-def violations(rows: list[object]) -> list[str]:
-    """The rules the rows of a form break, one sentence for each; empty when the form is fine."""
-    if not rows:
-        return ["the form has no rows"]
-    found: list[str] = []
-    seen: set[object] = set()
-    for number, row in enumerate(rows, start=1):
-        if not isinstance(row, dict):
-            found.append(f"row {number}: not a record")
-            continue
-        code = row.get("code")
-        value = row.get("value")
-        if not isinstance(code, str) or not code.strip():
-            found.append(f"row {number}: code is empty")
-        elif code in seen:
-            found.append(f"row {number}: duplicate code {code}")
-        else:
-            seen.add(code)
-        if isinstance(value, bool) or not isinstance(value, int | float):
-            found.append(f"row {number} (code {code}): value is not a number")
-        elif value < 0:
-            found.append(f"row {number} (code {code}): value is negative")
-    return found
+def violations(rows: Sequence[object]) -> list[str]:
+    """The basic rules the rows break, one sentence for each; empty when the form is fine."""
+    return [f.message for f in content.blocking(content.check(rows))]
 
 
 def validate(args: Args, ctx: ActionContext) -> dict[str, object]:
     rows = args["rows"]
     assert isinstance(rows, list)
-    found = violations(rows)
+    name = args.get("rules", content.BASIC.name)
+    if not isinstance(name, str) or not content.known(name):
+        raise ActionError("E-ACT-009", f"there is no rule set {name!r}")
+    found = [f.message for f in content.blocking(content.check(rows, content.named(name)))]
     if found:
         more = f" (and {len(found) - SHOWN} more)" if len(found) > SHOWN else ""
         raise ActionError(

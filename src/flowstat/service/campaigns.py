@@ -13,7 +13,9 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from flowstat.model import campaign as life
+from flowstat.model import rules as content
 from flowstat.model.campaign import Campaign, CampaignError, Settings
+from flowstat.model.diagnostics import Severity
 from flowstat.model.versions import VersionStatus
 from flowstat.repo.campaigns import CampaignNameTakenError, CampaignRepo
 from flowstat.repo.versions import VersionNotFoundError, VersionStore
@@ -26,7 +28,8 @@ class RegionProgress:
     name: str
     received: bool
     valid: bool
-    problems: int
+    problems: int  # the errors that block the form
+    warnings: int = 0  # told to the sender, they block nothing
 
 
 @dataclass(frozen=True, slots=True)
@@ -128,15 +131,17 @@ class CampaignService:
     # -- how far the collecting has come ---------------------------------------------------------
     def progress(self, campaign: Campaign) -> Progress:
         s = campaign.settings
-        listed = {f.region: f for f in self.forms.listing(s.period)}
+        listed = {f.region: f for f in self.forms.listing(s.period, s.rules)}
         rows: list[RegionProgress] = []
         for code in s.regions:
             info = listed.get(code)
             if info is None or not info.received:
                 rows.append(RegionProgress(code, info.name if info else code, False, False, 0))
             else:
+                errors = len(content.blocking(info.findings)) or len(info.problems)
+                warnings = sum(1 for f in info.findings if f.severity is Severity.WARNING)
                 rows.append(
-                    RegionProgress(code, info.name, True, not info.problems, len(info.problems))
+                    RegionProgress(code, info.name, True, not info.problems, errors, warnings)
                 )
         valid = sum(1 for r in rows if r.valid)
         received = sum(1 for r in rows if r.received)
