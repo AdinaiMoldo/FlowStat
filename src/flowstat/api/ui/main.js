@@ -1,6 +1,6 @@
 // The page: signing in, the addresses of the pages, and the editor (workflows, a text with live
 // diagnostics, save and publish). The other pages are in their own files.
-import { ApiError, call, session, whenUnauthorized } from "./api.js";
+import { ApiError, call, logout, session, whenUnauthorized } from "./api.js";
 import { PAUSE_MS, createEditor } from "./editor.js";
 import { EXAMPLE } from "./example.js";
 import { createForms } from "./forms.js";
@@ -127,10 +127,20 @@ function togglePreview() {
   }
 }
 
+// What the person signed in may do: the permissions the core sent with the user.
+function can(permission) {
+  return Boolean(state.user && state.user.permissions.includes(permission));
+}
+
 // -- the check after a pause -----------------------------------------------------------------
 async function check() {
   const text = state.editor.getText();
   if (text === state.checked) return;
+  if (!can("workflows:write")) {
+    state.checked = text;
+    say("read only: your role runs workflows and does not change them");
+    return;
+  }
   state.checked = text;
   const mine = ++state.sequence;
   say("checking…");
@@ -153,7 +163,7 @@ async function check() {
 function changed() {
   clearTimeout(state.timer);
   state.timer = setTimeout(check, PAUSE_MS);
-  $("save").disabled = nameOf(state.editor.getText()) === null;
+  $("save").disabled = !can("workflows:write") || nameOf(state.editor.getText()) === null;
 }
 
 // -- workflows -------------------------------------------------------------------------------
@@ -161,7 +171,7 @@ function describe() {
   const c = state.current;
   $("name").textContent = c ? c.name : nameOf(state.editor.getText()) || "no workflow";
   $("state").textContent = c ? `v${c.number} ${c.status}` : "not saved";
-  $("publish").disabled = !(c && c.status === "draft");
+  $("publish").disabled = !(c && c.status === "draft" && can("workflows:publish"));
   $("run").disabled = !(c && c.status === "published");
   $("run").title = $("run").disabled ? "Publish this version first" : "Start a run of this version";
   if ($("run").disabled) $("run-form").hidden = true;
@@ -345,6 +355,7 @@ function paintUser() {
     role.textContent = roleLabel(user);
     who.append(name, role);
   }
+  for (const id of ["new", "example"]) $(id).hidden = !can("workflows:write");
   for (const link of document.querySelectorAll(".menu a")) {
     const needs = link.dataset.needs;
     link.hidden = !user || Boolean(needs && !user.permissions.includes(needs));
@@ -380,12 +391,7 @@ async function signIn(attempt, tokenForm = false) {
 }
 
 async function signOut() {
-  try {
-    await call("POST", "/logout");
-  } catch {
-    /* the session ends at the core by itself; here it is forgotten in any case */
-  }
-  session.clear();
+  await logout();
   location.hash = href("login");
   location.reload(); // nothing of the last person stays in the page
 }
@@ -406,9 +412,13 @@ function expired() {
 async function loadLogins() {
   let found;
   try {
+    // the route exists only on a demonstration, and /health says whether this is one (a request
+    // for a route that is not there would put an error into the console of the browser)
+    const health = await call("GET", "/health");
+    if (health.demo_logins !== "yes") return;
     found = (await call("GET", "/demo/logins")).logins;
   } catch {
-    return; // not a demonstration
+    return;
   }
   for (const login of found) {
     const button = document.createElement("button");

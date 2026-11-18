@@ -61,7 +61,7 @@ def test_a_button_signs_in_as_that_role_and_signing_out_lets_another_role_in(
     page.wait_for_function("document.body.dataset.view === 'editor'")
     set_text(page, BAD)  # a designer may check a text: the answer is its problems, not a refusal
     page.wait_for_function("document.getElementById('status').textContent.includes('error')")
-    assert "may not edit" not in page.inner_text("#status")
+    assert "read only" not in page.inner_text("#status")
 
     sign_out(page)  # the buttons are on the sign-in page, which is where signing out leads
     page.wait_for_selector("#logins:not([hidden])")
@@ -70,7 +70,7 @@ def test_a_button_signs_in_as_that_role_and_signing_out_lets_another_role_in(
     page.click("#tab-editor")
     page.wait_for_function("document.body.dataset.view === 'editor'")
     set_text(page, BAD + "\n")
-    page.wait_for_function("document.getElementById('status').textContent.includes('may not edit')")
+    page.wait_for_function("document.getElementById('status').textContent.includes('read only')")
     page.close()
 
 

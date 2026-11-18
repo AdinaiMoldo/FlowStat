@@ -375,3 +375,9 @@ Function B2 · 8 SP · Should
 Given the page Forms and a quarter, when I choose several Excel files named by the code of a region, then each goes to its region, the table shows for the nine regions whether the form came, its rows and the rules it breaks, and says whether enough forms came for the run (7 of 9); a file that is not a form, or a name that is no region, is told in words and changes nothing; I can replace or remove a form; a designer sees the table and has nothing to send with; sample sets of synthetic forms (good, six regions, with a mistake) are made by a script; and the run that follows reads exactly what was sent, so a form with a mistake stops it at its check and names the region
 
 Function B2 · 8 SP · Should
+
+### US-51: As a presenter, I show the whole cycle (sign in, send forms, check, a form that fails, approve) on pages that look finished, with no error in the console of the browser
+
+Given a core with the example published, when an operator sends nine good forms, runs the workflow and the chief statistician approves, then every page shows the states with a badge for each state; when a form with a mistake is sent, the page of the run says in one block where it stopped (the step, the code and the message) and marks the step that failed; when only six forms are sent, it says that the goal was not reached and which steps failed; the page Forms says in colour whether enough good forms came and names the regions that break the rules, and has a button that removes all the forms of the quarter; a designer sees the forms and has nothing to send with; a role that may not change workflows has an editor that only runs them; Services, Migration and Statistics say what is missing when they have nothing to list, and Statistics shows the totals; and no page puts an error, a warning or a refused request into the console of the browser
+
+Function B2 · 5 SP · Should

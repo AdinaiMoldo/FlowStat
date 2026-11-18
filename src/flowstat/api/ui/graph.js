@@ -103,6 +103,13 @@ export function groupClass(classes) {
   return known.includes("st-ok") ? "st-ok" : "st-skip";
 }
 
+// The size of a node from its label (Cytoscape deprecated the value "label" for width and height).
+function sized(node) {
+  const lines = String(node.data("label") ?? "").split("\n");
+  const longest = Math.max(1, ...lines.map((line) => line.length));
+  return { width: Math.max(56, longest * 5.6 + 20), height: lines.length * 12 + 16 };
+}
+
 const STYLE = [
   {
     selector: "node",
@@ -117,8 +124,8 @@ const STYLE = [
       "background-color": "#ffffff",
       "border-width": 1,
       "border-color": "#98a2b3",
-      width: "label",
-      height: "label",
+      width: (node) => sized(node).width,
+      height: (node) => sized(node).height,
       padding: "8px",
     },
   },
@@ -204,7 +211,6 @@ export function createGraph(host, onSelect, { collapseOver = COLLAPSE_OVER } = {
     container: host,
     elements: [],
     style: STYLE,
-    wheelSensitivity: 0.3,
     minZoom: 0.15,
     maxZoom: 2.5,
   });

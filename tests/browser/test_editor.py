@@ -116,12 +116,12 @@ def test_a_new_workflow_is_saved_and_published(
     page.close()
 
 
-def test_an_operator_is_told_that_the_token_may_not_edit(
+def test_an_operator_is_told_that_the_editor_is_read_only(
     browser: Browser, server: Server, need_editor: None
 ) -> None:
     page = open_page(browser, server, "operator")
     set_text(page, BAD)
-    page.wait_for_function("document.getElementById('status').textContent.includes('may not edit')")
+    page.wait_for_function("document.getElementById('status').textContent.includes('read only')")
     page.close()
 
 

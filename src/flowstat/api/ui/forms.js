@@ -41,16 +41,19 @@ export function createForms() {
   function summary() {
     const got = state.forms.filter((f) => f.received).length;
     const total = state.forms.length;
-    const bad = state.forms.filter((f) => f.problems.length > 0).length;
+    const broken = state.forms.filter((f) => f.problems.length > 0).map((f) => f.region);
+    const bad = broken.length;
     $("forms-count").textContent = `${got} of ${total} regions have sent their form`;
+    $("forms-clear").hidden = !state.canWrite || got === 0;
     const note = $("forms-note");
     note.hidden = total === 0;
     if (total === 0) return;
     const parts = [];
-    if (bad > 0) parts.push(`${bad} form(s) break the rules: the run will stop at their check.`);
-    if (got < 7) parts.push("The consolidation needs at least 7 of the 9 forms.");
-    else if (bad === 0) parts.push("Enough forms came: the run can be started.");
+    if (bad > 0) parts.push(`${broken.join(", ")} ${bad === 1 ? "breaks" : "break"} the rules: the run will stop at the check of ${bad === 1 ? "that form" : "those forms"}.`);
+    if (got < 7) parts.push(`The consolidation needs at least 7 of the ${total} forms; ${got} came.`);
+    else if (bad === 0) parts.push("Enough forms came and all of them pass the rules: the run can be started.");
     note.textContent = parts.join(" ");
+    note.classList.toggle("good", got >= 7 && bad === 0);
   }
 
   function line(form) {
@@ -110,6 +113,7 @@ export function createForms() {
   async function load(user) {
     state.canWrite = user.permissions.includes("forms:write");
     $("forms-send").hidden = !state.canWrite;
+    $("forms-readonly").hidden = state.canWrite;
     state.quarter = quarter() || state.quarter;
     await show();
   }
@@ -169,7 +173,7 @@ export function createForms() {
       }
     }
     await show();
-    const lines = [sent ? `${sent} form(s) sent` : "", ...failures, extra].filter(Boolean);
+    const lines = [sent ? `${sent} form(s) sent` : "", failures.length ? `${failures.length} not accepted` : "", extra].filter(Boolean);
     say(lines.join(". "));
     $("forms-result").replaceChildren(
       ...failures.map((text) => {
@@ -192,6 +196,24 @@ export function createForms() {
     say(`the form of ${region} was removed`);
   }
 
+  // Every form of the quarter, to begin again (the forms of an earlier try stay until they are removed).
+  async function clear() {
+    const q = quarter();
+    const regions = state.forms.filter((f) => f.received).map((f) => f.region);
+    try {
+      for (const region of regions) {
+        await call("DELETE", `/forms/${encodeURIComponent(region)}/${encodeURIComponent(q)}`);
+      }
+    } catch (error) {
+      say(problem(error));
+      await show();
+      return;
+    }
+    await show();
+    say(`${regions.length} form(s) of ${q} removed`);
+  }
+
+  $("forms-clear").addEventListener("click", clear);
   $("forms-refresh").addEventListener("click", show);
   $("forms-quarter").addEventListener("change", show);
   $("forms-files").addEventListener("change", (event) => {

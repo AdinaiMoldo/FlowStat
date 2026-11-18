@@ -12,6 +12,9 @@ const BAD = new Set([
   "FAILED", "GOAL_NOT_REACHED", "failed", "unreachable", "COMPENSATED", "COMPENSATION_FAILED",
 ]);
 
+// Steps that did not run, and why: a cancelled run, a step whose input never came.
+const OFF = new Set(["CANCELLED", "UPSTREAM_FAILED", "SKIPPED", "PENDING"]);
+
 function cell(text, kind) {
   const td = document.createElement("td");
   if (kind) {
@@ -28,6 +31,7 @@ function cell(text, kind) {
 export function kindOf(word) {
   if (GOOD.has(word)) return "good";
   if (BAD.has(word)) return "bad";
+  if (OFF.has(word)) return "off";
   return word === "WAITING" || word === "starting" ? "wait" : "";
 }
 
@@ -72,7 +76,7 @@ export function createOps({ goTo }) {
     const rows = $("services-rows");
     try {
       state.services = await call("GET", "/deployments");
-      $("services-status").textContent = `${state.services.length} service(s)`;
+      $("services-status").textContent = state.services.length ? `${state.services.length} service(s)` : "";
     } catch (error) {
       if (!quiet) {
         state.services = [];
@@ -82,6 +86,9 @@ export function createOps({ goTo }) {
       return !(error instanceof ApiError && error.status === 401);
     }
     rows.replaceChildren();
+    $("services-empty").hidden = state.services.length > 0;
+    $("services-table").hidden = state.services.length === 0;
+    $("services-hint").hidden = state.services.length === 0;
     for (const s of state.services) {
       const tr = row("service", s.id, [
         cell(s.id),
@@ -216,6 +223,30 @@ export function createOps({ goTo }) {
     }
   }
 
+  // Why a run did not succeed, said once above the steps: the first step that failed, with the
+  // code and the message the action gave, and for a goal that was not reached, which steps failed.
+  function showFailure(report) {
+    const box = $("run-failure");
+    const failed = report.steps.filter((s) => s.state === "FAILED");
+    const outcome = report.outcome || report.status;
+    box.replaceChildren();
+    box.hidden = failed.length === 0 || !["FAILED", "GOAL_NOT_REACHED", "COMPENSATED"].includes(outcome);
+    if (box.hidden) return;
+    const first = failed[0];
+    const title = document.createElement("strong");
+    const detail = document.createElement("span");
+    if (outcome === "GOAL_NOT_REACHED") {
+      const names = failed.slice(0, 6).map((s) => s.step).join(", ");
+      title.textContent = "The goal was not reached";
+      detail.textContent = `${failed.length} step(s) failed (${names}${failed.length > 6 ? ", …" : ""}). ${first.code || ""}${first.message ? ": " + first.message : ""}`;
+    } else {
+      title.textContent = `The run stopped at ${first.step}`;
+      detail.textContent = `${first.code || ""}${first.message ? ": " + first.message : ""}`;
+    }
+    box.dataset.step = first.step;
+    box.append(title, detail);
+  }
+
   function showDecisions(report) {
     const box = $("run-decision");
     box.replaceChildren();
@@ -260,16 +291,18 @@ export function createOps({ goTo }) {
       steps.replaceChildren();
       for (const s of report.steps) {
         const error = s.code ? `${s.code}${s.message ? ": " + s.message : ""}` : "";
-        steps.append(
-          row("step", s.step, [cell(s.step), cell(s.state, kindOf(s.state)), cell(String(s.attempts)), cell(error)]),
-        );
+        const line = row("step", s.step, [cell(s.step), cell(s.state, kindOf(s.state)), cell(String(s.attempts)), cell(error)]);
+        if (s.state === "FAILED") line.classList.add("failed");
+        steps.append(line);
       }
+      showFailure(report);
       showDecisions(report);
       await showGraph(report);
     } catch (error) {
       if (quiet) return; // a refresh that fails leaves what is shown; the next one tries again
       steps.replaceChildren();
       $("run-decision").hidden = true;
+      $("run-failure").hidden = true;
       $("run-graph-pane").hidden = true;
       $("run-empty").hidden = false;
       $("run-empty").textContent = problem(error);

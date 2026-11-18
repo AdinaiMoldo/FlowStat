@@ -48,8 +48,12 @@ def _not_found(name: str, number: int | None = None) -> ApiError:
 
 
 @router.secured("GET", "/health", PUBLIC, summary="Liveness check")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+def health(request: Request) -> dict[str, str]:
+    # a core that was started with demonstration sign-ins says so (docs/api-spec.md section 9)
+    answer = {"status": "ok"}
+    if config_of(request).demo_logins is not None:
+        answer["demo_logins"] = "yes"
+    return answer
 
 
 @router.secured("POST", "/validate", "workflows:write", summary="Check a text without storing it")

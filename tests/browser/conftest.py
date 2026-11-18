@@ -7,7 +7,9 @@ installs all three and fails if they skip).
 
 from __future__ import annotations
 
+import importlib
 import socket
+import sys
 import threading
 import time
 from collections.abc import Iterator
@@ -110,3 +112,27 @@ def browser() -> Iterator[Browser]:
 def need_editor() -> None:
     if not VENDOR.is_file():
         pytest.skip("the editor was not fetched: python scripts/fetch_ui.py")
+
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+@pytest.fixture(scope="module")
+def sets(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Path]:
+    """The sample sets of forms that ``scripts/make_forms.py`` writes, as folders."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    try:
+        make_forms = importlib.import_module("make_forms")
+    finally:
+        sys.path.remove(str(ROOT / "scripts"))
+    out = tmp_path_factory.mktemp("sample-forms")
+    make_forms.write_sets(out)
+    return {name: out / name for name in ("good", "six-regions", "with-a-mistake")}
+
+
+@pytest.fixture
+def forms_server(tmp_path: Path) -> Iterator[Server]:
+    """A core of its own for each test: what one test sends must not be there for the next."""
+    env = make_env(tmp_path)
+    with serving(env.client.app) as url:
+        yield Server(env, url)

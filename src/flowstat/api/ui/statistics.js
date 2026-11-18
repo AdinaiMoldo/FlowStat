@@ -60,17 +60,50 @@ function row(entry) {
   return tr;
 }
 
+function tile(number, label, kind) {
+  const box = document.createElement("div");
+  box.className = `stat ${kind || ""}`.trim();
+  const num = document.createElement("div");
+  num.className = "num";
+  num.textContent = String(number);
+  const text = document.createElement("div");
+  text.className = "label";
+  text.textContent = label;
+  box.append(num, text);
+  return box;
+}
+
+// The totals over all workflows, from the rows of the table.
+function tiles(workflows) {
+  const sum = (key) => workflows.reduce((total, w) => total + w[key], 0);
+  const finished = sum("finished");
+  const failed = sum("failed");
+  return [
+    tile(sum("runs"), "runs"),
+    tile(sum("succeeded"), "succeeded"),
+    tile(failed, "failed", failed ? "accent" : ""),
+    tile(finished ? percent(failed / finished) : "-", "failure rate"),
+  ];
+}
+
 export function createStatistics() {
+  function show(workflows) {
+    $("statistics-rows").replaceChildren(...workflows.map(row));
+    $("statistics-tiles").replaceChildren(...(workflows.length ? tiles(workflows) : []));
+    $("statistics-tiles").hidden = workflows.length === 0;
+    $("statistics-table").hidden = workflows.length === 0;
+    $("statistics-empty").hidden = workflows.length > 0;
+  }
+
   async function load() {
     $("statistics-status").textContent = "loading";
     try {
       const body = await call("GET", "/statistics");
-      $("statistics-rows").replaceChildren(...body.workflows.map(row));
-      $("statistics-status").textContent = body.workflows.length
-        ? ""
-        : "no workflow has runs yet";
+      show(body.workflows);
+      $("statistics-status").textContent = "";
     } catch (error) {
-      $("statistics-rows").replaceChildren();
+      show([]);
+      $("statistics-empty").hidden = true;
       $("statistics-status").textContent = problem(error);
     }
   }

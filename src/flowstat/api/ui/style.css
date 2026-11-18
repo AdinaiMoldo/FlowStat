@@ -120,7 +120,7 @@ input, select, textarea { font: inherit; padding: 6px 10px; border: 1px solid #c
 /* -- the editor ----------------------------------------------------------------------------- */
 .layout {
   flex: 1; min-height: 0; display: grid; gap: 12px; padding: 12px;
-  grid-template-columns: 220px minmax(0, 1fr) 340px;
+  grid-template-columns: 200px minmax(0, 1fr) 300px;
 }
 .side, .work, .problems {
   min-height: 0; display: flex; flex-direction: column; gap: 8px; background: var(--card);
@@ -168,6 +168,7 @@ input, select, textarea { font: inherit; padding: 6px 10px; border: 1px solid #c
 .badge { display: inline-block; padding: 1px 10px; border-radius: 999px; background: var(--paper); border: 1px solid var(--line); font-size: 12px; font-weight: 600; }
 .badge.good { color: var(--ok); border-color: #abefc6; background: #ecfdf3; }
 .badge.bad { color: var(--error); border-color: #fda29b; background: #fef3f2; }
+.badge.off { color: var(--muted); }
 .badge.wait { color: var(--warning); border-color: #fedf89; background: #fffaeb; }
 .reasons { margin: 0; padding-left: 16px; }
 .reasons li { margin: 2px 0; }
@@ -201,3 +202,20 @@ label.button { position: relative; cursor: pointer; }
 .table td .reasons { margin-top: 4px; font-size: 13px; color: var(--error); }
 .items.errors:empty { display: none; }
 .items.errors li { border-color: #fda29b; background: #fef3f2; color: var(--error); justify-content: flex-start; }
+
+/* Why a run did not succeed: one block above the steps, and the failed step in the table. */
+.failure { display: flex; flex-direction: column; gap: 2px; margin: 0 0 12px; padding: 10px 14px; border: 1px solid #fda29b; border-left: 4px solid var(--error); border-radius: 8px; background: #fef3f2; color: #7a271a; }
+.failure strong { color: var(--error); }
+tr.failed td { background: #fef3f2; }
+
+/* The toolbar of the editor keeps each button on one line and wraps as a whole when it must. */
+.tools { flex-wrap: wrap; row-gap: 6px; }
+.tools button, .tools .muted { white-space: nowrap; }
+.tools .name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.notice.good { background: #ecfdf3; color: var(--ok); border-color: #abefc6; }
+
+/* A page with nothing to list says what is missing and what to do. */
+.empty { display: flex; flex-direction: column; gap: 4px; margin: 8px 0 4px; padding: 22px 24px; border: 1px dashed var(--line); border-radius: var(--radius); background: var(--paper); }
+.empty strong { font-size: 15px; }
+.empty span { color: var(--muted); max-width: 70ch; }
