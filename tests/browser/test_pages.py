@@ -24,9 +24,11 @@ PASSWORD = "correct horse battery"
 @pytest.fixture(scope="module")
 def pages(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Server]:
     env = make_env(Path(tmp_path_factory.mktemp("pages")))
-    users = UserService(open_database(env.config.db_path))
+    db = open_database(env.config.db_path)
+    users = UserService(db)
     for name in ("ada", "dina", "olga"):
         users.set_password(name, PASSWORD, name.encode().ljust(16, b"."))
+    db.close()
     with serving(env.client.app) as url:
         yield Server(env, url)
 
