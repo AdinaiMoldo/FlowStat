@@ -81,6 +81,47 @@ class UserStore:
         if cursor.rowcount == 0:
             raise UserNotFoundError(f"there is no user '{name}'")
 
+    # -- passwords and sessions (US-46) ----------------------------------------------------
+    def set_password_hash(self, name: str, password_hash: str) -> None:
+        cursor = self.db.execute(
+            "UPDATE users SET password_hash = ? WHERE name = ?", (password_hash, name)
+        )
+        if cursor.rowcount == 0:
+            raise UserNotFoundError(f"there is no user '{name}'")
+
+    def for_login(self, name: str) -> tuple[User, str] | None:
+        """The enabled user ``name`` and the hash of its password, or None (unknown, disabled,
+        or no password set)."""
+        row = self.db.execute(
+            "SELECT name, role, titles, disabled, password_hash FROM users"
+            " WHERE name = ? AND disabled = 0 AND password_hash IS NOT NULL",
+            (name,),
+        ).fetchone()
+        return None if row is None else (_user(row[:4]), str(row[4]))
+
+    def add_session(self, token_hash: str, name: str, now: str, expires_at: str) -> None:
+        self.db.execute(
+            "INSERT INTO sessions (token_hash, user_name, created_at, expires_at)"
+            " VALUES (?, ?, ?, ?)",
+            (token_hash, name, now, expires_at),
+        )
+
+    def by_session_hash(self, token_hash: str, now: str) -> User | None:
+        """The enabled user of a session that has not expired, or None."""
+        row = self.db.execute(
+            "SELECT u.name, u.role, u.titles, u.disabled FROM sessions s"
+            " JOIN users u ON u.name = s.user_name"
+            " WHERE s.token_hash = ? AND s.expires_at > ? AND u.disabled = 0",
+            (token_hash, now),
+        ).fetchone()
+        return None if row is None else _user(row)
+
+    def remove_session(self, token_hash: str) -> None:
+        self.db.execute("DELETE FROM sessions WHERE token_hash = ?", (token_hash,))
+
+    def prune_sessions(self, now: str) -> None:
+        self.db.execute("DELETE FROM sessions WHERE expires_at <= ?", (now,))
+
     def all(self) -> list[User]:
         rows = self.db.execute("SELECT name, role, titles, disabled FROM users ORDER BY name")
         return [_user(row) for row in rows]

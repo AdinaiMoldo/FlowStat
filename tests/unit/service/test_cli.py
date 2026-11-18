@@ -238,3 +238,46 @@ def test_a_decision_the_step_does_not_declare_is_refused_on_run_and_resume(
     assert main(["resume", "run-1", *where, "--decision", "maybe"]) == 2
     assert "approved, rejected" in capsys.readouterr().err
     assert main(["resume", "run-1", *where, "--decision", "approved"]) == 0
+
+
+NOW = "2026-11-08T10:00:00Z"
+
+
+def test_user_add_with_a_password_and_user_passwd_read_it_from_the_input(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import io
+
+    db = str(tmp_path / "flowstat.db")
+    monkeypatch.setattr("sys.stdin", io.StringIO("correct horse battery\n"))
+    assert main(["user", "add", "dina", "--role", "designer", "--password", "--db", db]) == 0
+    users = UserService(open_database(db))
+    token = next(
+        line.split(": ")[1] for line in capsys.readouterr().out.splitlines() if "token: " in line
+    )
+    assert users.login("dina", "correct horse battery", "s" * 64, NOW) is not None
+    assert users.authenticate(token) is not None  # the token made at the same time still works
+    monkeypatch.setattr("sys.stdin", io.StringIO("another long password\n"))
+    assert main(["user", "passwd", "dina", "--db", db]) == 0
+    assert users.login("dina", "correct horse battery", "t" * 64, NOW) is None
+    assert users.login("dina", "another long password", "t" * 64, NOW) is not None
+
+
+def test_a_password_that_is_too_short_or_a_user_that_is_not_there_is_refused(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import io
+
+    db = str(tmp_path / "flowstat.db")
+    main(["user", "add", "dina", "--role", "designer", "--db", db])
+    capsys.readouterr()
+    monkeypatch.setattr("sys.stdin", io.StringIO("short\n"))
+    assert main(["user", "passwd", "dina", "--db", db]) != 0
+    assert "characters" in capsys.readouterr().err
+    monkeypatch.setattr("sys.stdin", io.StringIO("a long enough password\n"))
+    assert main(["user", "passwd", "ghost", "--db", db]) != 0
+    assert "no user 'ghost'" in capsys.readouterr().err

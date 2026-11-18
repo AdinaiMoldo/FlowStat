@@ -3,9 +3,10 @@ compares the two."""
 
 from __future__ import annotations
 
-PUBLIC = "public"  # a route with no permission: only the health check
+PUBLIC = "public"  # a route with no permission: the health check and the sign-in
 
 PERMISSIONS: dict[str, frozenset[str]] = {
+    "session:use": frozenset({"admin", "designer", "operator"}),
     "workflows:read": frozenset({"admin", "designer", "operator"}),
     "workflows:write": frozenset({"admin", "designer"}),
     "workflows:publish": frozenset({"admin", "designer"}),

@@ -90,6 +90,13 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TEXT    NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS sessions (
+    token_hash TEXT    PRIMARY KEY,
+    user_name  TEXT    NOT NULL REFERENCES users(name),
+    created_at TEXT    NOT NULL,
+    expires_at TEXT    NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS deployments (
     id         TEXT    PRIMARY KEY,
     workflow   TEXT    NOT NULL,
@@ -162,6 +169,7 @@ _LATER_COLUMNS = [
     ("deployments", "answering_since", "TEXT"),
     ("deployments", "control_key_next", "TEXT"),
     ("deployments", "ingest_key_next_sha256", "TEXT"),
+    ("users", "password_hash", "TEXT"),
 ]
 
 

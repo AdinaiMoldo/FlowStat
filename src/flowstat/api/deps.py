@@ -85,7 +85,11 @@ def require(permission: str) -> Callable[..., object]:
     def check(request: Request, db: sqlite3.Connection = Depends(get_db)) -> User:
         header = request.headers.get("authorization", "")
         scheme, _, token = header.partition(" ")
-        user = UserService(db).authenticate(token.strip()) if scheme.lower() == "bearer" else None
+        user = (
+            UserService(db).authenticate(token.strip(), config_of(request).clock())
+            if scheme.lower() == "bearer"
+            else None
+        )
         if user is None:
             raise fail(401, "E-AUTH-001", "a valid token is required")
         if not allowed(user.role, permission):

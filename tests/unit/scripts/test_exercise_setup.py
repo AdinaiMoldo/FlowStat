@@ -178,3 +178,24 @@ def test_a_demonstration_start_gives_the_page_its_logins_and_the_exercise_does_n
         assert {item["name"]: item["token"] for item in body["logins"]} == shown.tokens
     finally:
         shown.process.terminate()
+
+
+def test_every_user_of_a_start_can_sign_in_with_its_own_password(tmp_path: Path) -> None:
+    setup = exercise_setup.prepare(tmp_path / "data", demo.free_port())
+    try:
+        assert set(setup.passwords) == set(exercise_setup.USERS)
+        for key, (name, role, titles) in exercise_setup.USERS.items():
+            status, body = demo.http(
+                "POST",
+                f"{setup.base}/login",
+                None,
+                {"name": name, "password": setup.passwords[key]},
+            )
+            assert status == 200, (name, body)
+            assert (body["name"], body["role"], tuple(body["titles"])) == (name, role, titles)
+        wrong = demo.http("POST", f"{setup.base}/login", None, {"name": "dina", "password": "nope"})
+        assert wrong[0] == 401
+        saved = json.loads((tmp_path / "data" / "tokens.json").read_text(encoding="utf8"))
+        assert saved["passwords"] == setup.passwords
+    finally:
+        setup.process.terminate()

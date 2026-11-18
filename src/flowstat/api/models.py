@@ -451,3 +451,23 @@ class WorkflowStatisticsOut(BaseModel):
 
 class StatisticsOut(BaseModel):
     workflows: list[WorkflowStatisticsOut]
+
+
+class LoginIn(Request):
+    name: str
+    password: str
+
+
+class SessionOut(BaseModel):
+    token: str  # the token of the session: send it as ``Authorization: Bearer``
+    name: str
+    role: str
+    titles: list[str]
+    expires_at: str
+
+
+class MeOut(BaseModel):
+    name: str
+    role: str
+    titles: list[str]
+    permissions: list[str]  # what the role may do, for a page that shows only what works

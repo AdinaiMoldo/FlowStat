@@ -63,7 +63,8 @@ def test_each_route_is_allowed_to_the_roles_of_the_table_and_to_no_other(env: En
         for role in (*ROLES, None):
             response = env.call(role, method, concrete(path), json={})
             if permission == PUBLIC:
-                assert response.status_code == 200, (method, path, role)
+                # the health check answers 200; the sign-in has no body here and answers 422
+                assert response.status_code in (200, 422), (method, path, role)
             elif role is None:
                 assert response.status_code == 401, (method, path)
             elif role in PERMISSIONS[permission]:

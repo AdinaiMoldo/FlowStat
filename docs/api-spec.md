@@ -21,7 +21,7 @@ answer an approval step (section 5).
 
 ## 2. Authentication
 
-`Authorization: Bearer <token>` on every request except `GET /health`.
+`Authorization: Bearer <token>` on every request except `GET /health` and `POST /login`.
 
 - A token is 32 random bytes, hex-encoded, made once by `flowstat user add NAME --role ROLE
   [--title T ...]` and printed once. The database keeps only its SHA-256, so a stolen database does
@@ -32,7 +32,27 @@ answer an approval step (section 5).
   403 `E-AUTH-002`. The first admin is made with the same command on the database file; no
   endpoint creates users in M6. `flowstat user disable NAME` stops a token and `flowstat user list`
   shows the users, without tokens.
-- There are no passwords, sessions or JWT: the IDE of M7 keeps a token.
+- **Sign in with a name and a password (US-46).** `POST /login` with `{"name", "password"}` is
+  public and answers `{"token", "name", "role", "titles", "expires_at"}`. The token is a session:
+  it is used as any other (`Authorization: Bearer`), it ends 8 hours after it was made, and it ends
+  at once on `POST /logout`, when the user is disabled, and when it expires. A person has any number
+  of sessions at the same time. The session token is made by the edge like the other tokens and only
+  its SHA-256 is stored (table `sessions`). `GET /me` says who is signed in (`name`, `role`,
+  `titles`, and the `permissions` of the role, so that a page shows only what works).
+- The password is stored as a salted scrypt hash (`scrypt$N$r$p$salt$hash`, N = 16384, r = 8,
+  p = 1, a salt of 16 random bytes made by the edge); the parameters are stored with each hash so
+  they can be raised later. It has 10 to 128 characters. It is set by the administrator of the
+  machine: `flowstat user add NAME --role ROLE --password` or `flowstat user passwd NAME`, which
+  asks for it at the terminal (or reads one line of the standard input when there is none). There
+  is no endpoint that sets a password, no reset by mail and no change by the user: that is left
+  out of this milestone.
+- The answer to a wrong name, a wrong password, a user without a password and a disabled user is
+  the same 401 `E-AUTH-004`, and takes the same work (an unknown name is checked against a fixed
+  hash). Failed attempts are counted for each name over 60 seconds in memory; the sixth in that
+  window gets 429 `E-AUTH-003` even with the right password. A restart of the core resets the
+  count. This is a brake against guessing, not a record.
+- The sign-in sends the password in the body: serve the core over TLS (a reverse proxy) when it is
+  reached from another machine; on one machine the loopback address needs none.
 - A deployed service has keys made when it is deployed (section 7), shown once and stored as
   SHA-256 in the manifest: one `api_key` that starts runs and reads (the permissions of `operator`,
   no title), and one key for each title that an approval of the workflow names (`title_keys`, for
@@ -44,10 +64,11 @@ answer an approval step (section 5).
 ## 3. Permissions
 
 One permission is declared per route in code; a route without one is not accepted by the test that
-walks the routes. `public` is the single exception (`GET /health`).
+walks the routes. `public` is the exception, for `GET /health` and `POST /login`.
 
 | Permission | Routes | admin | designer | operator |
 | --- | --- | --- | --- | --- |
+| `session:use` | `GET /me`, `POST /logout` (any signed-in user) | yes | yes | yes |
 | `workflows:read` | `GET /workflows`, `GET /workflows/{name}/versions`, `GET /workflows/{name}/versions/{n}`, `GET /workflows/{name}/versions/{n}/graph` | yes | yes | yes |
 | `workflows:write` | `POST /validate`, `POST /graph`, `POST /complete`, `POST /workflows/{name}/versions` | yes | yes | no |
 | `workflows:publish` | `POST /workflows/{name}/versions/{n}/publish` | yes | yes | no |
@@ -81,7 +102,9 @@ also this body, code `E-API-001`, status 422; FastAPI's own format is replaced.
 | Status | Code | When |
 | --- | --- | --- |
 | 401 | `E-AUTH-001` | no, unknown or disabled token |
+| 401 | `E-AUTH-004` | the name or the password of the sign-in is wrong (the same for every reason) |
 | 403 | `E-AUTH-002` | the role lacks the permission, or the title for the approval is missing |
+| 429 | `E-AUTH-003` | too many failed sign-ins for this name; wait a minute |
 | 404 | `E-API-002` | workflow, version, run or deployment not found |
 | 409 | `E-API-003` | the version is a draft (not published); the run is being driven right now; the step is not waiting; the deployment is not running |
 | 422 | `E-API-001` | the body does not have the shape |
