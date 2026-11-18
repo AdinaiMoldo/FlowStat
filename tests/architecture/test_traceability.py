@@ -35,8 +35,8 @@ def rows() -> list[list[str]]:
 
 def story_ids(cell: str) -> set[str]:
     """The stories a cell names: ``US-18, US-19``, and ``US-06 to US-12`` as a range."""
-    ids = set(re.findall(r"\b(?:US|DOC)-\d+\b", cell))
-    for kind, first, last in re.findall(r"\b(US|DOC)-(\d+) to (?:US|DOC)-(\d+)\b", cell):
+    ids = set(re.findall(r"\b(?:US|DOC|DEF)-\d+\b", cell))
+    for kind, first, last in re.findall(r"\b(US|DOC|DEF)-(\d+) to (?:US|DOC|DEF)-(\d+)\b", cell):
         ids |= {f"{kind}-{n:02d}" for n in range(int(first), int(last) + 1)}
     return ids
 

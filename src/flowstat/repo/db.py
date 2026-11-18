@@ -7,6 +7,9 @@ published row, so even a bug in the code above cannot change a published version
 from __future__ import annotations
 
 import sqlite3
+import threading
+from collections.abc import Iterable
+from typing import Any, Self
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS versions (
@@ -153,9 +156,92 @@ BEGIN SELECT RAISE(ABORT, 'the history of a run is append-only'); END;
 """
 
 
+class _GuardedCursor(sqlite3.Cursor):
+    """A cursor whose every step is taken while the connection is held (``GuardedConnection``)."""
+
+    def _guard(self) -> threading.RLock:
+        connection = self.connection
+        assert isinstance(connection, GuardedConnection)
+        return connection.guard
+
+    def execute(self, sql: str, parameters: Any = (), /) -> Self:
+        with self._guard():
+            return super().execute(sql, parameters)
+
+    def executemany(self, sql: str, seq_of_parameters: Iterable[Any], /) -> Self:
+        with self._guard():
+            return super().executemany(sql, seq_of_parameters)
+
+    def executescript(self, sql_script: str, /) -> sqlite3.Cursor:
+        with self._guard():
+            return super().executescript(sql_script)
+
+    def fetchone(self) -> Any:
+        with self._guard():
+            return super().fetchone()
+
+    def fetchmany(self, size: int | None = 1) -> list[Any]:
+        with self._guard():
+            return super().fetchmany(size)
+
+    def fetchall(self) -> list[Any]:
+        with self._guard():
+            return super().fetchall()
+
+    def __next__(self) -> Any:
+        with self._guard():
+            return super().__next__()
+
+
+class GuardedConnection(sqlite3.Connection):
+    """A connection that cannot be closed while another thread is inside a call on it (DEF-1).
+
+    A web framework makes the connection of a request in one worker; when the request is cancelled
+    (a browser that goes to another page) the connection is closed while the endpoint may still be
+    running on it in a worker thread. ``sqlite3`` releases the interpreter lock during a step, so
+    ``close`` could free the connection under it: a segmentation fault, which killed the whole
+    test run of the Ubuntu job at random. Here every call that touches the database, and
+    ``close``, take one lock. A call that is under way finishes, and ``close`` follows it; a call
+    that comes after ``close`` gets the usual ``ProgrammingError`` (the connection is closed)
+    instead of a crash.
+    """
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.guard = threading.RLock()
+
+    def cursor(self, factory: Any = _GuardedCursor) -> Any:
+        return super().cursor(factory)
+
+    def execute(self, sql: str, parameters: Any = (), /) -> sqlite3.Cursor:
+        cursor: sqlite3.Cursor = self.cursor().execute(sql, parameters)
+        return cursor
+
+    def executemany(self, sql: str, parameters: Iterable[Any], /) -> sqlite3.Cursor:
+        cursor: sqlite3.Cursor = self.cursor().executemany(sql, parameters)
+        return cursor
+
+    def executescript(self, sql_script: str, /) -> sqlite3.Cursor:
+        cursor: sqlite3.Cursor = self.cursor().executescript(sql_script)
+        return cursor
+
+    def commit(self) -> None:
+        with self.guard:
+            super().commit()
+
+    def rollback(self) -> None:
+        with self.guard:
+            super().rollback()
+
+    def close(self) -> None:
+        with self.guard:
+            super().close()
+
+
 def open_database(path: str) -> sqlite3.Connection:
     """Open (and create if needed) the database. ``":memory:"`` gives a private test database."""
-    db = sqlite3.connect(path, isolation_level=None)  # autocommit; transactions are explicit
+    # autocommit; transactions are explicit
+    db = sqlite3.connect(path, isolation_level=None, factory=GuardedConnection)
     # An event that was committed must survive a power loss: the log is written before the
     # action runs (docs/dsl-spec.md 5.5), so a lost event would be a lost fact.
     db.execute("PRAGMA synchronous = FULL")
@@ -169,9 +255,16 @@ def connect(path: str) -> sqlite3.Connection:
 
     It may be used by another thread than the one that made it (a web framework makes the
     connection in one worker and uses it in another), always by one thread at a time. Waiting for
-    a lock is limited to 10 seconds.
+    a lock is limited to 10 seconds. It is a ``GuardedConnection``: closing it while another
+    thread is still inside a call on it waits for that call instead of crashing the process.
     """
-    db = sqlite3.connect(path, isolation_level=None, check_same_thread=False, timeout=10.0)
+    db = sqlite3.connect(
+        path,
+        isolation_level=None,
+        check_same_thread=False,
+        timeout=10.0,
+        factory=GuardedConnection,
+    )
     db.execute("PRAGMA synchronous = FULL")
     return db
 

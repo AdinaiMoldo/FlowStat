@@ -52,7 +52,7 @@ def parse(text: str) -> list[Milestone]:
     stories: dict[str, list[tuple[int, str]]] = {}
     sizes: list[tuple[str, int, int, str]] = []
     for line in text.splitlines():
-        if re.match(r"^\| (US|DOC)-\d+ ", line):
+        if re.match(r"^\| (US|DOC|DEF)-\d+ ", line):
             c = cells(line)
             stories.setdefault(c[5], []).append((int(c[3]), c[6]))
         match = re.match(r"^\| (M\d+)\b[^|]*\| ([^|]+) \|", line)

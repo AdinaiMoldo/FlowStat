@@ -520,5 +520,14 @@
     "sp": 8,
     "priority": "Must",
     "milestone": "M11"
+  },
+  {
+    "id": "DEF-1",
+    "story": "As a developer, I get a test run that does not die at random, so that a green main means the tests passed and not that the crash did not come",
+    "criteria": "Given a connection of a request that is closed while another thread is still inside a call on it, when the process runs, then it does not crash: a call that is under way finishes before the connection closes, and a call after it gets the ordinary error that the database is closed; the crash is reproduced in a process of its own (it killed seven of eight runs before the change); a connection behaves as a sqlite3 connection in every other respect (execute, executemany, executescript, cursors, fetch, rollback, double close); no test is skipped and no job is run again to hide it",
+    "function": "B2",
+    "sp": 5,
+    "priority": "Must",
+    "milestone": "M11"
   }
 ]
