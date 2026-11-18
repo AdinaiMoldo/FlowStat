@@ -10,7 +10,7 @@ import pytest
 from playwright.sync_api import Browser
 
 from flowstat.api.app import create_app
-from tests.browser.conftest import Server, serving
+from tests.browser.conftest import Server, serving, sign_out
 from tests.browser.test_editor import BAD, set_text
 from tests.unit.api.helpers import TOKENS, make_env
 
@@ -48,27 +48,29 @@ def test_a_demonstration_shows_a_button_for_each_role(
     page.close()
 
 
-def test_a_button_signs_in_as_that_role_and_another_button_changes_it(
+def test_a_button_signs_in_as_that_role_and_signing_out_lets_another_role_in(
     browser: Browser, demonstration: str, need_editor: None
 ) -> None:
     page = browser.new_page()
     page.goto(f"{demonstration}/ui/")
     page.wait_for_selector("body[data-ready]")
     page.click("[data-login=designer]")
-    assert "signed in as Designer" in page.inner_text("#who")
+    page.wait_for_function("document.body.dataset.view === 'home'")
+    assert "dina" in page.inner_text("#who")
+    page.click("#tab-editor")
+    page.wait_for_function("document.body.dataset.view === 'editor'")
     set_text(page, BAD)  # a designer may check a text: the answer is its problems, not a refusal
     page.wait_for_function("document.getElementById('status').textContent.includes('error')")
     assert "may not edit" not in page.inner_text("#status")
-    assert "current" in (page.get_attribute("[data-login=designer]", "class") or "")
 
+    sign_out(page)  # the buttons are on the sign-in page, which is where signing out leads
+    page.wait_for_selector("#logins:not([hidden])")
     page.click("[data-login=operator]")  # an operator may not edit
+    page.wait_for_function("document.body.dataset.view === 'home'")
+    page.click("#tab-editor")
+    page.wait_for_function("document.body.dataset.view === 'editor'")
     set_text(page, BAD + "\n")
     page.wait_for_function("document.getElementById('status').textContent.includes('may not edit')")
-    assert "current" not in (page.get_attribute("[data-login=designer]", "class") or "")
-
-    page.click("#forget")  # forgetting clears the token and the mark
-    assert page.inner_text("#who") == ""
-    assert page.locator("#logins button.current").count() == 0
     page.close()
 
 

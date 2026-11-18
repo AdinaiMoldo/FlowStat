@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from playwright.sync_api import Browser, Page
 
-from tests.browser.conftest import Server
+from tests.browser.conftest import Server, use_token
 from tests.unit.actions.helpers import write_all_forms
 from tests.unit.api.helpers import EXAMPLE, NAME, TOKENS
 
@@ -44,8 +44,7 @@ def open_page(browser: Browser, server: Server) -> Page:
     page = browser.new_page()
     page.goto(f"{server.url}/ui/?plain")
     page.wait_for_selector("body[data-ready]")
-    page.fill("#token", TOKENS["operator"])
-    page.click("#sign-in button[type=submit]")
+    use_token(page, TOKENS["operator"])
     return page
 
 

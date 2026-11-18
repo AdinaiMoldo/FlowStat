@@ -168,7 +168,7 @@ def test_a_demonstration_start_gives_the_page_its_logins_and_the_exercise_does_n
     try:
         assert (
             demo.http("GET", f"{plain.base}/demo/logins")[0] == 404
-        )  # the exercise: paste a token
+        )  # the exercise: a name and a password
     finally:
         plain.process.terminate()
     shown = exercise_setup.prepare(tmp_path / "shown", demo.free_port(), logins=True)

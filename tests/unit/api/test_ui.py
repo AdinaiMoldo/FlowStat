@@ -37,6 +37,8 @@ def test_the_root_sends_a_browser_to_the_page(env: Env) -> None:
         ("/ui/editor.js", "text/javascript"),
         ("/ui/ops.js", "text/javascript"),
         ("/ui/live.js", "text/javascript"),
+        ("/ui/router.js", "text/javascript"),
+        ("/ui/home.js", "text/javascript"),
         ("/ui/style.css", "text/css"),
     ],
 )
@@ -58,7 +60,7 @@ def test_the_page_names_only_files_that_exist() -> None:
     names = re.findall(r'(?:src|href)="([^"]+)"', page)
     assert names
     for name in names:
-        if name.startswith("vendor/"):
+        if name.startswith(("vendor/", "#")):  # fetched files; addresses inside the page
             continue
         assert (UI_DIR / name).is_file(), name
     scripts = re.findall(r'from "\./([\w.]+)"', (UI_DIR / "main.js").read_text(encoding="utf8"))

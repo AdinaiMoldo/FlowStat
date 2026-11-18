@@ -19,7 +19,7 @@ function cell(text, kind) {
 
 function problem(error) {
   if (error instanceof ApiError) {
-    if (error.status === 401) return "sign in: paste a token and press Use";
+    if (error.status === 401) return "your session has ended: sign in again";
     if (error.status === 0) return "the server cannot be reached";
     return error.message;
   }

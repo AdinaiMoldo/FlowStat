@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 from playwright.sync_api import Browser, Page
 
-from tests.browser.conftest import Server
+from tests.browser.conftest import Server, use_token
 from tests.browser.test_editor import BAD, GOOD, open_page, set_text
 from tests.unit.api.helpers import EXAMPLE
 
@@ -153,8 +153,7 @@ def test_without_the_library_the_graph_is_a_list_of_layers(
     page.route("**/vendor/**", lambda route: route.abort())
     page.goto(f"{server.url}/ui/")
     page.wait_for_selector("body[data-ready=plain]")
-    page.fill("#token", "d2" * 32)
-    page.click("#sign-in button[type=submit]")
+    use_token(page, "d2" * 32)
     page.fill("#plain", EXAMPLE)
     page.click("#preview")
     page.wait_for_selector("#graph .layers li", timeout=5000)

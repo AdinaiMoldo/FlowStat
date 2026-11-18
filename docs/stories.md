@@ -347,3 +347,10 @@ Function B2 · 3 SP · Could
 Given a user with a password, when I send my name and password, then I get a token that works as the token of that user, ends after 8 hours, at a sign-out and when the user is disabled; a wrong name, a wrong password and a user without a password give the same 401; after 5 failed attempts for a name within a minute the next gets 429 even with the right password; and the password is stored only as a salted hash
 
 Function A3 · 8 SP · Should
+
+
+### US-47: As a user, I sign in on a page of the system, move between its pages with working back and forward buttons, and start from a home page
+
+Given the page, when I open it without being signed in, then I see a sign-in screen (a name and a password, and an API token as the other way in) and any other address sends me there and brings me back to it after I sign in; when I am signed in, each page has an address of its own, the back and forward buttons and a reload keep me where I am, the menu shows only the pages my role may use, and a session that the core ends sends me to sign in again; and the home page shows what the system does, how many workflows, runs and services there are, and the approvals that wait, each with a link to it
+
+Function B2 · 8 SP · Should
