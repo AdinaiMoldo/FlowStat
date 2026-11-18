@@ -2,6 +2,7 @@
 // the services that were deployed. Everything that comes from a service (a message, an input) is
 // put into the page as text, never as markup.
 import { ApiError, call } from "./api.js";
+import { createGraph } from "./graph.js";
 import { createLive } from "./live.js";
 
 const $ = (id) => document.getElementById(id);
@@ -56,7 +57,14 @@ function livePeriod() {
 }
 
 export function createOps({ goTo }) {
-  const state = { from: "", current: null, services: [] };
+  const state = {
+    from: "",
+    current: null,
+    services: [],
+    origins: new Map(), // run id -> the service that shipped it, or null for a run of the core
+    graphKey: null, // the version whose graph is drawn in the run view
+    runGraph: null,
+  };
 
   // The table of services. ``quiet`` is a refresh the person did not ask for: when the server
   // cannot be asked the table stays as it is. Returns false when asking again is pointless.
@@ -129,6 +137,7 @@ export function createOps({ goTo }) {
       $("runs-status").textContent = `${runs.length} run(s)`;
       rows.replaceChildren();
       for (const r of runs) {
+        state.origins.set(r.run_id, r.origin);
         const status = r.outcome || r.status;
         const tr = row("run", r.run_id, [
           cell(r.run_id),
@@ -162,12 +171,89 @@ export function createOps({ goTo }) {
   const liveServices = createLive({ work: () => loadServices(true), every: livePeriod() });
   $("services-status").dataset.liveMs = String(liveServices.every);
 
+  // The graph of the version of the run, coloured by the states of its steps (US-44). The graph is
+  // fetched once for a version; a refresh of the run only changes the colours.
+  async function showGraph(report) {
+    const pane = $("run-graph-pane");
+    const key = `${report.workflow}@${report.version}`;
+    try {
+      if (state.graphKey !== key) {
+        const path = `/workflows/${encodeURIComponent(report.workflow)}/versions/${report.version}/graph`;
+        const result = await call("GET", path);
+        pane.hidden = false; // the box must be on the screen when the drawing is made
+        state.runGraph ||= createGraph($("run-graph"), () => {}, { collapseOver: 1 });
+        state.runGraph.draw(result.graph);
+        state.graphKey = key;
+      }
+      pane.hidden = false;
+      state.runGraph.paint(new Map(report.steps.map((s) => [s.step, s.state])));
+    } catch {
+      pane.hidden = true; // no graph (a token that may not read it, a version that is gone)
+      state.graphKey = null;
+    }
+  }
+
+  function say(text) {
+    const note = $("run-note");
+    note.hidden = !text;
+    note.textContent = text;
+  }
+
+  // The answer of a person to an approval that waits. The core checks the title; a refusal is
+  // shown as the page of the run, not as an error of the page.
+  async function decide(runId, step, decision) {
+    try {
+      await call("POST", `/runs/${encodeURIComponent(runId)}/decisions`, { step, decision });
+      say(`${step}: ${decision}`);
+      await openRun(runId, true);
+      setTimeout(() => state.current === runId && openRun(runId, true), 800); // the run goes on in the background
+    } catch (error) {
+      say(
+        error instanceof ApiError && error.status === 403
+          ? "This token may not answer this approval: it needs the title the step names (for the quarterly publication, chief statistician) or an admin."
+          : problem(error),
+      );
+    }
+  }
+
+  function showDecisions(report) {
+    const box = $("run-decision");
+    box.replaceChildren();
+    const waiting = report.steps.filter((s) => s.state === "WAITING");
+    const shipped = state.origins.get(report.run_id);
+    box.hidden = waiting.length === 0 || Boolean(shipped);
+    if (box.hidden) return;
+    for (const s of waiting) {
+      const ask = document.createElement("div");
+      ask.className = "ask";
+      ask.dataset.testid = "ask";
+      ask.dataset.step = s.step;
+      const text = document.createElement("span");
+      text.textContent = `The step ${s.step} waits for an answer.`;
+      const spacer = document.createElement("span");
+      spacer.className = "spacer";
+      ask.append(text, spacer);
+      for (const [decision, label] of [["approved", "Approve"], ["rejected", "Reject"]]) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = label;
+        button.className = decision === "approved" ? "approve" : "reject";
+        button.dataset.decision = decision;
+        button.addEventListener("click", () => decide(report.run_id, s.step, decision));
+        ask.append(button);
+      }
+      box.append(ask);
+    }
+  }
+
   async function openRun(id, quiet = false) {
+    if (!quiet) say("");
     state.current = id;
     for (const tr of $("runs-rows").children) tr.classList.toggle("current", tr.dataset.id === id);
     const steps = $("run-steps");
     try {
       const report = await call("GET", `/runs/${encodeURIComponent(id)}`);
+      if (state.current !== id) return; // another run was opened while this one was fetched
       $("run-title").textContent = `Run ${report.run_id}`;
       $("run-summary").textContent = `${report.workflow} v${report.version}: ${report.outcome || report.status}`;
       $("run-empty").hidden = true;
@@ -178,9 +264,13 @@ export function createOps({ goTo }) {
           row("step", s.step, [cell(s.step), cell(s.state, kindOf(s.state)), cell(String(s.attempts)), cell(error)]),
         );
       }
+      showDecisions(report);
+      await showGraph(report);
     } catch (error) {
       if (quiet) return; // a refresh that fails leaves what is shown; the next one tries again
       steps.replaceChildren();
+      $("run-decision").hidden = true;
+      $("run-graph-pane").hidden = true;
       $("run-empty").hidden = false;
       $("run-empty").textContent = problem(error);
     }

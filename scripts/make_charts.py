@@ -6,7 +6,8 @@ The charts are not drawn by hand, so they cannot disagree with the backlog. The 
 dates, so the time axis is the milestone (docs/backlog.md says why). What is read:
 
 * the table of milestones: the size of each, as ``base`` or ``base + added`` (the added part is the
-  scope that grew while the milestone ran; M9 is all added, it came from the audit of 9 November);
+  scope that grew while the milestone ran; M9 and M10 are all added: M9 came from the audit of
+  9 November, M10 from the wish to show the whole story on the page);
 * the table of stories: the size and the status of each story.
 
 A milestone that is done delivered its whole size. A milestone that is not done delivered the sum
@@ -47,7 +48,7 @@ def cells(line: str) -> list[str]:
 
 
 def parse(text: str) -> list[Milestone]:
-    """The milestones M1 to M9 with what each delivered."""
+    """The milestones M1 to M10 with what each delivered."""
     stories: dict[str, list[tuple[int, str]]] = {}
     sizes: list[tuple[str, int, int, str]] = []
     for line in text.splitlines():
@@ -59,8 +60,8 @@ def parse(text: str) -> list[Milestone]:
             rest = cells(line)
             sp = rest[1]
             first, _, second = (part.strip() for part in sp.partition("+"))
-            if second == "" and match.group(1) == "M9":
-                first, second = "0", first  # all of M9 is scope that came after the plan
+            if second == "" and match.group(1) in ("M9", "M10"):
+                first, second = "0", first  # all of it is scope that came after the plan
             sizes.append((match.group(1), int(first), int(second or 0), rest[4]))
     found: list[Milestone] = []
     for key, base, added, status in sizes:
@@ -206,7 +207,7 @@ def velocity_svg(milestones: list[Milestone]) -> str:
             f'<text x="{x + width / 2:.1f}" y="{base - m.size * scale - 6:.1f}" font-size="11" '
             f'text-anchor="middle" fill="{INK}">{m.delivered}</text>'
         )
-    earlier = [m for m in milestones if m.key != "M9"]
+    earlier = [m for m in milestones if m.key not in ("M9", "M10")]
     if earlier:
         mean = sum(m.delivered for m in earlier) / len(earlier)
         y = base - mean * scale

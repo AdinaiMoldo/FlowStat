@@ -465,3 +465,12 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Run: two more colleagues took the exercise; the author reported the results on 17 November (the date of the exercise itself was not recorded). The third, 27 years old, 22 minutes and 3 requests for help; the fourth, 37 years old, 29 minutes and 4 requests. Not recorded: role and experience, the check of the published workflow, the number of steps, the errors, the topics of the requests for help.
 - Chose: the result stays `not met`. The rule written before the first run asks for people who all pass; three of four did, and the one who did not (47 minutes) is not cancelled by the others. A rule changed after the results would be written as a decision of its own, with its date; none was taken.
 - Found: nobody of the four worked without asking for help (3 to 5 times each), and two of the four finished within one minute of the limit.
+
+## 2026-11-18 M10: US-44, a run on the page
+
+- Why: the page could write, check and publish a workflow and look at runs, but it could not start a run or answer an approval, so the main story (a run stops at the approval, the chief statistician answers, the data is written) could only be shown with a script. The API had both routes already; the page did not use them.
+- Did: the button Run (with the inputs the text declares, `quarter` as `2025Q1`), the buttons Approve and Reject on the run, the graph of the run with the colour of each step state (a fan-out is collapsed and takes its worst state; a click opens it), and the button Example. No change to the engine, the API or the layers.
+- Chose: the page offers the buttons to everyone and shows the answer of the core when the token lacks the title, instead of guessing the right of the token on the page: the core stays the only place that decides. A run that a service shipped to the core has no buttons, since its approval is answered at the service.
+- Found: the example cannot be saved twice and published: the text says `version: 1`, and the second save is version 2 (`E-VER-001`). That is the rule of the language, not a defect of the button; the Problems list says it.
+- Found: the port check added for the exercise stopped a restart of the test core while the old core still answered; the old core is a child process that outlives the script when the script is killed. Stop the core with Ctrl+C, not by killing the script.
+

@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from flowstat.api.ui import UI_DIR
-from tests.unit.api.helpers import Env, make_env
+from tests.unit.api.helpers import EXAMPLE, Env, make_env
 
 
 @pytest.fixture
@@ -81,3 +81,12 @@ def test_the_new_workflow_of_the_page_passes_the_checks(env: Env) -> None:
     reply = env.call("designer", "POST", "/validate", {"text": found.group(1)})
     assert reply.status_code == 200
     assert reply.json()["diagnostics"] == []
+
+
+def test_the_example_of_the_page_is_the_example_of_the_repository() -> None:
+    """The button "Example" holds a copy of examples/quarterly_consolidation.yaml (US-44)."""
+    source = (UI_DIR / "example.js").read_text(encoding="utf8")
+    match = re.search(r"export const EXAMPLE = `(.*)`;\n", source, re.DOTALL)
+    assert match
+    text = match.group(1).replace("\\${", "${").replace("\\`", "`").replace("\\\\", "\\")
+    assert text == EXAMPLE

@@ -326,3 +326,10 @@ Function DOC · 5 SP · Must
 Given the diagram sources, when they are rendered, then the state machines of step, run and ownership have exactly the states of the code, and each of C1 to C6 has an activity and a sequence diagram that follow its card
 
 Function DOC · 8 SP · Must
+
+
+### US-44: As an operator, I start a run and answer its approval on the page, and see the state of every step on the graph
+
+Given a published workflow, when I press Run and give its inputs, then a run starts and the Runs view shows it; when a step waits for an approval, then Approve and Reject answer it and the run goes on if I hold the title the step names, and the core refuses and the page says why if I do not; and the graph of the run shows each step as succeeded, waiting, failed or skipped; and the button Example puts the example workflow in the editor
+
+Function B2 · 5 SP · Should

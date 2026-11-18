@@ -69,6 +69,40 @@ export function elementsOf(graph, collapsed) {
   return elements;
 }
 
+// The colour class of a step state, for the graph of a run (US-44).
+export function stateClass(state) {
+  switch (state) {
+    case "SUCCEEDED":
+      return "st-ok";
+    case "RUNNING":
+    case "READY":
+    case "WAITING":
+    case "COMPENSATING":
+      return "st-wait";
+    case "FAILED":
+    case "UPSTREAM_FAILED":
+    case "UNCERTAIN":
+    case "COMPENSATION_FAILED":
+      return "st-bad";
+    case "SKIPPED":
+    case "CANCELLED":
+    case "COMPENSATED":
+      return "st-skip";
+    default:
+      return "";
+  }
+}
+
+// One class for a collapsed fan-out, from the classes of its instances: a failure shows, then
+// what is still going; otherwise it is green when anything succeeded and grey when all were skipped.
+export function groupClass(classes) {
+  const known = classes.filter(Boolean);
+  if (known.length === 0) return "";
+  for (const wanted of ["st-bad", "st-wait"]) if (known.includes(wanted)) return wanted;
+  if (known.length < classes.length) return ""; // some instances have no state yet
+  return known.includes("st-ok") ? "st-ok" : "st-skip";
+}
+
 const STYLE = [
   {
     selector: "node",
@@ -91,6 +125,13 @@ const STYLE = [
   { selector: "node.conditional", style: { "border-style": "dashed", "border-color": "#a15c07" } },
   { selector: "node.goal", style: { "border-width": 3, "border-color": "#1f5fbf" } },
   { selector: "node.collapsed", style: { "background-color": "#eef2f9", "border-width": 2 } },
+  { selector: "node.st-ok", style: { "background-color": "#ecfdf3", "border-color": "#067647" } },
+  { selector: "node.st-wait", style: { "background-color": "#fffaeb", "border-color": "#a15c07" } },
+  { selector: "node.st-bad", style: { "background-color": "#fef3f2", "border-color": "#b42318" } },
+  {
+    selector: "node.st-skip",
+    style: { "background-color": "#f2f4f7", color: "#667085", "border-style": "dashed" },
+  },
   {
     selector: "node.fan-out",
     style: {
@@ -142,14 +183,18 @@ function listOf(host, graph) {
   host.replaceChildren(list);
 }
 
-export function createGraph(host, onSelect) {
+// ``collapseOver``: a fan-out with more instances than this starts collapsed (the graph of a run
+// uses 1, so that it can be read at a glance).
+export function createGraph(host, onSelect, { collapseOver = COLLAPSE_OVER } = {}) {
   const capable = typeof window.cytoscape === "function" && window.cytoscapeDagre;
   const collapsed = new Set();
   const known = new Set(); // groups seen once, so that a collapse chosen by the person stays
   let last = null;
 
+  let painted = null; // step -> state of the run that is shown, or null for a plain graph
+
   if (!capable) {
-    return { kind: "list", draw: (graph) => listOf(host, graph) };
+    return { kind: "list", draw: (graph) => listOf(host, graph), paint: () => {} };
   }
   if (!window.cytoscape.__flowstatDagre) {
     window.cytoscape.use(window.cytoscapeDagre);
@@ -165,6 +210,24 @@ export function createGraph(host, onSelect) {
   });
   host.cy = cy; // the tests read the drawn graph from here
 
+  // The colours of the states of a run. A collapsed fan-out takes one colour from its instances.
+  function colour() {
+    cy.nodes().forEach((node) => {
+      node.removeClass("st-ok st-wait st-bad st-skip");
+      if (!painted || node.hasClass("fan-out")) return;
+      let found;
+      if (node.hasClass("collapsed")) {
+        const group = node.data("group");
+        found = groupClass(
+          last.nodes.filter((n) => n.group === group).map((n) => stateClass(painted.get(n.id))),
+        );
+      } else {
+        found = stateClass(painted.get(node.id()));
+      }
+      if (found) node.addClass(found);
+    });
+  }
+
   function render() {
     cy.elements().remove();
     cy.add(elementsOf(last, collapsed));
@@ -177,6 +240,7 @@ export function createGraph(host, onSelect) {
       padding: 12,
       animate: false,
     }).run();
+    colour();
   }
 
   cy.on("tap", "node", (event) => {
@@ -205,10 +269,15 @@ export function createGraph(host, onSelect) {
       for (const g of graph.groups) {
         if (!known.has(g.id)) {
           known.add(g.id);
-          if (g.size > COLLAPSE_OVER) collapsed.add(g.id);
+          if (g.size > collapseOver) collapsed.add(g.id);
         }
       }
       render();
+    },
+    // states: a Map from the name of a step to its state; null clears the colours
+    paint(states) {
+      painted = states;
+      colour();
     },
     fit: () => cy.fit(undefined, 12),
   };
