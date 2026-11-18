@@ -405,3 +405,9 @@ Function A1 · 8 SP · Must
 Given a set of rules for a template, when a form is checked, then every finding has a stable code, a severity (error, warning, info), the region, the file, the sheet, the cell or the indicator, the value found and the condition expected; only an error blocks the form, a warning and an info are told to the sender; an empty cell, a zero, a missing indicator and "n/a" are four different results; the arithmetic is exact (a total of 0.6 for 0.1, 0.2 and 0.3 holds, a total of 0.61 is off by exactly 0.01); a part more than its whole, a value out of its range and a total that is not the sum of its parts are errors that name the cell; the basic rules and their words stay as they were for every form and every workflow that does not ask for more; a campaign chooses the set of rules for the forms of its quarter, an unknown set is refused with the field, and the progress counts errors and warnings apart; the page Forms shows each finding with its code and, on hover, what was found and what was expected; and the step statguard.validate takes the set as an optional argument
 
 Function B1 · 8 SP · Must
+
+### DEF-1: As a developer, I get a test run that does not die at random, so that a green main means the tests passed and not that the crash did not come
+
+Given a connection of a request that is closed while another thread is still inside a call on it, when the process runs, then it does not crash: a call that is under way finishes before the connection closes, and a call after it gets the ordinary error that the database is closed; the crash is reproduced in a process of its own (it killed seven of eight runs before the change); a connection behaves as a sqlite3 connection in every other respect (execute, executemany, executescript, cursors, fetch, rollback, double close); no test is skipped and no job is run again to hide it
+
+Function B2 · 5 SP · Must
