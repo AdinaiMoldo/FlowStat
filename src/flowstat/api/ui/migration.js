@@ -138,14 +138,14 @@ export function createMigration() {
       $("migration-rows").replaceChildren();
       $("migration-table").hidden = true;
       say("Only one version of this workflow is published", "Publish a newer version, and the unfinished runs of the older one can be moved to it here.");
-    } else {
-      $("migration-table").hidden = true;
-      say("Choose the versions and press Check", "The check lists the unfinished runs of the older version and says which of them can move to the newer one.");
+      return;
     }
-    if (published.length > 1 && $("migration-from").value === $("migration-to").value) {
+    if ($("migration-from").value === $("migration-to").value) {
       $("migration-to").value = String(published[published.length - 1]);
       $("migration-from").value = String(published[published.length - 2]);
     }
+    $("migration-table").hidden = true;
+    await check(); // read only: it lists the unfinished runs of the older version and changes nothing
   }
 
   async function check(note) {

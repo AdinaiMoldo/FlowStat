@@ -74,7 +74,7 @@ def test_the_services_view_says_what_runs_where(
     text = row.inner_text()
     for part in (NAME, "v1", "process", "running", "http://127.0.0.1:9100", "1"):
         assert part in text
-    assert T in text  # the time of the last events
+    assert row.locator(f"td[title='{T}']").count() == 1  # the time of the last events, in full
     assert page.locator("#view-editor").is_hidden() and page.locator("#view-runs").is_hidden()
     page.close()
 

@@ -106,6 +106,7 @@ input, select, textarea { font: inherit; padding: 6px 10px; border: 1px solid #c
 .stat:hover { border-color: var(--accent); }
 .stat .num { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .stat .label { color: var(--muted); }
+.stat .hint { color: var(--muted); font-size: 12px; min-height: 16px; }
 .stat.accent .num { color: var(--warning); }
 .columns { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 18px; }
 .page > .columns { margin-top: 18px; }
@@ -219,3 +220,19 @@ tr.failed td { background: #fef3f2; }
 .empty { display: flex; flex-direction: column; gap: 4px; margin: 8px 0 4px; padding: 22px 24px; border: 1px dashed var(--line); border-radius: var(--radius); background: var(--paper); }
 .empty strong { font-size: 15px; }
 .empty span { color: var(--muted); max-width: 70ch; }
+
+/* The home page: the desk of a role. */
+.grow { flex: 1; min-width: 0; }
+.mono, code.copyable { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+.copyable { cursor: copy; }
+.copyable[data-copied]::after { content: " copied"; color: var(--ok); font-family: inherit; }
+.progress { height: 8px; border-radius: 999px; background: var(--paper); border: 1px solid var(--line); overflow: hidden; margin: 4px 0 10px; }
+.progress > span { display: block; height: 100%; background: var(--accent); }
+.table th.r, .table td.r { text-align: right; }
+.card .row { margin-bottom: 8px; }
+.card .row h2 { margin: 0; }
+.items li .button, .items li button { flex: none; }
+
+.items li .sub { display: block; font-size: 12px; margin-top: 1px; }
+.ops .table td, .ops .table th { white-space: nowrap; }
+.ops .table td .reasons, .ops .table td.wrap { white-space: normal; }

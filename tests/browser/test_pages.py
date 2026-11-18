@@ -73,7 +73,7 @@ def test_a_name_and_a_password_open_the_home_page_for_that_person(
     wait_for_view(page, "home")
     assert page.url.endswith("#/home")
     assert "Olga" in page.inner_text("#who") and "chief statistician" in page.inner_text("#who")
-    assert "Welcome, Olga" in page.inner_text("#home-hello")
+    assert page.inner_text("#home-hello").endswith(", Olga")
     assert page.input_value("#login-password") == ""  # the password is not kept in the page
     page.close()
 

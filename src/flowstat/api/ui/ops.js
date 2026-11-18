@@ -2,15 +2,14 @@
 // the services that were deployed. Everything that comes from a service (a message, an input) is
 // put into the page as text, never as markup.
 import { ApiError, call } from "./api.js";
+import { copyable, shortId, when } from "./format.js";
 import { createGraph } from "./graph.js";
 import { createLive } from "./live.js";
 
 const $ = (id) => document.getElementById(id);
 
 const GOOD = new Set(["SUCCEEDED", "FINISHED", "RUNNING", "running"]);
-const BAD = new Set([
-  "FAILED", "GOAL_NOT_REACHED", "failed", "unreachable", "COMPENSATED", "COMPENSATION_FAILED",
-]);
+const BAD = new Set(["FAILED", "failed", "unreachable", "COMPENSATED", "COMPENSATION_FAILED"]);
 
 // Steps that did not run, and why: a cancelled run, a step whose input never came.
 const OFF = new Set(["CANCELLED", "UPSTREAM_FAILED", "SKIPPED", "PENDING"]);
@@ -28,11 +27,27 @@ function cell(text, kind) {
   return td;
 }
 
+// A run number as the first 8 characters; the whole number is in the tooltip.
+function idCell(id) {
+  const td = document.createElement("td");
+  td.className = "mono";
+  td.textContent = shortId(id);
+  td.title = id;
+  return td;
+}
+
+function timeCell(text) {
+  const td = cell(when(text));
+  td.title = text;
+  return td;
+}
+
 export function kindOf(word) {
   if (GOOD.has(word)) return "good";
   if (BAD.has(word)) return "bad";
   if (OFF.has(word)) return "off";
-  return word === "WAITING" || word === "starting" ? "wait" : "";
+  // a goal that was not reached is a result, not a failure: amber, like a run that waits
+  return ["WAITING", "starting", "GOAL_NOT_REACHED"].includes(word) ? "wait" : "";
 }
 
 function row(testid, id, cells) {
@@ -88,7 +103,6 @@ export function createOps({ goTo }) {
     rows.replaceChildren();
     $("services-empty").hidden = state.services.length > 0;
     $("services-table").hidden = state.services.length === 0;
-    $("services-hint").hidden = state.services.length === 0;
     for (const s of state.services) {
       const tr = row("service", s.id, [
         cell(s.id),
@@ -97,7 +111,7 @@ export function createOps({ goTo }) {
         cell(s.status, kindOf(s.status)),
         cell(s.endpoint || ""),
         cell(String(s.runs)),
-        cell(s.last_event_at || "none yet"),
+        s.last_event_at ? timeCell(s.last_event_at) : cell("none yet"),
       ]);
       tr.title = s.detail || "";
       tr.addEventListener("click", () => {
@@ -147,11 +161,11 @@ export function createOps({ goTo }) {
         state.origins.set(r.run_id, r.origin);
         const status = r.outcome || r.status;
         const tr = row("run", r.run_id, [
-          cell(r.run_id),
+          idCell(r.run_id),
           cell(`${r.workflow} v${r.version}`),
           cell(status, kindOf(status)),
-          cell(r.origin ? `service ${r.origin}` : "core"),
-          cell(r.created_at),
+          cell(r.origin ? `service ${shortId(r.origin)}` : "core"),
+          timeCell(r.created_at),
         ]);
         if (state.current === r.run_id) tr.classList.add("current");
         tr.addEventListener("click", () => goTo(`runs/${encodeURIComponent(r.run_id)}`));
@@ -285,9 +299,13 @@ export function createOps({ goTo }) {
     try {
       const report = await call("GET", `/runs/${encodeURIComponent(id)}`);
       if (state.current !== id) return; // another run was opened while this one was fetched
-      $("run-title").textContent = `Run ${report.run_id}`;
+      const title = $("run-title");
+      title.replaceChildren("Run ", copyable(document.createElement("code"), report.run_id));
+      title.firstElementChild.textContent = shortId(report.run_id);
+      title.dataset.runId = report.run_id;
       $("run-summary").textContent = `${report.workflow} v${report.version}: ${report.outcome || report.status}`;
       $("run-empty").hidden = true;
+      $("run-steps-table").hidden = false;
       steps.replaceChildren();
       for (const s of report.steps) {
         const error = s.code ? `${s.code}${s.message ? ": " + s.message : ""}` : "";
@@ -303,6 +321,7 @@ export function createOps({ goTo }) {
       steps.replaceChildren();
       $("run-decision").hidden = true;
       $("run-failure").hidden = true;
+      $("run-steps-table").hidden = true;
       $("run-graph-pane").hidden = true;
       $("run-empty").hidden = false;
       $("run-empty").textContent = problem(error);
