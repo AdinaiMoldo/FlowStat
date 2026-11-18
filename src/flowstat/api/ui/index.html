@@ -31,7 +31,10 @@
     <aside class="side">
       <div class="row">
         <h2>Workflows</h2>
-        <button type="button" id="new">New</button>
+        <span class="buttons">
+          <button type="button" id="example" title="Load the example of the quarterly consolidation">Example</button>
+          <button type="button" id="new">New</button>
+        </span>
       </div>
       <ul id="workflows" class="list"></ul>
     </aside>
@@ -44,7 +47,14 @@
         <button type="button" id="preview" aria-pressed="false">Show graph</button>
         <button type="button" id="save" disabled>Save draft</button>
         <button type="button" id="publish" disabled>Publish</button>
+        <button type="button" id="run" disabled title="Publish this version first">Run</button>
       </div>
+      <form id="run-form" class="run-form" hidden>
+        <label for="run-inputs">Inputs of the run (JSON)</label>
+        <input id="run-inputs" autocomplete="off" spellcheck="false">
+        <button type="submit" id="run-start">Start</button>
+        <button type="button" id="run-cancel">Cancel</button>
+      </form>
       <div id="editor" class="editor"></div>
       <textarea id="plain" class="plain" spellcheck="false" hidden aria-label="Workflow text"></textarea>
       <div id="graph-pane" class="graph-pane" hidden>
@@ -82,11 +92,17 @@
     </section>
     <section class="panel">
       <div class="row"><h2 id="run-title">Run</h2><span id="run-summary" class="muted"></span></div>
+      <p id="run-empty" class="muted">Choose a run.</p>
+      <div id="run-decision" class="decision" hidden></div>
+      <p id="run-note" class="notice" hidden></p>
+      <div id="run-graph-pane" class="run-graph" hidden>
+        <div id="run-graph" class="graph" aria-label="Graph of the run"></div>
+        <p class="legend muted">Green: succeeded. Yellow: running or waiting. Red: failed. Grey: skipped.</p>
+      </div>
       <table class="table" aria-label="Steps of the run">
         <thead><tr><th>Step</th><th>State</th><th>Attempts</th><th>Error</th></tr></thead>
         <tbody id="run-steps"></tbody>
       </table>
-      <p id="run-empty" class="muted">Choose a run.</p>
     </section>
   </main>
 

@@ -87,3 +87,13 @@ input { font: inherit; padding: 5px 8px; border: 1px solid var(--line); border-r
 @media (max-width: 1000px) { .ops { grid-template-columns: 1fr; overflow: auto; } }
 .reasons { margin: 0; padding-left: 16px; }
 .reasons li { margin: 2px 0; }
+.buttons { display: flex; gap: 6px; }
+.run-form { display: flex; align-items: center; gap: 8px; }
+.run-form input { flex: 1; min-width: 0; font-family: ui-monospace, Consolas, monospace; }
+.decision { display: flex; flex-direction: column; gap: 6px; }
+.decision .ask { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; background: #fffaeb; border: 1px solid #fedf89; }
+.decision .ask .spacer { flex: 1; }
+.decision button.approve { border-color: #abefc6; color: #067647; }
+.decision button.reject { border-color: #fda29b; color: var(--error); }
+.run-graph { display: flex; flex-direction: column; gap: 4px; border: 1px solid var(--line); border-radius: 6px; padding: 6px; height: 320px; flex: none; }
+.run-graph .graph { flex: 1; min-height: 0; }

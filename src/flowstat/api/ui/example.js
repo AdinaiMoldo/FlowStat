@@ -1,0 +1,41 @@
+// The example of the repository (examples/quarterly_consolidation.yaml), for the button
+// "Example". tests/unit/api/test_ui.py checks that this text equals that file.
+export const EXAMPLE = `
+workflow: quarterly_consolidation
+version: 1
+inputs:
+  quarter: {type: string, pattern: "^20[0-9]{2}Q[1-4]$"}
+steps:
+  load:
+    foreach: region in catalogue.regions      # nine regions, expanded when the version is published
+    action: xlsx.read
+    with: {path: "\${region.code}/\${inputs.quarter}.xlsx"}
+    on_failure: continue
+  check:
+    foreach: region in catalogue.regions
+    action: statguard.validate
+    needs: ["load[region]"]
+    with: {rows: "\${load[region].rows}"}
+  consolidate:
+    action: stats.aggregate
+    needs: ["check[*]"]
+    join: {at_least: 7}
+    with: {parts: "\${check[*].rows}"}
+  approve:
+    action: approval.wait
+    needs: [consolidate]
+    with: {role: chief_statistician}
+  publish:
+    action: db.write
+    needs: [approve]
+    when: "\${approve.decision} == 'approved'"
+    with: {rows: "\${consolidate.rows}"}
+    ensures: "\${publish.written} == len(\${consolidate.rows})"
+    retry: {max: 3, backoff: exponential}
+    compensate: db.delete_batch
+  return_to_regions:
+    action: email.send
+    needs: [approve]
+    when: "\${approve.decision} == 'rejected'"
+goals: {any_of: [publish, return_to_regions]}
+`;

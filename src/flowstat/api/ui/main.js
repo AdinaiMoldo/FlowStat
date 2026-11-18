@@ -1,6 +1,7 @@
 // The editor page: workflows, a text with live diagnostics, save and publish.
 import { ApiError, call, session } from "./api.js";
 import { PAUSE_MS, createEditor } from "./editor.js";
+import { EXAMPLE } from "./example.js";
 import { createGraph } from "./graph.js";
 import { createMigration } from "./migration.js";
 import { createOps } from "./ops.js";
@@ -155,6 +156,9 @@ function describe() {
   $("name").textContent = c ? c.name : nameOf(state.editor.getText()) || "no workflow";
   $("state").textContent = c ? `v${c.number} ${c.status}` : "not saved";
   $("publish").disabled = !(c && c.status === "draft");
+  $("run").disabled = !(c && c.status === "published");
+  $("run").title = $("run").disabled ? "Publish this version first" : "Start a run of this version";
+  if ($("run").disabled) $("run-form").hidden = true;
 }
 
 async function refresh() {
@@ -226,12 +230,62 @@ async function publish() {
   }
 }
 
-function fresh() {
+function fresh(text = SKELETON) {
   state.current = null;
-  state.editor.setText(SKELETON);
+  state.editor.setText(text);
   state.checked = null;
   describe();
   check();
+}
+
+// -- a run, started from the page (US-44) ----------------------------------------------------------
+// The names of the inputs the text declares, each with a value to start from: the quarter of the
+// synthetic forms for "quarter", an empty string for the others. The person edits it before Start.
+function inputsOf(text) {
+  const block = /^inputs:[ \t]*\n((?:[ \t]+\S.*\n?)+)/m.exec(text);
+  const guess = {};
+  if (!block) return guess;
+  const indent = /^([ \t]+)\S/.exec(block[1])[1];
+  for (const found of block[1].matchAll(new RegExp(`^${indent}([A-Za-z_]\\w*):`, "gm"))) {
+    guess[found[1]] = found[1] === "quarter" ? "2025Q1" : "";
+  }
+  return guess;
+}
+
+function openRunForm() {
+  $("run-inputs").value = JSON.stringify(inputsOf(state.editor.getText()));
+  $("run-form").hidden = false;
+  $("run-inputs").focus();
+}
+
+async function startRun(event) {
+  event.preventDefault();
+  const c = state.current;
+  if (!c) return;
+  let inputs;
+  try {
+    inputs = JSON.parse($("run-inputs").value || "{}");
+    if (inputs === null || typeof inputs !== "object" || Array.isArray(inputs)) throw new Error();
+  } catch {
+    say('the inputs must be a JSON object, for example {"quarter": "2025Q1"}');
+    return;
+  }
+  try {
+    const started = await call("POST", `/workflows/${encodeURIComponent(c.name)}/runs`, {
+      inputs,
+      version: c.number,
+    });
+    $("run-form").hidden = true;
+    say(`run ${started.run_id} started`);
+    goTo("runs");
+    state.ops.openRun(started.run_id);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 403) {
+      say("this token may not start runs");
+    } else {
+      say(explain(error));
+    }
+  }
 }
 
 // -- views -----------------------------------------------------------------------------------
@@ -300,7 +354,11 @@ async function main() {
     $("who").textContent = "";
     $("workflows").replaceChildren();
   });
-  $("new").addEventListener("click", fresh);
+  $("new").addEventListener("click", () => fresh());
+  $("example").addEventListener("click", () => fresh(EXAMPLE));
+  $("run").addEventListener("click", openRunForm);
+  $("run-cancel").addEventListener("click", () => ($("run-form").hidden = true));
+  $("run-form").addEventListener("submit", startRun);
   $("preview").addEventListener("click", togglePreview);
   $("save").addEventListener("click", save);
   $("publish").addEventListener("click", publish);
