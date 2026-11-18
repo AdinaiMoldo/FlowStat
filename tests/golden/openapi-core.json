@@ -1042,6 +1042,58 @@
         "title": "FindingOut",
         "type": "object"
       },
+      "FormComparisonOut": {
+        "properties": {
+          "fixed": {
+            "items": {
+              "$ref": "#/components/schemas/FindingOut"
+            },
+            "title": "Fixed",
+            "type": "array"
+          },
+          "introduced": {
+            "items": {
+              "$ref": "#/components/schemas/FindingOut"
+            },
+            "title": "Introduced",
+            "type": "array"
+          },
+          "newer": {
+            "title": "Newer",
+            "type": "integer"
+          },
+          "older": {
+            "title": "Older",
+            "type": "integer"
+          },
+          "quarter": {
+            "title": "Quarter",
+            "type": "string"
+          },
+          "region": {
+            "title": "Region",
+            "type": "string"
+          },
+          "remaining": {
+            "items": {
+              "$ref": "#/components/schemas/FindingOut"
+            },
+            "title": "Remaining",
+            "type": "array"
+          }
+        },
+        "required": [
+          "region",
+          "quarter",
+          "older",
+          "newer",
+          "fixed",
+          "remaining",
+          "introduced"
+        ],
+        "title": "FormComparisonOut",
+        "type": "object"
+      },
       "FormOut": {
         "properties": {
           "findings": {
@@ -1096,6 +1148,44 @@
               }
             ],
             "title": "Size"
+          },
+          "uploaded_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uploaded At"
+          },
+          "uploaded_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uploaded By"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          },
+          "versions": {
+            "default": 0,
+            "title": "Versions",
+            "type": "integer"
           }
         },
         "required": [
@@ -1108,6 +1198,194 @@
           "problems"
         ],
         "title": "FormOut",
+        "type": "object"
+      },
+      "FormVersionDetailOut": {
+        "properties": {
+          "current": {
+            "title": "Current",
+            "type": "boolean"
+          },
+          "errors": {
+            "title": "Errors",
+            "type": "integer"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/FindingOut"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "removed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Removed At"
+          },
+          "removed_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Removed By"
+          },
+          "rows": {
+            "title": "Rows",
+            "type": "integer"
+          },
+          "rules": {
+            "title": "Rules",
+            "type": "string"
+          },
+          "size": {
+            "title": "Size",
+            "type": "integer"
+          },
+          "uploaded_at": {
+            "title": "Uploaded At",
+            "type": "string"
+          },
+          "uploaded_by": {
+            "title": "Uploaded By",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          },
+          "warnings": {
+            "title": "Warnings",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "uploaded_by",
+          "uploaded_at",
+          "size",
+          "rows",
+          "rules",
+          "errors",
+          "warnings",
+          "current",
+          "removed_at",
+          "removed_by",
+          "findings"
+        ],
+        "title": "FormVersionDetailOut",
+        "type": "object"
+      },
+      "FormVersionOut": {
+        "properties": {
+          "current": {
+            "title": "Current",
+            "type": "boolean"
+          },
+          "errors": {
+            "title": "Errors",
+            "type": "integer"
+          },
+          "removed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Removed At"
+          },
+          "removed_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Removed By"
+          },
+          "rows": {
+            "title": "Rows",
+            "type": "integer"
+          },
+          "rules": {
+            "title": "Rules",
+            "type": "string"
+          },
+          "size": {
+            "title": "Size",
+            "type": "integer"
+          },
+          "uploaded_at": {
+            "title": "Uploaded At",
+            "type": "string"
+          },
+          "uploaded_by": {
+            "title": "Uploaded By",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          },
+          "warnings": {
+            "title": "Warnings",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "uploaded_by",
+          "uploaded_at",
+          "size",
+          "rows",
+          "rules",
+          "errors",
+          "warnings",
+          "current",
+          "removed_at",
+          "removed_by"
+        ],
+        "title": "FormVersionOut",
+        "type": "object"
+      },
+      "FormVersionsOut": {
+        "properties": {
+          "quarter": {
+            "title": "Quarter",
+            "type": "string"
+          },
+          "region": {
+            "title": "Region",
+            "type": "string"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/FormVersionOut"
+            },
+            "title": "Versions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "region",
+          "quarter",
+          "versions"
+        ],
+        "title": "FormVersionsOut",
         "type": "object"
       },
       "FormsOut": {
@@ -3904,6 +4182,327 @@
           "forms"
         ],
         "x-permission": "forms:write"
+      }
+    },
+    "/forms/{region}/{quarter}/compare": {
+      "get": {
+        "operationId": "compare_versions_forms__region___quarter__compare_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "region",
+            "required": true,
+            "schema": {
+              "title": "Region",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "quarter",
+            "required": true,
+            "schema": {
+              "title": "Quarter",
+              "type": "string"
+            }
+          },
+          {
+            "description": "default: the one before `newer`",
+            "in": "query",
+            "name": "older",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "default: the one before `newer`",
+              "title": "Older"
+            }
+          },
+          {
+            "description": "default: the latest",
+            "in": "query",
+            "name": "newer",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "default: the latest",
+              "title": "Newer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FormComparisonOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no valid token (E-AUTH-001)"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the role lacks the permission (E-AUTH-002)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "not found (E-API-002)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "conflict with the state of the resource (E-API-003)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the request is invalid (E-API-001, E-API-004, E-API-005, E-INPUT-*)"
+          }
+        },
+        "summary": "What a newer version of a form fixed, kept and brought, against an older one",
+        "tags": [
+          "forms"
+        ],
+        "x-permission": "forms:read"
+      }
+    },
+    "/forms/{region}/{quarter}/versions": {
+      "get": {
+        "operationId": "list_versions_forms__region___quarter__versions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "region",
+            "required": true,
+            "schema": {
+              "title": "Region",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "quarter",
+            "required": true,
+            "schema": {
+              "title": "Quarter",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FormVersionsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no valid token (E-AUTH-001)"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the role lacks the permission (E-AUTH-002)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "not found (E-API-002)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "conflict with the state of the resource (E-API-003)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the request is invalid (E-API-001, E-API-004, E-API-005, E-INPUT-*)"
+          }
+        },
+        "summary": "Every version that was kept of the form of a region, the newest first",
+        "tags": [
+          "forms"
+        ],
+        "x-permission": "forms:read"
+      }
+    },
+    "/forms/{region}/{quarter}/versions/{number}": {
+      "get": {
+        "operationId": "get_version_forms__region___quarter__versions__number__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "region",
+            "required": true,
+            "schema": {
+              "title": "Region",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "quarter",
+            "required": true,
+            "schema": {
+              "title": "Quarter",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "number",
+            "required": true,
+            "schema": {
+              "title": "Number",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FormVersionDetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no valid token (E-AUTH-001)"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the role lacks the permission (E-AUTH-002)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "not found (E-API-002)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "conflict with the state of the resource (E-API-003)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the request is invalid (E-API-001, E-API-004, E-API-005, E-INPUT-*)"
+          }
+        },
+        "summary": "One version of a form, with what the rules found in it when it was sent",
+        "tags": [
+          "forms"
+        ],
+        "x-permission": "forms:read"
       }
     },
     "/graph": {

@@ -141,6 +141,23 @@ CREATE TABLE IF NOT EXISTS campaigns (
     updated_at      TEXT    NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS form_versions (
+    region      TEXT    NOT NULL,
+    quarter     TEXT    NOT NULL,
+    number      INTEGER NOT NULL,
+    sha256      TEXT    NOT NULL,
+    size        INTEGER NOT NULL,
+    rows        INTEGER NOT NULL,
+    uploaded_by TEXT    NOT NULL,
+    uploaded_at TEXT    NOT NULL,
+    rules       TEXT    NOT NULL,
+    findings    TEXT    NOT NULL,
+    content     BLOB    NOT NULL,
+    removed_at  TEXT,
+    removed_by  TEXT,
+    PRIMARY KEY (region, quarter, number)
+);
+
 CREATE TABLE IF NOT EXISTS service_settings (
     name  TEXT PRIMARY KEY,
     value TEXT NOT NULL

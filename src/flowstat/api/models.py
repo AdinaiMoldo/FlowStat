@@ -476,6 +476,44 @@ class FormOut(BaseModel):
     size: int | None  # bytes
     problems: list[str]  # the statistical rules the form breaks, or why it cannot be read
     findings: list[FindingOut] = []  # all that the content rules found (US-54)
+    version: int | None = None  # the version that the file is (US-55); null when none was kept
+    versions: int = 0  # how many versions were kept for this form
+    uploaded_by: str | None = None
+    uploaded_at: str | None = None
+
+
+class FormVersionOut(BaseModel):
+    version: int
+    uploaded_by: str
+    uploaded_at: str
+    size: int
+    rows: int
+    rules: str  # the set of content rules that was applied to it
+    errors: int
+    warnings: int
+    current: bool
+    removed_at: str | None
+    removed_by: str | None
+
+
+class FormVersionDetailOut(FormVersionOut):
+    findings: list[FindingOut]  # what the rules found in this version when it was sent
+
+
+class FormVersionsOut(BaseModel):
+    region: str
+    quarter: str
+    versions: list[FormVersionOut]  # the newest first
+
+
+class FormComparisonOut(BaseModel):
+    region: str
+    quarter: str
+    older: int
+    newer: int
+    fixed: list[FindingOut]  # in the older version, gone in the newer
+    remaining: list[FindingOut]  # in both
+    introduced: list[FindingOut]  # only in the newer
 
 
 class FormsOut(BaseModel):

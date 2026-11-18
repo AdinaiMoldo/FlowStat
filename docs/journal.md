@@ -605,3 +605,14 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Chose: the guard is in the connection, not in the endpoints, because the connection is the thing that must not be freed, and because the endpoints are many and some of them (the ones that start their own threads) would have been missed.
 - Chose: no test was skipped and nothing was run again. The proof that the Ubuntu job is fixed is the next runs; four in a row crashed.
 - Not done: the connection that `actions/database.py` opens for a step is not guarded (one thread uses it).
+## 2026-11-18 M11: US-55, versions of the forms
+
+- Why: a form that was sent again replaced the first one, so nobody could see what a region had sent before, who sent it, or whether a mistake was fixed.
+- Did: a table `form_versions` (the file, its SHA-256, the sender, the time of the core's clock, the rule set and the findings of that time), a pure comparison in `model/form_versions.py`, the service that makes a version at each accepted file, three routes (`versions`, `versions/{n}`, `compare`; api-spec section 11), the version and a History block on the page Forms, and a history in the demonstration (BAT sent a form with a negative value, an hour later a corrected one by the other operator). The card is `docs/algorithms/A2.md`; the model and the table were tested before the code.
+- Chose: the file at `<data>/<region>/<quarter>.xlsx` stays the current version, so `xlsx.read` and every workflow work as before; the table is the history beside it, and the content of each version is kept in the table so that the history and the files cannot drift apart.
+- Chose: a version is told only when the file on the disk has the hash of the latest version. A file put there by hand (the older tests and the seed of the runs do this) or changed after it was sent shows no version; that is honest, and the old paths need no change.
+- Chose: the very same bytes sent again are not a new version, so a double click or a retry does not fill the history. A form that was removed and sent again is a new version and the numbers go on.
+- Chose: the same mistake is the same code for the same indicator, wherever the cell is, and the match is one to one. A comparison by cell would call a moved wrong value "fixed".
+- Chose: removing a form keeps the history and says who removed it and when; there is no route to delete a version, because the audit trail (US-62) should not have one either.
+- Found: no existing test compared a whole `FormOut`, except one; the new fields are additions and the golden file only grew (599 lines added).
+- Not done: giving out the content of an old version, making an old version current again, a limit on how many versions are kept, and a lock that reads whether a campaign was ever approved (see US-54). The state of a region in a campaign (late, corrected) comes with US-56.

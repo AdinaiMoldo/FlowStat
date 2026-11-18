@@ -119,6 +119,20 @@ def bearer(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
+def send_form(
+    client: TestClient, token: str, region: str, quarter: str, work: Path, mistake: bool
+) -> None:
+    """One form of a region sent through the API, as an operator does on the page."""
+    path = work / "send.xlsx"
+    make_forms.write_form(path, make_forms.rows_of(region, mistake=mistake))
+    reply = client.put(
+        f"/forms/{region}/{quarter}",
+        content=path.read_bytes(),
+        headers={**bearer(token), "Content-Type": XLSX},
+    )
+    expect(reply, 200, f"send the form of {region} for {quarter}")
+
+
 def write_quarter(data: Path, quarter: str, kind: str) -> None:
     """The forms of one quarter: all good, six of nine, or all with one mistake in BAT."""
     for region in make_forms.REGIONS:
@@ -138,6 +152,9 @@ def moment(now: datetime, item: Item) -> datetime:
     hour, minute = (int(part) for part in item.at.split(":"))
     day = (now - timedelta(days=item.days_ago)).replace(hour=hour, minute=minute, second=0)
     return min(day, now - timedelta(hours=1))
+
+
+XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
 def expect(reply: Any, status: int, what: str) -> None:
@@ -244,6 +261,15 @@ def seed(work: Path, db: str, tokens: dict[str, str], now: datetime) -> dict[str
                     200,
                     f"move the campaign {name} to {to}",
                 )
+        # the forms of the quarter that is being validated, sent through the API so that each has a
+        # version: the region BAT sent a form with a mistake first and a corrected one an hour
+        # later, so the page Forms has a history to show
+        line.set(now - timedelta(hours=3))
+        for region in make_forms.REGIONS:
+            mistaken = region == make_forms.MISTAKE_IN
+            send_form(client, tokens["operator"], region, "2024Q4", work, mistake=mistaken)
+        line.set(now - timedelta(hours=2))
+        send_form(client, tokens["operator2"], make_forms.MISTAKE_IN, "2024Q4", work, mistake=False)
         line.set(now)
     finally:
         client.close()

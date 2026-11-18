@@ -45,8 +45,17 @@ function finding(f) {
   return item;
 }
 
+// A time of the core's clock as people read it, in UTC (the page does not guess a time zone).
+function when(iso) {
+  return iso ? iso.slice(0, 16).replace("T", " ") : "";
+}
+
+function names(list) {
+  return list.map((f) => `${f.code} ${f.indicator || f.cell}`).join(", ");
+}
+
 export function createForms() {
-  const state = { forms: [], canWrite: false, quarter: "2025Q1" };
+  const state = { forms: [], canWrite: false, quarter: "2025Q1", open: new Set() };
 
   const quarter = () => $("forms-quarter").value.trim().toUpperCase();
 
@@ -82,6 +91,14 @@ export function createForms() {
     where.append(code, document.createTextNode(` ${form.name}`));
     const status = cell("");
     status.append(badge(form.received ? "received" : "missing", form.received ? "good" : "wait"));
+    if (form.version !== null && form.version !== undefined) {
+      const tag = document.createElement("span");
+      tag.className = "muted";
+      tag.dataset.testid = "version";
+      tag.textContent = ` v${form.version}`;
+      tag.title = `sent by ${form.uploaded_by} at ${when(form.uploaded_at)} UTC`;
+      status.append(tag);
+    }
     const rows = cell(form.rows === null ? "" : String(form.rows));
     const size = cell(form.size === null ? "" : `${form.size} B`);
     const rules = cell("");
@@ -137,8 +154,73 @@ export function createForms() {
         actions.append(drop);
       }
     }
+    if (form.versions > 0) {
+      const open = document.createElement("button");
+      open.type = "button";
+      open.className = "small";
+      open.dataset.testid = "history-toggle";
+      open.textContent = state.open.has(form.region) ? "Hide history" : `History (${form.versions})`;
+      open.addEventListener("click", () => {
+        if (state.open.has(form.region)) state.open.delete(form.region);
+        else state.open.add(form.region);
+        paint();
+      });
+      actions.append(open);
+    }
     tr.append(where, status, rows, size, rules, actions);
+    const out = [tr];
+    if (form.versions > 0 && state.open.has(form.region)) out.push(historyRow(form));
+    return out;
+  }
+
+  // The versions of one form and what the newest one changed. It is read when the row is opened.
+  function historyRow(form) {
+    const tr = document.createElement("tr");
+    tr.dataset.testid = "history";
+    tr.dataset.region = form.region;
+    const td = document.createElement("td");
+    td.colSpan = 6;
+    td.className = "muted";
+    td.textContent = "loading";
+    tr.append(td);
+    const base = `/forms/${encodeURIComponent(form.region)}/${encodeURIComponent(quarter())}`;
+    (async () => {
+      try {
+        const { versions } = await call("GET", `${base}/versions`);
+        const box = document.createElement("div");
+        const list = document.createElement("ul");
+        list.className = "reasons history";
+        for (const v of versions) {
+          const item = document.createElement("li");
+          item.dataset.version = String(v.version);
+          const state_ = v.removed_at ? `removed by ${v.removed_by} at ${when(v.removed_at)}` : v.current ? "current" : "replaced";
+          const counts = v.errors ? `${v.errors} ${v.errors === 1 ? "error" : "errors"}` : "no errors";
+          item.textContent = `v${v.version} · ${state_} · sent by ${v.uploaded_by} at ${when(v.uploaded_at)} · ${counts}${v.warnings ? `, ${v.warnings} ${v.warnings === 1 ? "warning" : "warnings"}` : ""}`;
+          list.append(item);
+        }
+        box.append(list);
+        if (versions.length >= 2) {
+          const c = await call("GET", `${base}/compare`);
+          const line_ = document.createElement("p");
+          line_.dataset.testid = "comparison";
+          const parts = [`Compared with v${c.older}:`];
+          parts.push(c.fixed.length ? `fixed ${c.fixed.length} (${names(c.fixed)})` : "nothing fixed");
+          parts.push(c.remaining.length ? `${c.remaining.length} still there (${names(c.remaining)})` : "none still there");
+          parts.push(c.introduced.length ? `${c.introduced.length} new (${names(c.introduced)})` : "none new");
+          line_.textContent = parts.join("; ") + ".";
+          box.append(line_);
+        }
+        td.className = "";
+        td.replaceChildren(box);
+      } catch (error) {
+        td.textContent = problem(error);
+      }
+    })();
     return tr;
+  }
+
+  function paint() {
+    $("forms-rows").replaceChildren(...state.forms.flatMap(line));
   }
 
   async function load(user) {
@@ -151,7 +233,6 @@ export function createForms() {
 
   async function show() {
     const q = quarter();
-    const rows = $("forms-rows");
     if (!QUARTER.test(q)) {
       say("the quarter must look like 2025Q1");
       return;
@@ -164,7 +245,7 @@ export function createForms() {
       return;
     }
     say("");
-    rows.replaceChildren(...state.forms.map(line));
+    paint();
     summary();
   }
 
