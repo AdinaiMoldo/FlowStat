@@ -340,3 +340,10 @@ Function B2 · 5 SP · Should
 Given a core started for a demonstration on the loopback address, when I open the page, then there is a button for each role and a click signs in as that user; given a core started in any other way, then there is no such route and no button; and the core refuses to start with the option on any address but the loopback one
 
 Function B2 · 3 SP · Could
+
+
+### US-46: As a user, I sign in with my name and a password and get a session that ends
+
+Given a user with a password, when I send my name and password, then I get a token that works as the token of that user, ends after 8 hours, at a sign-out and when the user is disabled; a wrong name, a wrong password and a user without a password give the same 401; after 5 failed attempts for a name within a minute the next gets 429 even with the right password; and the password is stored only as a salted hash
+
+Function A3 · 8 SP · Should

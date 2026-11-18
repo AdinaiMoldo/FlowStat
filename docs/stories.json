@@ -430,5 +430,14 @@
     "sp": 3,
     "priority": "Could",
     "milestone": "M10"
+  },
+  {
+    "id": "US-46",
+    "story": "As a user, I sign in with my name and a password and get a session that ends",
+    "criteria": "Given a user with a password, when I send my name and password, then I get a token that works as the token of that user, ends after 8 hours, at a sign-out and when the user is disabled; a wrong name, a wrong password and a user without a password give the same 401; after 5 failed attempts for a name within a minute the next gets 429 even with the right password; and the password is stored only as a salted hash",
+    "function": "A3",
+    "sp": 8,
+    "priority": "Should",
+    "milestone": "M10"
   }
 ]

@@ -23,11 +23,12 @@ from __future__ import annotations
 import argparse
 import gc
 import json
+import secrets
 import shutil
 import subprocess
 import sys
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -39,8 +40,20 @@ import demo  # noqa: E402  (the helpers of the demonstration: users, server, HTT
 from ruamel.yaml import YAML  # noqa: E402
 from tests.unit.actions.helpers import write_all_forms  # noqa: E402
 
+from flowstat.repo.db import open_database  # noqa: E402
+from flowstat.service.users import UserService  # noqa: E402
+
 QUARTER = "2025Q1"
 CATALOGUE = ROOT / "examples" / "catalogue.yaml"
+
+
+# the key in tokens.json, the user, and what the user is
+USERS = {
+    "admin": ("ada", "admin", ()),
+    "designer": ("dina", "designer", ()),
+    "chief": ("olga", "operator", ("chief_statistician",)),
+    "operator": ("kira", "operator", ()),
+}
 
 
 @dataclass
@@ -48,6 +61,7 @@ class Setup:
     base: str
     tokens: dict[str, str]
     process: subprocess.Popen[bytes]
+    passwords: dict[str, str] = field(default_factory=dict)  # key -> password, for the page
 
 
 def clear(work: Path) -> None:
@@ -87,15 +101,19 @@ def prepare(work: Path, port: int, logins: bool = False) -> Setup:
     work.mkdir(parents=True)
     db = str(work / "flowstat.db")
     tokens = {
-        "admin": demo.make_user(db, "ada", "admin"),
-        "designer": demo.make_user(db, "dina", "designer"),
-        "chief": demo.make_user(db, "olga", "operator", "chief_statistician"),
-        "operator": demo.make_user(db, "kira", "operator"),
+        key: demo.make_user(db, name, role, *titles) for key, (name, role, titles) in USERS.items()
     }
+    # A password for each, to sign in on the page. They are made here, for this start only, and
+    # written to tokens.json with the tokens; they are of no use outside this folder.
+    passwords = {key: f"demo-{secrets.token_hex(6)}" for key in USERS}
+    users = UserService(open_database(db))
+    for key, (name, _, _) in USERS.items():
+        users.set_password(name, passwords[key], secrets.token_bytes(16))
     write_all_forms(work / "forms", QUARTER)
     base = f"http://127.0.0.1:{port}"
     (work / "tokens.json").write_text(  # before the core starts: --demo-logins reads it
-        json.dumps({"base": base, "tokens": tokens}, indent=2), encoding="utf8"
+        json.dumps({"base": base, "tokens": tokens, "passwords": passwords}, indent=2),
+        encoding="utf8",
     )
     extra = ["--demo-logins", str(work / "tokens.json")] if logins else []
     process = demo.start_core(work, port, db, extra)
@@ -106,7 +124,7 @@ def prepare(work: Path, port: int, logins: bool = False) -> Setup:
     if status != 200:
         process.terminate()
         raise demo.DemoError(f"the catalogue was not loaded: {status} {body}")
-    return Setup(base, tokens, process)
+    return Setup(base, tokens, process, passwords)
 
 
 def known(base: str, tokens: dict[str, str]) -> str:
@@ -156,10 +174,14 @@ def start(work: Path, port: int, logins: bool = False) -> int:
     setup = prepare(work, port, logins)
     try:
         print(f"\nThe core is running. Open {setup.base}/ui/ in a browser.")
-        if logins:
-            print("The page has a button for each user (Designer, Chief statistician, ...).")
-        else:
+        if not logins:
             print(f"Token of the designer (paste it into the page): {setup.tokens['designer']}")
+        print("The users of this start, each with a password for POST /login:")
+        for key, (name, role, titles) in USERS.items():
+            what = f"{role}, {', '.join(titles)}" if titles else role
+            print(f"    {name:<5} {setup.passwords[key]}   ({what})")
+        if logins:
+            print("The page also has a button for each user (a demonstration).")
         print(f"The tokens are also in {work / 'tokens.json'}.")
         print("The observer checks the result with:")
         print(f"    python scripts/exercise_setup.py check NAME_OF_THE_WORKFLOW --dir {work}")

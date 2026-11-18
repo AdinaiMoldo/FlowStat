@@ -10,6 +10,7 @@ from fastapi import FastAPI
 
 from flowstat.actions.registry import default_registry
 from flowstat.api import (
+    auth,
     demo,
     deployments,
     errors,
@@ -36,7 +37,9 @@ def create_app(config: AppConfig) -> FastAPI:
     app.state.config = config
     app.state.registry = default_registry(config.allowed_hosts)
     app.state.locks = RunLocks()
+    app.state.brake = auth.Brake()
     errors.install(app)
+    app.include_router(auth.router)
     app.include_router(workflows.router)
     app.include_router(runs.router)
     app.include_router(runs.shared)

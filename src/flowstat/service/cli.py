@@ -7,6 +7,7 @@ identifiers; everything below receives them as arguments (deterministic mode).
 from __future__ import annotations
 
 import argparse
+import getpass
 import json
 import os
 import re
@@ -326,11 +327,29 @@ def _new_token() -> str:
     return secrets.token_hex(32)
 
 
+def _ask_password() -> str:
+    """A password from the person at the terminal (not echoed, asked twice), or from the standard
+    input when there is no terminal (a script)."""
+    if not sys.stdin.isatty():
+        return sys.stdin.readline().rstrip("\r\n")
+    first = getpass.getpass("Password: ")
+    if first != getpass.getpass("Password again: "):
+        raise ValueError("the two passwords differ")
+    return first
+
+
+def _set_password(users: UserService, name: str, password: str) -> None:
+    users.set_password(name, password, secrets.token_bytes(16))  # the one place that makes a salt
+
+
 def _user_add(args: argparse.Namespace) -> int:
     users = UserService(open_database(args.db))
     token = _new_token()
     try:
+        password = _ask_password() if args.password else None
         user = users.add(args.name, args.role, args.title, token, _now())
+        if password is not None:
+            _set_password(users, args.name, password)
     except UserExistsError:
         return _err(f"there is already a user '{args.name}'")
     except ValueError as error:
@@ -339,6 +358,18 @@ def _user_add(args: argparse.Namespace) -> int:
     print(f"user {user.name}, role {user.role}{titles}")
     print(f"token: {token}")
     print("Keep the token now: only its hash is stored, and it is not shown again.")
+    return EXIT_OK
+
+
+def _user_passwd(args: argparse.Namespace) -> int:
+    users = UserService(open_database(args.db))
+    try:
+        _set_password(users, args.name, _ask_password())
+    except UserNotFoundError:
+        return _err(f"there is no user '{args.name}'")
+    except ValueError as error:
+        return _err(str(error))
+    print(f"the password of {args.name} is set; sessions that are open stay valid until they end")
     return EXIT_OK
 
 
@@ -432,8 +463,17 @@ def _parser() -> argparse.ArgumentParser:
     add.add_argument(
         "--title", action="append", default=[], help="a title, e.g. chief_statistician"
     )
+    add.add_argument(
+        "--password",
+        action="store_true",
+        help="also set a password, asked at the terminal, so that the user can sign in on the page",
+    )
     add.add_argument("--db", required=True, help="the FlowStat database file")
     add.set_defaults(handler=_user_add)
+    passwd = kinds.add_parser("passwd", help="set or change the password of a user")
+    passwd.add_argument("name")
+    passwd.add_argument("--db", required=True, help="the FlowStat database file")
+    passwd.set_defaults(handler=_user_passwd)
     disable = kinds.add_parser("disable", help="stop a user's token from working")
     disable.add_argument("name")
     disable.add_argument("--db", required=True, help="the FlowStat database file")

@@ -44,7 +44,7 @@ pytest --cov
 To use it from the command line, or over HTTP (the contract is `docs/api-spec.md`):
 
 ```bash
-flowstat user add ada --role admin --db flowstat.db      # prints a token once
+flowstat user add ada --role admin --password --db flowstat.db  # prints a token once, asks for a password to sign in with
 python -m flowstat.serve --db flowstat.db --data forms/ --target results.db
 ```
 
