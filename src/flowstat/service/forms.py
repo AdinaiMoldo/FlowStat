@@ -12,6 +12,7 @@ workflow and what a run does with a bad form is the point of showing it.
 
 from __future__ import annotations
 
+import io
 import os
 import re
 import threading
@@ -20,7 +21,7 @@ from pathlib import Path
 
 from flowstat.actions.base import ActionContext, ActionError
 from flowstat.actions.statguard import violations
-from flowstat.actions.xlsx import read_form
+from flowstat.actions.xlsx import read_form, rows_of
 from flowstat.repo.catalogue import CatalogueRepo
 
 MAX_BYTES = 2_000_000
@@ -105,19 +106,17 @@ class FormService:
         self._quarter(quarter)
         if len(content) > MAX_BYTES:
             raise FormRefused(f"a form may have at most {MAX_BYTES} bytes")
+        try:  # read from memory: no file, so no handle that could stay open on Windows
+            rows_of(io.BytesIO(content), "the file")
+        except ActionError as error:
+            raise FormRefused(error.message) from None
         folder = self.data_dir / region
         folder.mkdir(parents=True, exist_ok=True)
-        # written beside the place it is meant for and moved there only when it can be read, so a
-        # file that is not a form never replaces a good one, and a reader never sees half a file
+        # written beside the place it is meant for and moved there at once, so a reader never sees
+        # half a file; a file that cannot be read was refused above and never gets here
         part = folder / f".upload-{os.getpid()}-{threading.get_ident()}.xlsx"
         try:
             part.write_bytes(content)
-            context = ActionContext("forms", "forms", self.data_dir, None)
-            try:
-                read_form({"path": f"{region}/{part.name}"}, context)
-            except ActionError as error:
-                said = error.message.replace(f"{region}/{part.name}", "the file")
-                raise FormRefused(said) from None
             os.replace(part, self._path(region, quarter))
         finally:
             part.unlink(missing_ok=True)
