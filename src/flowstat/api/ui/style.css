@@ -87,7 +87,7 @@ input { font: inherit; padding: 5px 8px; border: 1px solid var(--line); border-r
 @media (max-width: 1000px) { .ops { grid-template-columns: 1fr; overflow: auto; } }
 .reasons { margin: 0; padding-left: 16px; }
 .reasons li { margin: 2px 0; }
-.buttons { display: flex; gap: 6px; }
+.example { align-self: flex-start; }
 .run-form { display: flex; align-items: center; gap: 8px; }
 .run-form input { flex: 1; min-width: 0; font-family: ui-monospace, Consolas, monospace; }
 .decision { display: flex; flex-direction: column; gap: 6px; }

@@ -86,10 +86,11 @@ def test_every_output_is_well_formed() -> None:
 
 def test_the_numbers_of_the_real_backlog_are_the_ones_of_the_proposal() -> None:
     real = charts.parse((ROOT / "docs" / "backlog.md").read_text(encoding="utf8"))
-    assert [m.key for m in real] == [f"M{i}" for i in range(1, 10)]
+    assert [m.key for m in real] == [f"M{i}" for i in range(1, 11)]  # M10 came after the proposal
     assert sum(m.base for m in real) == 203  # the baseline, the zero point of the burndown
-    assert sum(m.added for m in real if m.key != "M9") == 11  # the parser (+6) and US-35 (+5)
-    assert charts.burndown(real)[-2][1:] == (214, 0)  # after M8: the plan of 5 November, all done
+    added_before = sum(m.added for m in real if m.key not in ("M9", "M10"))
+    assert added_before == 11  # the parser (+6) and US-35 (+5)
+    assert charts.burndown(real)[-3][1:] == (214, 0)  # after M8: the plan of 5 November, all done
 
 
 def test_the_stories_of_a_finished_milestone_add_up_to_its_size() -> None:
