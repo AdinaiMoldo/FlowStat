@@ -354,3 +354,10 @@ Function A3 · 8 SP · Should
 Given the page, when I open it without being signed in, then I see a sign-in screen (a name and a password, and an API token as the other way in) and any other address sends me there and brings me back to it after I sign in; when I am signed in, each page has an address of its own, the back and forward buttons and a reload keep me where I am, the menu shows only the pages my role may use, and a session that the core ends sends me to sign in again; and the home page shows what the system does, how many workflows, runs and services there are, and the approvals that wait, each with a link to it
 
 Function B2 · 8 SP · Should
+
+
+### US-48: As a presenter, I sign in as colleagues with real first names and see the names written with a capital
+
+Given a start of the demonstration, then the users are Adinai (admin), Azamat (designer), Alua (chief statistician), Atai and Marina (operators), each with a password of its own; and the page greets and shows a person by the name with a capital letter while the core keeps the lower case name
+
+Function B2 · 3 SP · Could

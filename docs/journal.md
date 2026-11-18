@@ -507,3 +507,10 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Tried: (1) the guess that the garbage collector closes a connection that another thread is using: with `gc.disable()` there were 0 crashes in 5 runs, but 1 in 3 in a later series with a stricter mode, so the collector is not the whole cause. (2) Looking for connections that are never closed: the only one was in the fixture of the new page tests (US-47), which is closed now; the series after that had 0 crashes in 3 runs of the stricter mode, but before it, with the leak, 3 of 3 had crashed, so the leak may make it more likely and is not shown to be the cause. (3) Every request has its own connection, made with `check_same_thread=False` in one worker thread and used and closed in others, one at a time; SQLite is built with `THREADSAFE=1`.
 - Not found: the cause. The tests and the core are not changed for it, and the job is run again when it falls. A real fix needs a reproduction that fails every time; this entry is here so that nobody counts the rerun as a cure.
 
+## 2026-11-18 M10: US-48, colleagues with first names
+
+- Why: the demonstration users were called ada, dina, olga and kira. The author wanted the names of colleagues, so that the page looks like her office and not like a test.
+- Did: the start script makes Adinai (admin), Azamat (designer), Alua (chief statistician), Atai and Marina (operators); `scripts/demo.py` uses the same names; the page shows a name with a capital letter.
+- Chose: the core keeps the names in lower case (a rule of `user add`, and the name is what a person types to sign in); only the page changes how it shows them. A fifth user was added as a second operator, with the key `operator2`, because the author gave five names for four roles; the button says "Second operator".
+- Not changed: the users of the test environment of the API tests (ada, dina, olga, kira); they are fixtures, not a demonstration.
+

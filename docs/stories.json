@@ -448,5 +448,14 @@
     "sp": 8,
     "priority": "Should",
     "milestone": "M10"
+  },
+  {
+    "id": "US-48",
+    "story": "As a presenter, I sign in as colleagues with real first names and see the names written with a capital",
+    "criteria": "Given a start of the demonstration, then the users are Adinai (admin), Azamat (designer), Alua (chief statistician), Atai and Marina (operators), each with a password of its own; and the page greets and shows a person by the name with a capital letter while the core keeps the lower case name",
+    "function": "B2",
+    "sp": 3,
+    "priority": "Could",
+    "milestone": "M10"
   }
 ]

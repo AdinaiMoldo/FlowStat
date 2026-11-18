@@ -56,7 +56,7 @@ def test_a_button_signs_in_as_that_role_and_signing_out_lets_another_role_in(
     page.wait_for_selector("body[data-ready]")
     page.click("[data-login=designer]")
     page.wait_for_function("document.body.dataset.view === 'home'")
-    assert "dina" in page.inner_text("#who")
+    assert "Dina" in page.inner_text("#who")
     page.click("#tab-editor")
     page.wait_for_function("document.body.dataset.view === 'editor'")
     set_text(page, BAD)  # a designer may check a text: the answer is its problems, not a refusal

@@ -15,8 +15,8 @@ not met.
   honest answer than one.
 - One computer with the editor fetched once (`python scripts/fetch_ui.py`) and the project
   installed (`pip install -e ".[dev,api,deploy]"`). Then one command makes a clean core with the
-  synthetic catalogue, the synthetic forms of the quarter `2025Q1`, a designer, a chief statistician
-  and a clerk, starts it, and prints the address of the page and the name and password of each user (the person signs in as the designer):
+  synthetic catalogue, the synthetic forms of the quarter `2025Q1`, five users (Adinai, the admin; Azamat, the designer; Alua, the chief statistician; Atai and
+  Marina, operators), starts it, and prints the address of the page and the name and password of each user (the person signs in as the designer):
   `python scripts/exercise_setup.py start` (it runs until Ctrl+C, and each start clears
   `exercise-data/` and makes a new database, so each person gets the same one; it refuses to clear a
   folder that an earlier start did not make).
