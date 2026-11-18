@@ -201,3 +201,20 @@ def test_every_user_of_a_start_can_sign_in_with_its_own_password(tmp_path: Path)
         assert saved["passwords"] == setup.passwords
     finally:
         setup.process.terminate()
+
+
+def test_a_start_without_forms_leaves_the_folder_empty_and_still_makes_the_sample_sets(
+    tmp_path: Path,
+) -> None:
+    empty = exercise_setup.prepare(tmp_path / "empty", demo.free_port(), forms=False)
+    try:
+        assert not (tmp_path / "empty" / "forms").exists()
+        for name, count in (("good", 9), ("six-regions", 6), ("with-a-mistake", 9)):
+            assert len(list((tmp_path / "empty" / "sample-forms" / name).glob("*.xlsx"))) == count
+    finally:
+        empty.process.terminate()
+    full = exercise_setup.prepare(tmp_path / "full", demo.free_port())
+    try:
+        assert len(list((tmp_path / "full" / "forms").glob("*/2025Q1.xlsx"))) == 9  # the exercise
+    finally:
+        full.process.terminate()

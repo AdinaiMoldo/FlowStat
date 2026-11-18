@@ -368,3 +368,10 @@ Function B2 · 3 SP · Could
 Given a region of the catalogue and a quarter like 2025Q1, when I send an xlsx file with the header code, name, value, then it is stored where the workflow reads it, replaces an earlier form, and the answer tells the rows and the statistical rules it breaks; a file that is not a form, a region that is not in the catalogue, a quarter of another shape and a body over 2,000,000 bytes are refused and nothing is stored; the listing tells for each region whether its form came; a form can be removed; and a designer may read the listing but not send
 
 Function B2 · 8 SP · Should
+
+
+### US-50: As an operator, I send the forms of the regions on a page, see which regions have sent theirs and which rules a form breaks, and then run the workflow on exactly those forms
+
+Given the page Forms and a quarter, when I choose several Excel files named by the code of a region, then each goes to its region, the table shows for the nine regions whether the form came, its rows and the rules it breaks, and says whether enough forms came for the run (7 of 9); a file that is not a form, or a name that is no region, is told in words and changes nothing; I can replace or remove a form; a designer sees the table and has nothing to send with; sample sets of synthetic forms (good, six regions, with a mistake) are made by a script; and the run that follows reads exactly what was sent, so a form with a mistake stops it at its check and names the region
+
+Function B2 · 8 SP · Should
