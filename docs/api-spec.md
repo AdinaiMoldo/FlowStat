@@ -565,7 +565,7 @@ forms there, so that a person can do it from the page and nobody needs a shell o
   must be a readable xlsx with the first row `code, name, value` (422 `E-FORM-001`, and the message
   says which); it is written beside its place and moved there only after it was read, so a file
   that is not a form never replaces a good one. A second form for the same region and quarter
-  replaces the first. Answer: `{region, name, quarter, received, rows, size, problems, findings}`.
+  replaces the first. Answer: `{region, name, quarter, received, rows, size, problems, findings, version, versions, uploaded_by, uploaded_at}`.
 - A form that reads but breaks the statistical rules of `statguard.validate` (empty or repeated
   code, a value that is not a number, a negative value) is **accepted**, and the reasons are in
   `problems` (the first 5, then "and N more"). It is not refused because the check of the rules is a
@@ -599,6 +599,24 @@ forms there, so that a person can do it from the page and nobody needs a shell o
   | `VAL-REL-001` | error | a part is more than its whole |
   | `VAL-ARITH-001` | error | a total is not the sum of its parts (exact; the gap is told) |
 
+- US-55, versions: every accepted file is kept as a version (`version` is its number, `versions`
+  how many were kept, `uploaded_by` and `uploaded_at` who sent it and when on the clock of the core).
+  The file at `<data>/<region>/<quarter>.xlsx` is the current version, the one a run reads. The very
+  same bytes sent again are not a new version (the answer is the same version). A file that is not
+  a form and a form of a locked quarter make no version. `version` is `null` when the file on the
+  disk is not a version that was kept (it was put there by hand or changed after it was sent).
+  `DELETE` removes the file and keeps the history; the next form continues the numbers.
+  - `GET /forms/{region}/{quarter}/versions` (`forms:read`): `{region, quarter, versions}`, the
+    newest first, each `{version, uploaded_by, uploaded_at, size, rows, rules, errors, warnings,
+    current, removed_at, removed_by}`.
+  - `GET /forms/{region}/{quarter}/versions/{number}`: the same with `findings`, what the rules
+    found in that version when it was sent. 404 `E-API-002` when there is no such version.
+  - `GET /forms/{region}/{quarter}/compare?older=&newer=`: `{older, newer, fixed, remaining,
+    introduced}`, lists of findings. A finding is the same mistake in both versions when its code
+    and its indicator (its cell, when it has none) are the same. Without numbers it compares the
+    latest version with the one before it; 404 when there is none.
+  - Not done: the content of an old version is kept but no route gives it out; there is no
+    way to make an old version current again (a region sends it again, which is a new version).
 - `GET /forms?quarter=2025Q1` (`forms:read`) lists the regions of the catalogue in its order, each
   with `received` and, when received, `rows`, `size` and `problems` (or the reason the file cannot be
   read, when it was put there by hand). It reads the files, so it shows what a run would read.

@@ -529,5 +529,14 @@
     "sp": 5,
     "priority": "Must",
     "milestone": "M11"
+  },
+  {
+    "id": "US-55",
+    "story": "As an operator, I send the form of my region again after a correction and both versions are kept with their results, so that I and the chief statistician can see which errors are gone",
+    "criteria": "Given a region that sends its form twice, when each file is accepted, then each is a version with who sent it, when, the set of rules that was applied and the findings of that time; the current version is the latest one that was not removed and it is the file that a run reads; a file that is sent again unchanged is not a new version; a file that cannot be read, or a form of a quarter whose campaign is approved, finalized or archived, makes no version; removing a form keeps its history and a form sent later continues the numbers; a file that was put on the disk by hand, or changed after it was sent, is not shown as a version; every role can read the history and the comparison of two versions, which tells what the newer fixed, what remains and what is new (the same mistake in another cell is the same mistake); and the page Forms shows the version of each region and, on request, its versions and what the newest changed",
+    "function": "A2",
+    "sp": 8,
+    "priority": "Must",
+    "milestone": "M11"
   }
 ]

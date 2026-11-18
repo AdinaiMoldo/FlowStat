@@ -83,5 +83,6 @@ Recount of 5 November: the baseline of 203 SP stays the zero point of the burndo
 | US-53 | As an administrator, I create a reporting campaign for a quarter and move it through a life cycle in which only the allowed changes can be made | A1 | 8 | Must | M11 | done |
 | US-54 | As a statistician of the committee, I have the content of every regional form checked by rules of arithmetic, range, relation and completeness, and each violation tells me where it is and why | B1 | 8 | Must | M11 | done |
 | DEF-1 | As a developer, I get a test run that does not die at random, so that a green main means the tests passed and not that the crash did not come | B2 | 5 | Must | M11 | done |
+| US-55 | As an operator, I send the form of my region again after a correction and both versions are kept with their results, so that I and the chief statistician can see which errors are gone | A2 | 8 | Must | M11 | done |
 
 Acceptance criteria: `stories.md`. The same stories are GitHub issues, grouped by milestone.

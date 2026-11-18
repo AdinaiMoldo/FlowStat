@@ -224,3 +224,63 @@ def test_the_rules_of_a_campaign_tell_where_a_form_is_wrong_and_why(
     assert bat.locator("li[data-severity=warning]").count() == 1  # the code X9
     assert bat.locator("li[data-severity=error]").count() == 2
     page.close()
+
+
+def test_a_region_that_sends_again_has_a_history_and_the_page_says_what_was_fixed(
+    browser: Browser, forms_server: Server, tmp_path: Path
+) -> None:
+    from tests.unit.actions.helpers import FIVE_ROWS, write_form
+
+    env = forms_server.env
+    assert (
+        env.call(
+            "designer", "POST", f"/workflows/{NAME}/versions", json={"text": EXAMPLE}
+        ).status_code
+        == 201
+    )
+    made = env.call(
+        "admin",
+        "POST",
+        "/campaigns",
+        json={
+            "name": "Q1 2025", "year": 2025, "quarter": 1, "regions": ["BIS", "OSC", "BAT"],
+            "deadline": "2025-04-30", "workflow": NAME, "workflow_version": 1,
+            "rules": "regional-indicators-v1",
+        },
+    )  # fmt: skip
+    assert made.status_code == 201, made.text
+    first = tmp_path / "first" / "BAT.xlsx"
+    second = tmp_path / "second" / "BAT.xlsx"
+    write_form(first, [*FIVE_ROWS[:3], ("I04", "Deaths", -2.5), FIVE_ROWS[4]])  # deaths below zero
+    write_form(second, FIVE_ROWS)
+    page = open_forms(browser, forms_server)
+    bat = page.locator("[data-testid=form][data-region=BAT]")
+    assert bat.locator("[data-testid=history-toggle]").count() == 0  # nothing sent yet
+    page.set_input_files("#forms-files", [str(first)])
+    page.wait_for_function(
+        "document.getElementById('forms-count').textContent.startsWith('1 of 9')"
+    )
+    assert "breaks the rules" in bat.inner_text() and "v1" in bat.inner_text()
+    page.set_input_files("#forms-files", [str(second)])
+    page.wait_for_selector("[data-testid=form][data-region=BAT] [data-testid=version]:text('v2')")
+    assert "passes the rules" in bat.inner_text()
+    bat.locator("[data-testid=history-toggle]").click()
+    history = page.locator("[data-testid=history][data-region=BAT]")
+    page.wait_for_selector("[data-testid=history][data-region=BAT] [data-testid=comparison]")
+    versions = history.locator("li[data-version]")
+    assert versions.count() == 2
+    assert (
+        "v2 · current" in versions.nth(0).inner_text()
+        and "no errors" in versions.nth(0).inner_text()
+    )
+    assert (
+        "v1 · replaced" in versions.nth(1).inner_text()
+        and "1 error" in versions.nth(1).inner_text()
+    )
+    assert "sent by olga" in versions.nth(0).inner_text()
+    said = history.locator("[data-testid=comparison]").inner_text()
+    assert "Compared with v1:" in said and "fixed 1 (VAL-RANGE-001 I04)" in said
+    assert "none still there" in said and "none new" in said
+    bat.locator("[data-testid=history-toggle]").click()  # closes it again
+    assert page.locator("[data-testid=history]").count() == 0
+    page.close()

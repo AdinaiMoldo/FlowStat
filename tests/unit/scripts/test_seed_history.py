@@ -149,3 +149,22 @@ def test_there_are_two_campaigns_one_validating_and_one_collecting(seeded) -> No
     assert by_period["2025Q1"]["progress"]["received"] == 0
     # the deadline of the first has passed and the second is ahead, on the clock of the seed
     assert by_period["2024Q4"]["deadline"] < "2026-11-18" < by_period["2025Q1"]["deadline"]
+
+
+def test_a_corrected_form_has_two_versions_and_the_first_error_is_gone(seeded) -> None:  # type: ignore[no-untyped-def]
+    _, client, tokens = seeded
+    auth = {"Authorization": f"Bearer {tokens['admin']}"}
+    listed = client.get("/forms?quarter=2024Q4", headers=auth).json()["forms"]
+    by_region = {f["region"]: f for f in listed}
+    assert (by_region["BAT"]["version"], by_region["BAT"]["versions"]) == (2, 2)
+    assert (by_region["BIS"]["version"], by_region["BIS"]["versions"]) == (1, 1)
+    assert by_region["BAT"]["uploaded_by"] == "marina"  # the second operator corrected it
+    kept = client.get("/forms/BAT/2024Q4/versions", headers=auth).json()["versions"]
+    assert [(v["version"], v["errors"], v["uploaded_by"]) for v in kept] == [
+        (2, 0, "marina"),
+        (1, 1, "atai"),
+    ]
+    got = client.get("/forms/BAT/2024Q4/compare", headers=auth).json()
+    assert [f["code"] for f in got["fixed"]] == ["VAL-RANGE-001"]
+    assert got["remaining"] == [] and got["introduced"] == []
+    assert all(v["uploaded_at"] < "2026-11-18T15:00:00" for v in kept)  # none in the future
