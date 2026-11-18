@@ -514,3 +514,12 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Chose: the core keeps the names in lower case (a rule of `user add`, and the name is what a person types to sign in); only the page changes how it shows them. A fifth user was added as a second operator, with the key `operator2`, because the author gave five names for four roles; the button says "Second operator".
 - Not changed: the users of the test environment of the API tests (ada, dina, olga, kira); they are fixtures, not a demonstration.
 
+## 2026-11-18 M10: US-49, the forms of the regions through the API
+
+- Why: for a demonstration the author wanted to load the data herself and see the whole cycle on the page. The forms were files that a script put in a folder, and only a person with a shell on the machine could change them.
+- Did: `PUT /forms/{region}/{quarter}` (the xlsx file as the body), `GET /forms?quarter=` and `DELETE /forms/{region}/{quarter}`; the permissions `forms:read` (everybody) and `forms:write` (admin and operator, the people who deal with what the regions send).
+- Chose: a form that breaks the statistical rules is accepted and the reasons are told. Refusing it would hide from the demonstration the very thing it shows, which is the check of the workflow stopping a bad form; and the check of the rules is the workflow's own step, so doing it twice with two definitions would let them drift. A file that cannot be read as a form at all is refused, because nothing downstream could use it.
+- Chose: the region must be one of the catalogue and safe as a folder name; the path is never made from the text of the caller. A form is written beside its place and moved with `os.replace` after it was read, so a bad upload never replaces a good form and a run never reads half a file.
+- Found: the check of a form has no `on_failure: continue` in the example, so one form with a mistake fails the run at once and cancels the other checks; only a form that did not come at all is tolerated (up to two of nine). I wrote the test of the whole cycle to say that, instead of the opposite that I had assumed.
+- Not done: no history of forms, no record of who sent one, and a zip bomb is only limited by the size of the file. The page for it is the next story.
+

@@ -775,6 +775,87 @@
         "title": "EventIn",
         "type": "object"
       },
+      "FormOut": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "problems": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Problems",
+            "type": "array"
+          },
+          "quarter": {
+            "title": "Quarter",
+            "type": "string"
+          },
+          "received": {
+            "title": "Received",
+            "type": "boolean"
+          },
+          "region": {
+            "title": "Region",
+            "type": "string"
+          },
+          "rows": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rows"
+          },
+          "size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size"
+          }
+        },
+        "required": [
+          "region",
+          "name",
+          "quarter",
+          "received",
+          "rows",
+          "size",
+          "problems"
+        ],
+        "title": "FormOut",
+        "type": "object"
+      },
+      "FormsOut": {
+        "properties": {
+          "forms": {
+            "items": {
+              "$ref": "#/components/schemas/FormOut"
+            },
+            "title": "Forms",
+            "type": "array"
+          },
+          "quarter": {
+            "title": "Quarter",
+            "type": "string"
+          }
+        },
+        "required": [
+          "quarter",
+          "forms"
+        ],
+        "title": "FormsOut",
+        "type": "object"
+      },
       "GraphEdgeOut": {
         "properties": {
           "source": {
@@ -2748,6 +2829,277 @@
           "deployments"
         ],
         "x-permission": "deployments:write"
+      }
+    },
+    "/forms": {
+      "get": {
+        "operationId": "list_forms_forms_get",
+        "parameters": [
+          {
+            "description": "for example 2025Q1",
+            "in": "query",
+            "name": "quarter",
+            "required": true,
+            "schema": {
+              "description": "for example 2025Q1",
+              "title": "Quarter",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FormsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no valid token (E-AUTH-001)"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the role lacks the permission (E-AUTH-002)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "not found (E-API-002)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "conflict with the state of the resource (E-API-003)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the request is invalid (E-API-001, E-API-004, E-API-005, E-INPUT-*)"
+          }
+        },
+        "summary": "The forms of a quarter, region by region",
+        "tags": [
+          "forms"
+        ],
+        "x-permission": "forms:read"
+      }
+    },
+    "/forms/{region}/{quarter}": {
+      "delete": {
+        "operationId": "delete_form_forms__region___quarter__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "region",
+            "required": true,
+            "schema": {
+              "title": "Region",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "quarter",
+            "required": true,
+            "schema": {
+              "title": "Quarter",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no valid token (E-AUTH-001)"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the role lacks the permission (E-AUTH-002)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "not found (E-API-002)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "conflict with the state of the resource (E-API-003)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the request is invalid (E-API-001, E-API-004, E-API-005, E-INPUT-*)"
+          }
+        },
+        "summary": "Remove the form of a region for a quarter",
+        "tags": [
+          "forms"
+        ],
+        "x-permission": "forms:write"
+      },
+      "put": {
+        "operationId": "put_form_forms__region___quarter__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "region",
+            "required": true,
+            "schema": {
+              "title": "Region",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "quarter",
+            "required": true,
+            "schema": {
+              "title": "Quarter",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+              "schema": {
+                "format": "binary",
+                "type": "string"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FormOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no valid token (E-AUTH-001)"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the role lacks the permission (E-AUTH-002)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "not found (E-API-002)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "conflict with the state of the resource (E-API-003)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the request is invalid (E-API-001, E-API-004, E-API-005, E-INPUT-*)"
+          }
+        },
+        "summary": "Receive the form of a region for a quarter (an xlsx file as the body)",
+        "tags": [
+          "forms"
+        ],
+        "x-permission": "forms:write"
       }
     },
     "/graph": {

@@ -361,3 +361,10 @@ Function B2 · 8 SP · Should
 Given a start of the demonstration, then the users are Adinai (admin), Azamat (designer), Alua (chief statistician), Atai and Marina (operators), each with a password of its own; and the page greets and shows a person by the name with a capital letter while the core keeps the lower case name
 
 Function B2 · 3 SP · Could
+
+
+### US-49: As an operator, I send the form of a region for a quarter to the core and see which regions have sent theirs
+
+Given a region of the catalogue and a quarter like 2025Q1, when I send an xlsx file with the header code, name, value, then it is stored where the workflow reads it, replaces an earlier form, and the answer tells the rows and the statistical rules it breaks; a file that is not a form, a region that is not in the catalogue, a quarter of another shape and a body over 2,000,000 bytes are refused and nothing is stored; the listing tells for each region whether its form came; a form can be removed; and a designer may read the listing but not send
+
+Function B2 · 8 SP · Should

@@ -453,6 +453,21 @@ class StatisticsOut(BaseModel):
     workflows: list[WorkflowStatisticsOut]
 
 
+class FormOut(BaseModel):
+    region: str
+    name: str
+    quarter: str
+    received: bool
+    rows: int | None  # the rows of the form, when it was received and can be read
+    size: int | None  # bytes
+    problems: list[str]  # the statistical rules the form breaks, or why it cannot be read
+
+
+class FormsOut(BaseModel):
+    quarter: str
+    forms: list[FormOut]
+
+
 class LoginIn(Request):
     name: str
     password: str

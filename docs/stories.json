@@ -457,5 +457,14 @@
     "sp": 3,
     "priority": "Could",
     "milestone": "M10"
+  },
+  {
+    "id": "US-49",
+    "story": "As an operator, I send the form of a region for a quarter to the core and see which regions have sent theirs",
+    "criteria": "Given a region of the catalogue and a quarter like 2025Q1, when I send an xlsx file with the header code, name, value, then it is stored where the workflow reads it, replaces an earlier form, and the answer tells the rows and the statistical rules it breaks; a file that is not a form, a region that is not in the catalogue, a quarter of another shape and a body over 2,000,000 bytes are refused and nothing is stored; the listing tells for each region whether its form came; a form can be removed; and a designer may read the listing but not send",
+    "function": "B2",
+    "sp": 8,
+    "priority": "Should",
+    "milestone": "M10"
   }
 ]
