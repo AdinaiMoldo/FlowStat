@@ -501,3 +501,9 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Found: three of the old browser tests clicked a tab at once after a click that now changes the address, which is asynchronous; they wait for the page now. One test selected rows by `data-id` and also found the rows of the home page, which are hidden; the home page uses `data-run`.
 - Not done: a password cannot be changed by the person (no endpoint, as in US-46); the page was not checked on a phone.
 
+## 2026-11-18 M10: a rare crash of the browser tests, still open
+
+- Seen: about one run in three of `tests/browser` on a developer machine, and twice in a row on the Linux job of CI, ends with `Segmentation fault` (exit 139) inside `sqlite3`, in a thread of the server that is running a request (`connect`, `execute` of different routes). It is older than US-47: it was seen on the pull requests of US-44 and US-45 and passed on a second run.
+- Tried: (1) the guess that the garbage collector closes a connection that another thread is using: with `gc.disable()` there were 0 crashes in 5 runs, but 1 in 3 in a later series with a stricter mode, so the collector is not the whole cause. (2) Looking for connections that are never closed: the only one was in the fixture of the new page tests (US-47), which is closed now; the series after that had 0 crashes in 3 runs of the stricter mode, but before it, with the leak, 3 of 3 had crashed, so the leak may make it more likely and is not shown to be the cause. (3) Every request has its own connection, made with `check_same_thread=False` in one worker thread and used and closed in others, one at a time; SQLite is built with `THREADSAFE=1`.
+- Not found: the cause. The tests and the core are not changed for it, and the job is run again when it falls. A real fix needs a reproduction that fails every time; this entry is here so that nobody counts the rerun as a cure.
+
