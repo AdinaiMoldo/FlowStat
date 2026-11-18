@@ -421,5 +421,14 @@
     "sp": 5,
     "priority": "Should",
     "milestone": "M10"
+  },
+  {
+    "id": "US-45",
+    "story": "As a presenter, I sign in to the page as a role with one click, in a demonstration only",
+    "criteria": "Given a core started for a demonstration on the loopback address, when I open the page, then there is a button for each role and a click signs in as that user; given a core started in any other way, then there is no such route and no button; and the core refuses to start with the option on any address but the loopback one",
+    "function": "B2",
+    "sp": 3,
+    "priority": "Could",
+    "milestone": "M10"
   }
 ]

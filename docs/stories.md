@@ -333,3 +333,10 @@ Function DOC · 8 SP · Must
 Given a published workflow, when I press Run and give its inputs, then a run starts and the Runs view shows it; when a step waits for an approval, then Approve and Reject answer it and the run goes on if I hold the title the step names, and the core refuses and the page says why if I do not; and the graph of the run shows each step as succeeded, waiting, failed or skipped; and the button Example puts the example workflow in the editor
 
 Function B2 · 5 SP · Should
+
+
+### US-45: As a presenter, I sign in to the page as a role with one click, in a demonstration only
+
+Given a core started for a demonstration on the loopback address, when I open the page, then there is a button for each role and a click signs in as that user; given a core started in any other way, then there is no such route and no button; and the core refuses to start with the option on any address but the loopback one
+
+Function B2 · 3 SP · Could

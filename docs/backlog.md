@@ -14,7 +14,7 @@ The full backlog (34 user stories, 203 SP baseline, 214 SP planned after the rec
 | M7 (I5b). IDE and service view | 21 | US-26, US-27, US-28, US-31 | Monaco editor, graph preview, completion, runs of deployed services in the core | done (9 Nov) |
 | M8 (I6). Evolution | 24 | US-32 to US-34 | C5 (conformance first, handover second) and statistics | done (9 Nov) |
 | M9. Hardening | 50 | US-36 to US-43, DOC-7 to DOC-9 | What M3 to M8 carried over (resume at start, health of services, time limit of an approval, hosts of `http.call`, key rotation, plan cache, live refresh, long guarded chains); coverage gate per package, diagrams, traceability matrix, charts | done (12 Nov) |
-| M10. Demonstration | 5 | US-44 | The page can run a workflow, answer an approval and show the states of the steps on the graph, so that the whole story is shown in a browser | done (18 Nov) |
+| M10. Demonstration | 8 | US-44, US-45 | The page can run a workflow, answer an approval, show the states of the steps on the graph and sign in by role, so that the whole story is shown in a browser | done (18 Nov) |
 
 The split of I4 and I5 into two milestones each follows the size of the FleetSync sprints (8 to 29 SP). The SP of M4 and M5 exclude the feasible critical path, which became the story US-35 (5 SP) when M5 started. The reference interpreter (the oracle of C2) moved from M4 to M5 in the readiness audit of M4 and is counted with it. M9 is not in the 203 SP baseline.
 
@@ -71,5 +71,6 @@ Recount of 5 November: the baseline of 203 SP stays the zero point of the burndo
 | DOC-8 | As a reader, I see the structure of the system in diagrams | DOC | 5 | Must | M9 | done |
 | DOC-9 | As a reader, I see the behaviour of the system in diagrams | DOC | 8 | Must | M9 | done |
 | US-44 | As an operator, I start a run and answer its approval on the page, and see the state of every step on the graph | B2 | 5 | Should | M10 | done |
+| US-45 | As a presenter, I sign in to the page as a role with one click, in a demonstration only | B2 | 3 | Could | M10 | done |
 
 Acceptance criteria: `stories.md`. The same stories are GitHub issues, grouped by milestone.

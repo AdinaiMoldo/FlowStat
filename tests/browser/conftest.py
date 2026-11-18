@@ -11,9 +11,11 @@ import socket
 import threading
 import time
 from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
+from starlette.types import ASGIApp
 
 from flowstat.api.ui import UI_DIR
 from tests.unit.api.helpers import Env, make_env
@@ -37,11 +39,11 @@ class Server:
         self.url = url
 
 
-@pytest.fixture(scope="session")
-def server(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Server]:
-    env = make_env(Path(tmp_path_factory.mktemp("browser")))
+@contextmanager
+def serving(app: ASGIApp) -> Iterator[str]:
+    """Run ``app`` on a free port of the loopback address; the address while the block runs."""
     port = free_port()
-    config = uvicorn.Config(env.client.app, host="127.0.0.1", port=port, log_level="warning")
+    config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning")
     instance = uvicorn.Server(config)
     thread = threading.Thread(target=instance.run, daemon=True)
     thread.start()
@@ -51,9 +53,18 @@ def server(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Server]:
         time.sleep(0.05)
     else:
         pytest.fail("the server did not start")
-    yield Server(env, f"http://127.0.0.1:{port}")
-    instance.should_exit = True
-    thread.join(timeout=10)
+    try:
+        yield f"http://127.0.0.1:{port}"
+    finally:
+        instance.should_exit = True
+        thread.join(timeout=10)
+
+
+@pytest.fixture(scope="session")
+def server(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Server]:
+    env = make_env(Path(tmp_path_factory.mktemp("browser")))
+    with serving(env.client.app) as url:
+        yield Server(env, url)
 
 
 @pytest.fixture(scope="session")

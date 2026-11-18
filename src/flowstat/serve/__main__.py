@@ -9,6 +9,7 @@ the runs that are still going stay in their log as they are, and the next start 
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 from collections.abc import Callable, Sequence
@@ -64,7 +65,32 @@ def _parser() -> argparse.ArgumentParser:
         default=10.0,
         help="seconds between looks at the health of deployed services (0: only at start)",
     )
+    parser.add_argument(
+        "--demo-logins",
+        metavar="FILE",
+        help="a demonstration: the page shows a button for each user of FILE (tokens.json as "
+        "scripts/exercise_setup.py writes it) and anyone who reaches the port can read their "
+        "tokens, so it is allowed only with --host 127.0.0.1",
+    )
     return parser
+
+
+LOOPBACK = ("127.0.0.1", "localhost", "::1")
+
+
+def _demo_logins(parser: argparse.ArgumentParser, path: str, host: str) -> dict[str, str]:
+    """The name -> token of the demonstration, or an exit when it would be given away."""
+    if host not in LOOPBACK:
+        parser.error(
+            "--demo-logins gives the tokens to anyone who reaches the port; "
+            f"--host must be one of {', '.join(LOOPBACK)}"
+        )
+    try:
+        data = json.loads(Path(path).read_text(encoding="utf8"))
+        found = {str(name): str(token) for name, token in data["tokens"].items()}
+    except (OSError, ValueError, KeyError, AttributeError, TypeError) as error:
+        parser.error(f'--demo-logins: {path} is not a file with a "tokens" object ({error})')
+    return found
 
 
 def _reachable(host: str) -> str:
@@ -76,7 +102,8 @@ def main(
     argv: Sequence[str] | None = None,
     serve: Callable[[FastAPI, str, int], None] | None = None,
 ) -> int:
-    args = _parser().parse_args(argv)
+    parser = _parser()
+    args = parser.parse_args(argv)
     open_database(args.db).close()  # makes the tables if the file is new
     pool = RunPool(args.max_runs)
     bundles = Path(args.bundles) if args.bundles else Path(args.db).resolve().parent / "deployments"
@@ -89,6 +116,7 @@ def main(
         ingest_url=ingest_url,
         health=http_healthy,
         allowed_hosts=parse_hosts(",".join(args.allow_host)) or hosts_from(os.environ),
+        demo_logins=_demo_logins(parser, args.demo_logins, args.host) if args.demo_logins else None,
     )
     app = create_app(config)
     run = serve or (lambda a, host, port: uvicorn.run(a, host=host, port=port))

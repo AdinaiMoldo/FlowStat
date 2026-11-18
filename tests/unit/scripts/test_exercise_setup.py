@@ -159,3 +159,22 @@ def test_a_port_that_already_answers_is_refused_and_nothing_is_cleared(tmp_path:
         server.shutdown()
         server.server_close()
     assert (work / "tokens.json").is_file()  # the folder of the earlier start was left as it was
+
+
+def test_a_demonstration_start_gives_the_page_its_logins_and_the_exercise_does_not(
+    tmp_path: Path,
+) -> None:
+    plain = exercise_setup.prepare(tmp_path / "plain", demo.free_port())
+    try:
+        assert (
+            demo.http("GET", f"{plain.base}/demo/logins")[0] == 404
+        )  # the exercise: paste a token
+    finally:
+        plain.process.terminate()
+    shown = exercise_setup.prepare(tmp_path / "shown", demo.free_port(), logins=True)
+    try:
+        status, body = demo.http("GET", f"{shown.base}/demo/logins")
+        assert status == 200
+        assert {item["name"]: item["token"] for item in body["logins"]} == shown.tokens
+    finally:
+        shown.process.terminate()

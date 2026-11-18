@@ -31,11 +31,13 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT / "src"), str(ROOT)]
+
 
 from tests.unit.actions.helpers import write_all_forms  # noqa: E402
 
@@ -141,11 +143,13 @@ def comparable(report: dict[str, Any]) -> dict[str, Any]:
     return {"status": report["status"], "outcome": report["outcome"], "steps": steps}
 
 
-def start_core(work: Path, port: int, db: str) -> subprocess.Popen[bytes]:
+def start_core(
+    work: Path, port: int, db: str, extra: Sequence[str] = ()
+) -> subprocess.Popen[bytes]:
     environment = {**os.environ, "PYTHONPATH": str(ROOT / "src")}
     command = [
         sys.executable, "-m", "flowstat.serve", "--db", db, "--data", str(work / "forms"),
-        "--target", str(work / "results.db"), "--port", str(port),
+        "--target", str(work / "results.db"), "--port", str(port), *extra,
     ]  # fmt: skip
     with open(work / "core.log", "wb") as log:  # the child has its own copy of the handle
         process = subprocess.Popen(command, env=environment, stdout=log, stderr=subprocess.STDOUT)

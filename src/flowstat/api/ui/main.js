@@ -288,6 +288,53 @@ async function startRun(event) {
   }
 }
 
+// -- signing in ------------------------------------------------------------------------------------
+// The token is the person's. The same page serves a demonstration too: when the core was started
+// with --demo-logins it lists the demonstration users (and only then), and a button for each
+// signs in as that user. A core that does not list them answers 404 and no button is shown.
+const LABELS = {
+  admin: "Admin",
+  designer: "Designer",
+  chief: "Chief statistician",
+  operator: "Operator",
+};
+
+function signedIn(token, who) {
+  session.set(token);
+  $("who").textContent = who;
+  state.checked = null;
+  refresh();
+  check();
+  goTo(document.body.dataset.view || "editor"); // the view that is open is loaded again, as the new user
+}
+
+function markLogin(name) {
+  for (const button of $("logins").querySelectorAll("button")) {
+    button.classList.toggle("current", button.dataset.login === name);
+  }
+}
+
+async function loadLogins() {
+  let found;
+  try {
+    found = (await call("GET", "/demo/logins")).logins;
+  } catch {
+    return; // not a demonstration
+  }
+  for (const login of found) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.login = login.name;
+    button.textContent = LABELS[login.name] || login.name;
+    button.addEventListener("click", () => {
+      signedIn(login.token, `signed in as ${button.textContent} (demonstration)`);
+      markLogin(login.name);
+    });
+    $("logins").append(button);
+  }
+  $("logins").hidden = found.length === 0;
+}
+
 // -- views -----------------------------------------------------------------------------------
 const VIEWS = ["editor", "runs", "services", "migration", "statistics"];
 
@@ -342,18 +389,16 @@ async function main() {
 
   $("sign-in").addEventListener("submit", (event) => {
     event.preventDefault();
-    session.set($("token").value.trim());
+    signedIn($("token").value.trim(), "token kept for this tab");
     $("token").value = "";
-    $("who").textContent = "token kept for this tab";
-    state.checked = null;
-    refresh();
-    check();
   });
   $("forget").addEventListener("click", () => {
     session.clear();
     $("who").textContent = "";
     $("workflows").replaceChildren();
+    markLogin(null);
   });
+  loadLogins();
   $("new").addEventListener("click", () => fresh());
   $("example").addEventListener("click", () => fresh(EXAMPLE));
   $("run").addEventListener("click", openRunForm);

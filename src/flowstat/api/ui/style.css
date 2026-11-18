@@ -88,6 +88,9 @@ input { font: inherit; padding: 5px 8px; border: 1px solid var(--line); border-r
 .reasons { margin: 0; padding-left: 16px; }
 .reasons li { margin: 2px 0; }
 .example { align-self: flex-start; }
+.logins { display: flex; align-items: center; gap: 6px; }
+.logins button { padding: 3px 10px; }
+.logins button.current { border-color: var(--accent); color: var(--accent); background: #e8f0fc; }
 .run-form { display: flex; align-items: center; gap: 8px; }
 .run-form input { flex: 1; min-width: 0; font-family: ui-monospace, Consolas, monospace; }
 .decision { display: flex; flex-direction: column; gap: 6px; }

@@ -474,3 +474,9 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Found: the example cannot be saved twice and published: the text says `version: 1`, and the second save is version 2 (`E-VER-001`). That is the rule of the language, not a defect of the button; the Problems list says it.
 - Found: the port check added for the exercise stopped a restart of the test core while the old core still answered; the old core is a child process that outlives the script when the script is killed. Stop the core with Ctrl+C, not by killing the script.
 
+## 2026-11-18 M10: US-45, sign in by role in a demonstration
+
+- Why: for a demonstration the person had to find the token of each user in a file and paste it, and to do that again each time the role changed (designer to write, chief statistician to approve).
+- Did: the core takes `--demo-logins FILE` (the `tokens.json` of the scripts) and then has the route `/demo/logins`; the page shows a button for each name when the route answers. `exercise_setup.py start --logins` passes the option.
+- Chose: the option is off by default, and the executable exits with an error unless the host is the loopback address, because the route gives the tokens to anyone who reaches the port. The tokens are not in the repository or in the page: the page reads them from the running core. The exercise of NFR-06 starts without the option, so the people who take it still paste a token, as the task says.
+- Found: the core can not give its own tokens (it stores only their hashes), so the file the script writes is the only source; `tokens.json` is now written before the core starts, not after.
