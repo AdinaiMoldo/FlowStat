@@ -72,8 +72,8 @@ def test_a_name_and_a_password_open_the_home_page_for_that_person(
     sign_in(page, "olga")
     wait_for_view(page, "home")
     assert page.url.endswith("#/home")
-    assert "olga" in page.inner_text("#who") and "chief statistician" in page.inner_text("#who")
-    assert "Welcome, olga" in page.inner_text("#home-hello")
+    assert "Olga" in page.inner_text("#who") and "chief statistician" in page.inner_text("#who")
+    assert "Welcome, Olga" in page.inner_text("#home-hello")
     assert page.input_value("#login-password") == ""  # the password is not kept in the page
     page.close()
 
@@ -142,7 +142,7 @@ def test_a_reload_keeps_the_person_on_the_page_they_were_on(
     page.reload()
     page.wait_for_selector("body[data-ready]")
     assert view(page) == "services"
-    assert "olga" in page.inner_text("#who")
+    assert "Olga" in page.inner_text("#who")
     page.close()
 
 

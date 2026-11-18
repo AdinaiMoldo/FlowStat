@@ -173,10 +173,10 @@ def http_ok(url: str) -> bool:
 def demo(work: Path, kind: str) -> None:
     db = str(work / "flowstat.db")
     step(1, "users")
-    admin = make_user(db, "ada", "admin")
-    designer = make_user(db, "dina", "designer")
-    chief = make_user(db, "olga", "operator", "chief_statistician")
-    clerk = make_user(db, "kira", "operator")
+    admin = make_user(db, "adinai", "admin")
+    designer = make_user(db, "azamat", "designer")
+    chief = make_user(db, "alua", "operator", "chief_statistician")
+    clerk = make_user(db, "atai", "operator")
     step(2, "publish the example workflow (22 steps, nine regions, an approval)")
     code = cli(["publish", "--db", db, "--catalogue", str(ROOT / "examples" / "catalogue.yaml"),
                 str(ROOT / "examples" / "quarterly_consolidation.yaml")])  # fmt: skip

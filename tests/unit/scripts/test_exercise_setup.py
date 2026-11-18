@@ -67,7 +67,7 @@ def test_the_tokens_are_kept_for_the_observer(tmp_path: Path) -> None:
     finally:
         setup.process.terminate()
     assert saved["base"] == setup.base
-    assert set(saved["tokens"]) == {"admin", "designer", "chief", "operator"}
+    assert set(saved["tokens"]) == {"admin", "designer", "chief", "operator", "operator2"}
 
 
 def named(name: str) -> str:
@@ -193,7 +193,9 @@ def test_every_user_of_a_start_can_sign_in_with_its_own_password(tmp_path: Path)
             )
             assert status == 200, (name, body)
             assert (body["name"], body["role"], tuple(body["titles"])) == (name, role, titles)
-        wrong = demo.http("POST", f"{setup.base}/login", None, {"name": "dina", "password": "nope"})
+        wrong = demo.http(
+            "POST", f"{setup.base}/login", None, {"name": "azamat", "password": "nope"}
+        )
         assert wrong[0] == 401
         saved = json.loads((tmp_path / "data" / "tokens.json").read_text(encoding="utf8"))
         assert saved["passwords"] == setup.passwords

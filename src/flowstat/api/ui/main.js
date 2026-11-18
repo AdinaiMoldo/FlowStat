@@ -4,7 +4,7 @@ import { ApiError, call, session, whenUnauthorized } from "./api.js";
 import { PAUSE_MS, createEditor } from "./editor.js";
 import { EXAMPLE } from "./example.js";
 import { createGraph } from "./graph.js";
-import { createHome, roleLabel } from "./home.js";
+import { createHome, displayName, roleLabel } from "./home.js";
 import { createMigration } from "./migration.js";
 import { createOps } from "./ops.js";
 import { href, nextOf, parse } from "./router.js";
@@ -315,6 +315,7 @@ const LABELS = {
   designer: "Designer",
   chief: "Chief statistician",
   operator: "Operator",
+  operator2: "Second operator",
 };
 
 // Keeps the token and asks the core who it is. A token that is not accepted is forgotten.
@@ -337,7 +338,7 @@ function paintUser() {
   who.replaceChildren();
   if (user) {
     const name = document.createElement("strong");
-    name.textContent = user.name;
+    name.textContent = displayName(user.name);
     const role = document.createElement("span");
     role.className = "role";
     role.textContent = roleLabel(user);

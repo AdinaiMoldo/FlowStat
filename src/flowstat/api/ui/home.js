@@ -12,6 +12,11 @@ const ROLES = {
   operator: "Operator",
 };
 
+// The names of users are lower case in the core; a person is greeted by the name with a capital.
+export function displayName(name) {
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
 export function roleLabel(user) {
   const base = ROLES[user.role] || user.role;
   const titles = user.titles.map((t) => t.replaceAll("_", " "));
@@ -76,7 +81,7 @@ export function createHome() {
   }
 
   async function load(user) {
-    $("home-hello").textContent = `Welcome, ${user.name}`;
+    $("home-hello").textContent = `Welcome, ${displayName(user.name)}`;
     $("home-role").textContent = roleLabel(user);
     limit(user);
     const [workflows, runs, services] = await Promise.all([

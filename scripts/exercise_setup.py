@@ -4,7 +4,7 @@ Usage:
     python scripts/exercise_setup.py start [--dir exercise-data] [--port 8000] [--logins]
     python scripts/exercise_setup.py check WORKFLOW [--dir exercise-data]
 
-``start`` makes a clean database with three users, the nine regions of the synthetic catalogue and
+``start`` makes a clean database with five users, the nine regions of the synthetic catalogue and
 the synthetic forms of the quarter 2025Q1, starts the core, and prints the address of the editor and
 the name and the password of each user. It runs until Ctrl+C. Nothing is published: the person who
 takes the exercise does that.
@@ -49,10 +49,11 @@ CATALOGUE = ROOT / "examples" / "catalogue.yaml"
 
 # the key in tokens.json, the user, and what the user is
 USERS = {
-    "admin": ("ada", "admin", ()),
-    "designer": ("dina", "designer", ()),
-    "chief": ("olga", "operator", ("chief_statistician",)),
-    "operator": ("kira", "operator", ()),
+    "admin": ("adinai", "admin", ()),
+    "designer": ("azamat", "designer", ()),
+    "chief": ("alua", "operator", ("chief_statistician",)),
+    "operator": ("atai", "operator", ()),
+    "operator2": ("marina", "operator", ()),
 }
 
 
