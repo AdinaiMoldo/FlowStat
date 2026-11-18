@@ -134,3 +134,18 @@ def test_the_run_that_waits_can_be_moved_to_the_second_version(seeded) -> None: 
     assert reply.status_code == 200
     [waiting] = reply.json()["runs"]
     assert waiting["migratable"] is True
+
+
+def test_there_are_two_campaigns_one_validating_and_one_collecting(seeded) -> None:  # type: ignore[no-untyped-def]
+    summary, client, tokens = seeded
+    assert summary["campaigns"] == 2
+    found = client.get("/campaigns", headers={"Authorization": f"Bearer {tokens['admin']}"}).json()
+    by_period = {c["period"]: c for c in found}
+    assert by_period["2024Q4"]["status"] == "VALIDATING"
+    assert by_period["2025Q1"]["status"] == "COLLECTING"
+    # the forms of 2024Q4 were written for its run: all nine are there and valid
+    assert by_period["2024Q4"]["progress"]["valid"] == 9
+    # the quarter of the live demonstration has none yet
+    assert by_period["2025Q1"]["progress"]["received"] == 0
+    # the deadline of the first has passed and the second is ahead, on the clock of the seed
+    assert by_period["2024Q4"]["deadline"] < "2026-11-18" < by_period["2025Q1"]["deadline"]

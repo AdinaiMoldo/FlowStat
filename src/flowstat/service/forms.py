@@ -16,6 +16,7 @@ import io
 import os
 import re
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -38,6 +39,10 @@ class FormRefused(Exception):
     """The quarter, the size or the file is not acceptable; the message says why."""
 
 
+class FormLocked(Exception):
+    """The campaign of the quarter has an approved result: its forms cannot change (US-53)."""
+
+
 @dataclass(frozen=True)
 class FormInfo:
     region: str
@@ -50,9 +55,21 @@ class FormInfo:
 
 
 class FormService:
-    def __init__(self, data_dir: Path, catalogue: CatalogueRepo) -> None:
+    def __init__(
+        self,
+        data_dir: Path,
+        catalogue: CatalogueRepo,
+        locking: Callable[[str], str | None] | None = None,
+    ) -> None:
         self.data_dir = data_dir
         self.catalogue = catalogue
+        # a function that names the campaign that locks a quarter, or None (the forms are free)
+        self.locking = locking
+
+    def _unlocked(self, quarter: str) -> None:
+        held = None if self.locking is None else self.locking(quarter)
+        if held is not None:
+            raise FormLocked(f"the campaign {held} has an approved result for {quarter}")
 
     # -- what the catalogue allows ------------------------------------------------------------
     def regions(self) -> dict[str, str]:
@@ -104,6 +121,7 @@ class FormService:
     def save(self, region: str, quarter: str, content: bytes) -> FormInfo:
         name = self._known(region)
         self._quarter(quarter)
+        self._unlocked(quarter)
         if len(content) > MAX_BYTES:
             raise FormRefused(f"a form may have at most {MAX_BYTES} bytes")
         try:  # read from memory: no file, so no handle that could stay open on Windows
@@ -125,6 +143,7 @@ class FormService:
     def remove(self, region: str, quarter: str) -> None:
         self._known(region)
         self._quarter(quarter)
+        self._unlocked(quarter)
         path = self._path(region, quarter)
         if not path.is_file():
             raise FormNotFound(f"there is no form of {region} for {quarter}")

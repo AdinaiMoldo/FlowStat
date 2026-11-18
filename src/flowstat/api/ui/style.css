@@ -236,3 +236,15 @@ tr.failed td { background: #fef3f2; }
 .items li .sub { display: block; font-size: 12px; margin-top: 1px; }
 .ops .table td, .ops .table th { white-space: nowrap; }
 .ops .table td .reasons, .ops .table td.wrap { white-space: normal; }
+
+/* the form of a campaign */
+.fields { display: flex; flex-direction: column; gap: 6px; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); }
+.fields h3 { margin: 0 0 4px; font-size: 15px; }
+.fields label { font-size: 13px; color: var(--muted); }
+.fields .pair { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.fields .pair span { display: flex; flex-direction: column; gap: 4px; }
+.fields fieldset { border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+.fields legend { font-size: 13px; color: var(--muted); padding: 0 4px; }
+.checks { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.checks .check { color: var(--ink); font-size: 14px; }
+.actions { margin-top: 6px; }
