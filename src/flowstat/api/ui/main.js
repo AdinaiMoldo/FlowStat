@@ -1,10 +1,13 @@
-// The editor page: workflows, a text with live diagnostics, save and publish.
-import { ApiError, call, session } from "./api.js";
+// The page: signing in, the addresses of the pages, and the editor (workflows, a text with live
+// diagnostics, save and publish). The other pages are in their own files.
+import { ApiError, call, session, whenUnauthorized } from "./api.js";
 import { PAUSE_MS, createEditor } from "./editor.js";
 import { EXAMPLE } from "./example.js";
 import { createGraph } from "./graph.js";
+import { createHome, roleLabel } from "./home.js";
 import { createMigration } from "./migration.js";
 import { createOps } from "./ops.js";
+import { href, nextOf, parse } from "./router.js";
 import { createStatistics } from "./statistics.js";
 
 const $ = (id) => document.getElementById(id);
@@ -32,6 +35,8 @@ const state = {
   graph: null, // the drawing, made when the graph is first shown
   graphSequence: 0,
   hasGraph: false, // a valid text was drawn before, so the last graph can stay on an error
+  user: null, // who is signed in: { name, role, titles, permissions }
+  view: null, // the page that is shown
 };
 
 function nameOf(text) {
@@ -45,8 +50,8 @@ function say(text) {
 
 function explain(error) {
   if (error instanceof ApiError) {
-    if (error.status === 401) return "sign in: paste a token and press Use";
-    if (error.status === 403) return "this token may not edit workflows (a designer or an admin may)";
+    if (error.status === 401) return "your session has ended: sign in again";
+    if (error.status === 403) return "you may not edit workflows (a designer or an admin may)";
     if (error.status === 0) return "the server cannot be reached";
     return error.message;
   }
@@ -171,7 +176,7 @@ async function refresh() {
       item.textContent = w.name;
       item.title = `latest v${w.latest}` + (w.latest_published ? `, published v${w.latest_published}` : "");
       if (state.current && state.current.name === w.name) item.classList.add("current");
-      item.addEventListener("click", () => open(w.name));
+      item.addEventListener("click", () => goTo(`editor/${encodeURIComponent(w.name)}`));
       list.append(item);
     }
   } catch (error) {
@@ -204,6 +209,7 @@ async function save() {
     const saved = await call("POST", `/workflows/${encodeURIComponent(name)}/versions`, { text });
     state.current = { name, number: saved.version, status: saved.status };
     describe();
+    keepAddress(href("editor", name));
     say(`saved as v${saved.version}`);
     refresh();
   } catch (error) {
@@ -277,21 +283,33 @@ async function startRun(event) {
     });
     $("run-form").hidden = true;
     say(`run ${started.run_id} started`);
-    goTo("runs");
-    state.ops.openRun(started.run_id);
+    goTo(`runs/${encodeURIComponent(started.run_id)}`);
   } catch (error) {
     if (error instanceof ApiError && error.status === 403) {
-      say("this token may not start runs");
+      say("you may not start runs");
     } else {
       say(explain(error));
     }
   }
 }
 
-// -- signing in ------------------------------------------------------------------------------------
-// The token is the person's. The same page serves a demonstration too: when the core was started
-// with --demo-logins it lists the demonstration users (and only then), and a button for each
-// signs in as that user. A core that does not list them answers 404 and no button is shown.
+
+// -- addresses ---------------------------------------------------------------------------------
+// A step to another page is a step in the history, so that the back button comes back to this one.
+function goTo(path) {
+  location.hash = `#/${path}`;
+}
+
+// The address that tells where the person is, put in place without a step in the history.
+function keepAddress(hash) {
+  if (location.hash !== hash) history.replaceState(null, "", hash);
+}
+
+// -- signing in --------------------------------------------------------------------------------
+// A person signs in with a name and a password and gets a session token, or pastes an API token.
+// Either way the token is kept for this tab only (api.js). When the core was started with
+// --demo-logins it lists the demonstration users (and only then), and a button for each signs in
+// as that user. A core that does not list them answers 404 and no button is shown.
 const LABELS = {
   admin: "Admin",
   designer: "Designer",
@@ -299,19 +317,88 @@ const LABELS = {
   operator: "Operator",
 };
 
-function signedIn(token, who) {
+// Keeps the token and asks the core who it is. A token that is not accepted is forgotten.
+async function enter(token) {
   session.set(token);
-  $("who").textContent = who;
+  try {
+    state.user = await call("GET", "/me");
+  } catch (error) {
+    session.clear();
+    state.user = null;
+    throw error;
+  }
+  paintUser();
   state.checked = null;
-  refresh();
-  check();
-  goTo(document.body.dataset.view || "editor"); // the view that is open is loaded again, as the new user
 }
 
-function markLogin(name) {
-  for (const button of $("logins").querySelectorAll("button")) {
-    button.classList.toggle("current", button.dataset.login === name);
+function paintUser() {
+  const user = state.user;
+  const who = $("who");
+  who.replaceChildren();
+  if (user) {
+    const name = document.createElement("strong");
+    name.textContent = user.name;
+    const role = document.createElement("span");
+    role.className = "role";
+    role.textContent = roleLabel(user);
+    who.append(name, role);
   }
+  for (const link of document.querySelectorAll(".menu a")) {
+    const needs = link.dataset.needs;
+    link.hidden = !user || Boolean(needs && !user.permissions.includes(needs));
+  }
+}
+
+function reason(error, tokenForm) {
+  if (error instanceof ApiError) {
+    if (error.status === 401) {
+      return tokenForm ? "This token is not accepted." : "The name or the password is wrong.";
+    }
+    if (error.status === 429) return "Too many attempts. Wait a minute and try again.";
+    if (error.status === 0) return "The server cannot be reached.";
+    return error.message;
+  }
+  return String(error);
+}
+
+// One sign-in attempt: ``attempt`` gets a user into the page or throws. On success the person goes
+// where they wanted to go (the address that sent them here) or to the home page.
+async function signIn(attempt, tokenForm = false) {
+  const error = $("login-error");
+  error.hidden = true;
+  $("login-note").hidden = true;
+  try {
+    await attempt();
+  } catch (failure) {
+    error.hidden = false;
+    error.textContent = reason(failure, tokenForm);
+    return;
+  }
+  location.hash = nextOf(parse(location.hash));
+}
+
+async function signOut() {
+  try {
+    await call("POST", "/logout");
+  } catch {
+    /* the session ends at the core by itself; here it is forgotten in any case */
+  }
+  session.clear();
+  location.hash = href("login");
+  location.reload(); // nothing of the last person stays in the page
+}
+
+// A token that the core no longer accepts: the page asks for a new sign-in and, after it, comes
+// back to the page that was open. The text in the editor stays, so that a draft is not lost.
+function expired() {
+  if (!state.user) return;
+  session.clear();
+  state.user = null;
+  paintUser();
+  const from = location.hash.slice(1);
+  const query = from ? `next=${encodeURIComponent(from)}&ended` : "ended";
+  history.replaceState(null, "", href("login", null, query));
+  render();
 }
 
 async function loadLogins() {
@@ -326,38 +413,96 @@ async function loadLogins() {
     button.type = "button";
     button.dataset.login = login.name;
     button.textContent = LABELS[login.name] || login.name;
-    button.addEventListener("click", () => {
-      signedIn(login.token, `signed in as ${button.textContent} (demonstration)`);
-      markLogin(login.name);
-    });
-    $("logins").append(button);
+    button.addEventListener("click", () => signIn(() => enter(login.token)));
+    $("logins-buttons").append(button);
   }
   $("logins").hidden = found.length === 0;
 }
 
-// -- views -----------------------------------------------------------------------------------
-const VIEWS = ["editor", "runs", "services", "migration", "statistics"];
+// -- pages ---------------------------------------------------------------------------------------
+const TITLES = {
+  home: "Home",
+  editor: "Editor",
+  runs: "Runs",
+  services: "Services",
+  migration: "Migration",
+  statistics: "Statistics",
+  login: "Sign in",
+};
 
-function goTo(view) {
-  for (const name of VIEWS) {
-    $(`view-${name}`).hidden = name !== view;
-    $(`tab-${name}`).setAttribute("aria-selected", String(name === view));
+function showView(view) {
+  for (const name of Object.keys(TITLES)) $(`view-${name}`).hidden = name !== view;
+  for (const link of document.querySelectorAll(".menu a")) {
+    if (link.dataset.view === view) link.setAttribute("aria-current", "page");
+    else link.removeAttribute("aria-current");
   }
+  $("top").hidden = view === "login";
   document.body.dataset.view = view;
+  document.title = view === "login" ? "FlowStat" : `${TITLES[view]} · FlowStat`;
+}
+
+// Shows the page of the address. The sign-in page is the only one that is open to a person who is
+// not signed in; any other address sends them there and is remembered, to be opened after.
+async function render() {
+  const route = parse(location.hash);
+  if (route.view === "login") {
+    if (state.user) {
+      keepAddress(nextOf(route));
+      return render();
+    }
+    state.view = "login";
+    showView("login");
+    $("login-note").hidden = !route.params.has("ended");
+    $("login-name").focus();
+    return undefined;
+  }
+  if (!state.user) {
+    const from = route.known ? location.hash.slice(1) : "";
+    keepAddress(href("login", null, from ? `next=${encodeURIComponent(from)}` : ""));
+    return render();
+  }
+  if (!route.known) {
+    keepAddress(href("home"));
+    return render();
+  }
+  const same = state.view === route.view;
+  state.view = route.view;
+  showView(route.view);
+  const view = route.view;
   if (view === "runs") {
-    state.ops.loadRuns();
-    state.ops.live.start();
+    if (!same) {
+      state.ops.loadRuns();
+      state.ops.live.start();
+    }
+    if (route.arg) state.ops.openRun(route.arg);
   } else {
     state.ops.live.stop();
   }
   if (view === "services") {
-    state.ops.loadServices();
-    state.ops.liveServices.start();
+    if (!same) {
+      state.ops.loadServices();
+      state.ops.liveServices.start();
+    }
   } else {
     state.ops.liveServices.stop();
   }
-  if (view === "migration") state.migration.load();
-  if (view === "statistics") state.statistics.load();
+  if (view === "home") state.home.load(state.user);
+  if (view === "editor") enterEditor(route, same);
+  if (view === "migration" && !same) state.migration.load();
+  if (view === "statistics" && !same) state.statistics.load();
+  return undefined;
+}
+
+// The editor: a request in the address ("?example", "?new") is done once and taken out of it; a
+// workflow in the address is opened.
+function enterEditor(route, same) {
+  if (!same) refresh();
+  if (route.params.has("example") || route.params.has("new")) {
+    fresh(route.params.has("example") ? EXAMPLE : SKELETON);
+    keepAddress(href("editor"));
+  } else if (route.arg && !(state.current && state.current.name === route.arg)) {
+    open(route.arg);
+  }
 }
 
 // -- start -----------------------------------------------------------------------------------
@@ -365,7 +510,7 @@ async function main() {
   state.ops = createOps({ goTo });
   state.migration = createMigration();
   state.statistics = createStatistics();
-  for (const name of VIEWS) $(`tab-${name}`).addEventListener("click", () => goTo(name));
+  state.home = createHome();
   const plain = new URLSearchParams(location.search).has("plain");
   state.editor = await createEditor($("editor"), $("plain"), plain);
   if (state.editor.kind === "plain") {
@@ -387,17 +532,25 @@ async function main() {
     });
   }
 
+  whenUnauthorized(expired);
+  $("login-form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const name = $("login-name").value.trim();
+    const password = $("login-password").value;
+    $("login-password").value = "";
+    signIn(async () => {
+      const made = await call("POST", "/login", { name, password });
+      await enter(made.token);
+    });
+  });
   $("sign-in").addEventListener("submit", (event) => {
     event.preventDefault();
-    signedIn($("token").value.trim(), "token kept for this tab");
+    const token = $("token").value.trim();
     $("token").value = "";
+    signIn(() => enter(token), true);
   });
-  $("forget").addEventListener("click", () => {
-    session.clear();
-    $("who").textContent = "";
-    $("workflows").replaceChildren();
-    markLogin(null);
-  });
+  $("sign-out").addEventListener("click", signOut);
+  window.addEventListener("hashchange", render);
   loadLogins();
   $("new").addEventListener("click", () => fresh());
   $("example").addEventListener("click", () => fresh(EXAMPLE));
@@ -409,10 +562,15 @@ async function main() {
   $("publish").addEventListener("click", publish);
 
   if (session.token) {
-    $("who").textContent = "token kept for this tab";
-    refresh();
+    try {
+      state.user = await call("GET", "/me");
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) session.clear();
+    }
   }
+  paintUser();
   describe();
+  await render();
   document.body.dataset.ready = state.editor.kind;
 }
 

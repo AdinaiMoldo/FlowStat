@@ -313,11 +313,23 @@ more than one core process (the database is SQLite).
 ### The pages
 
 The core serves the editor at `/ui/` (static files, permission `public`: they hold no data and no
-secret). The page calls the routes below with `Authorization: Bearer <token>`; the token is typed
-into the page and kept in `sessionStorage` of that tab. The page and the API have the same origin, so
+secret). The page calls the routes below with `Authorization: Bearer <token>`; the token comes from the sign-in
+and is kept in `sessionStorage` of that tab. The page and the API have the same origin, so
 **CORS stays off**. The editor and the graph library are not in the repository: `scripts/fetch_ui.py`
 puts the pinned packages (checked by SHA-512) in `src/flowstat/api/ui/vendor/`; without them the page
 falls back to a text area and a list of diagnostics.
+
+**Sign-in and addresses (US-47).** The page opens with a sign-in screen: a name and a password
+(`POST /login`) or an API token pasted under "Use an API token instead" (checked with `GET /me`
+before it is kept). Either way the token is kept in `sessionStorage` of the tab, as before. Where the
+person is lives in the part of the address after `#`, so that the server needs no route for a page:
+`#/home`, `#/editor[/<workflow>]`, `#/runs[/<run>]`, `#/services`, `#/migration`, `#/statistics` and
+`#/login?next=<address>`. An address other than the sign-in screen sends a person who is not signed
+in to `#/login?next=...` and the page opens it after the sign-in. The menu is built from the
+`permissions` of `GET /me`; it hides what the role may not use but does not replace the check of
+the core, which refuses each call. A `401` for a token the page holds sends the person to the sign-in
+screen with a note, and the text of the editor stays. Signing out calls `POST /logout` and loads the
+page again.
 
 **The lists follow the server** (US-42, M9). While the Runs view is shown the page asks for the list
 of runs again every 4 seconds (and for the report of the run that is open), and while the Services

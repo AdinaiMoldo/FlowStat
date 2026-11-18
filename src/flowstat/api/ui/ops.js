@@ -25,7 +25,7 @@ function cell(text, kind) {
   return td;
 }
 
-function kindOf(word) {
+export function kindOf(word) {
   if (GOOD.has(word)) return "good";
   if (BAD.has(word)) return "bad";
   return word === "WAITING" || word === "starting" ? "wait" : "";
@@ -41,7 +41,7 @@ function row(testid, id, cells) {
 
 function problem(error) {
   if (error instanceof ApiError) {
-    if (error.status === 401) return "sign in: paste a token and press Use";
+    if (error.status === 401) return "your session has ended: sign in again";
     if (error.status === 0) return "the server cannot be reached";
     return error.message;
   }
@@ -147,7 +147,7 @@ export function createOps({ goTo }) {
           cell(r.created_at),
         ]);
         if (state.current === r.run_id) tr.classList.add("current");
-        tr.addEventListener("click", () => openRun(r.run_id));
+        tr.addEventListener("click", () => goTo(`runs/${encodeURIComponent(r.run_id)}`));
         rows.append(tr);
       }
       return true;

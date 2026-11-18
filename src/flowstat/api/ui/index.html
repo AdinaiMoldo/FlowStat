@@ -3,34 +3,118 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>FlowStat editor</title>
+  <title>FlowStat</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="vendor/monaco/vs/editor/editor.main.css">
 </head>
-<body>
-  <header class="bar">
-    <h1>FlowStat</h1>
-    <form id="sign-in" class="token" autocomplete="off">
-      <label for="token">Token</label>
-      <input id="token" type="password" placeholder="paste a token" autocomplete="off">
-      <button type="submit">Use</button>
-      <button type="button" id="forget">Forget</button>
-    </form>
-    <span id="who" class="muted" aria-live="polite"></span>
-    <span id="logins" class="logins" hidden aria-label="Sign in as">
-      <span class="muted">Demo, sign in as</span>
-    </span>
+<body data-view="login">
+  <svg class="sprite" width="0" height="0" aria-hidden="true" focusable="false">
+    <symbol id="i-logo" viewBox="0 0 24 24"><circle cx="5" cy="6" r="2.6"/><circle cx="5" cy="18" r="2.6"/><circle cx="19" cy="12" r="2.6"/><path d="M7.4 7.2 16.6 11M7.4 16.8 16.6 13"/></symbol>
+    <symbol id="i-write" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m8.5 12.3 2.5 2.5 4.5-5"/></symbol>
+    <symbol id="i-run" viewBox="0 0 24 24"><path d="M8 5.5v13l10-6.5z"/></symbol>
+    <symbol id="i-approve" viewBox="0 0 24 24"><path d="M12 3.5 5 6.5v5.2c0 4.2 2.8 7.2 7 8.8 4.2-1.6 7-4.6 7-8.8V6.5z"/><path d="m9 12 2.2 2.2L15.3 10"/></symbol>
+  </svg>
+
+  <header class="top" id="top" hidden>
+    <a class="brand" href="#/home" aria-label="FlowStat, home">
+      <svg class="icon logo"><use href="#i-logo"/></svg>
+      <span>FlowStat</span>
+    </a>
+    <nav class="menu" aria-label="Pages">
+      <a id="tab-home" href="#/home" data-view="home">Home</a>
+      <a id="tab-editor" href="#/editor" data-view="editor" data-needs="workflows:read">Editor</a>
+      <a id="tab-runs" href="#/runs" data-view="runs" data-needs="runs:read">Runs</a>
+      <a id="tab-services" href="#/services" data-view="services" data-needs="deployments:read">Services</a>
+      <a id="tab-migration" href="#/migration" data-view="migration" data-needs="runs:migrate">Migration</a>
+      <a id="tab-statistics" href="#/statistics" data-view="statistics" data-needs="statistics:read">Statistics</a>
+    </nav>
+    <div class="account">
+      <span id="who" class="who" aria-live="polite"></span>
+      <button type="button" id="sign-out" class="ghost">Sign out</button>
+    </div>
   </header>
 
-  <nav class="tabs" role="tablist" aria-label="Views">
-    <button type="button" role="tab" id="tab-editor" data-view="editor" aria-selected="true">Editor</button>
-    <button type="button" role="tab" id="tab-runs" data-view="runs" aria-selected="false">Runs</button>
-    <button type="button" role="tab" id="tab-services" data-view="services" aria-selected="false">Services</button>
-    <button type="button" role="tab" id="tab-migration" data-view="migration" aria-selected="false">Migration</button>
-    <button type="button" role="tab" id="tab-statistics" data-view="statistics" aria-selected="false">Statistics</button>
-  </nav>
+  <main class="page" id="view-login">
+    <section class="login-card">
+      <div class="login-brand">
+        <svg class="icon logo"><use href="#i-logo"/></svg>
+        <h1>FlowStat</h1>
+      </div>
+      <p class="lead">Workflows for official statistics: write a process, have it checked before it runs, and follow every run.</p>
+      <p id="login-note" class="notice" hidden>Your session has ended. Sign in again.</p>
+      <form id="login-form" class="stack" autocomplete="on">
+        <label for="login-name">Name</label>
+        <input id="login-name" name="username" autocomplete="username" autocapitalize="off" spellcheck="false" required>
+        <label for="login-password">Password</label>
+        <input id="login-password" name="password" type="password" autocomplete="current-password" required>
+        <p id="login-error" class="form-error" role="alert" hidden></p>
+        <button type="submit" id="login-submit" class="primary">Sign in</button>
+      </form>
+      <div id="logins" class="logins" hidden>
+        <p class="muted">Demonstration: sign in as</p>
+        <div id="logins-buttons" class="chips"></div>
+      </div>
+      <details class="alt">
+        <summary id="token-toggle">Use an API token instead</summary>
+        <form id="sign-in" class="stack" autocomplete="off">
+          <label for="token">Token</label>
+          <input id="token" type="password" placeholder="paste a token" autocomplete="off">
+          <button type="submit">Use token</button>
+        </form>
+      </details>
+    </section>
+  </main>
 
-  <main class="layout" id="view-editor">
+  <main class="page" id="view-home" hidden>
+    <section class="hero">
+      <p class="eyebrow" id="home-role"></p>
+      <h1 id="home-hello">Welcome</h1>
+      <p class="lead">FlowStat runs the repeating work of a statistical office, such as the quarterly consolidation of forms from the regions, as a process that is written down once, checked before it starts, and followed step by step.</p>
+      <div class="actions" id="home-actions">
+        <a class="button primary" href="#/editor?example" data-needs="workflows:write">Load the example</a>
+        <a class="button" href="#/editor?new" data-needs="workflows:write">New workflow</a>
+        <a class="button" href="#/runs" data-needs="runs:read">Open the runs</a>
+      </div>
+    </section>
+
+    <section class="stats" aria-label="Summary">
+      <a class="stat" href="#/editor" data-needs="workflows:read"><span class="num" id="count-workflows">–</span><span class="label">workflows</span></a>
+      <a class="stat" href="#/runs" data-needs="runs:read"><span class="num" id="count-runs">–</span><span class="label">runs</span></a>
+      <a class="stat accent" href="#/runs" data-needs="runs:read"><span class="num" id="count-waiting">–</span><span class="label">waiting for an answer</span></a>
+      <a class="stat" href="#/services" data-needs="deployments:read"><span class="num" id="count-services">–</span><span class="label">services</span></a>
+    </section>
+
+    <div class="columns">
+      <section class="card" id="home-waiting-card">
+        <h2>Waiting for an answer</h2>
+        <ul id="home-waiting" class="items"></ul>
+        <p id="home-waiting-empty" class="muted" hidden>Nothing waits for an answer.</p>
+      </section>
+      <section class="card">
+        <h2>Latest runs</h2>
+        <table class="table" aria-label="Latest runs">
+          <thead><tr><th>Run</th><th>Workflow</th><th>Status</th></tr></thead>
+          <tbody id="home-recent"></tbody>
+        </table>
+        <p id="home-recent-empty" class="muted" hidden>No runs yet. Publish a workflow and start one.</p>
+      </section>
+    </div>
+
+    <section class="card">
+      <h2>How it works</h2>
+      <ol class="steps">
+        <li><svg class="icon"><use href="#i-write"/></svg><strong>Write</strong><span>The process is a short text: steps, what each one needs, and the goal.</span></li>
+        <li><svg class="icon"><use href="#i-check"/></svg><strong>Check</strong><span>Mistakes show while you type: a missing input, a loop, a goal that can never be reached.</span></li>
+        <li><svg class="icon"><use href="#i-run"/></svg><strong>Run</strong><span>Publish a version and start it. Steps that do not depend on each other run together.</span></li>
+        <li><svg class="icon"><use href="#i-approve"/></svg><strong>Approve</strong><span>A step can wait for a person, such as the chief statistician, and the answer is kept.</span></li>
+      </ol>
+    </section>
+    <footer class="foot muted">FlowStat, a workflow engine for official statistics. This demonstration uses synthetic data only.</footer>
+  </main>
+
+  <main class="layout" id="view-editor" hidden>
     <aside class="side">
       <div class="row">
         <h2>Workflows</h2>
@@ -48,12 +132,12 @@
         <button type="button" id="preview" aria-pressed="false">Show graph</button>
         <button type="button" id="save" disabled>Save draft</button>
         <button type="button" id="publish" disabled>Publish</button>
-        <button type="button" id="run" disabled title="Publish this version first">Run</button>
+        <button type="button" id="run" class="primary" disabled title="Publish this version first">Run</button>
       </div>
       <form id="run-form" class="run-form" hidden>
         <label for="run-inputs">Inputs of the run (JSON)</label>
         <input id="run-inputs" autocomplete="off" spellcheck="false">
-        <button type="submit" id="run-start">Start</button>
+        <button type="submit" id="run-start" class="primary">Start</button>
         <button type="button" id="run-cancel">Cancel</button>
       </form>
       <div id="editor" class="editor"></div>

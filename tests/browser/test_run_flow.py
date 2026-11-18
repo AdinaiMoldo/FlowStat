@@ -6,7 +6,7 @@ from __future__ import annotations
 import pytest
 from playwright.sync_api import Browser, Page
 
-from tests.browser.conftest import Server
+from tests.browser.conftest import Server, sign_out, use_token
 from tests.browser.test_editor import open_page, set_text
 from tests.unit.actions.helpers import write_all_forms
 from tests.unit.api.helpers import EXAMPLE, TOKENS
@@ -22,9 +22,8 @@ def editor_text(page: Page) -> str:
 
 
 def sign_in(page: Page, role: str) -> None:
-    page.click("#forget")
-    page.fill("#token", TOKENS[role])
-    page.click("#sign-in button[type=submit]")
+    sign_out(page)  # the page is loaded again, with nothing of the last person in it
+    use_token(page, TOKENS[role])
 
 
 def classes(page: Page) -> dict[str, str]:

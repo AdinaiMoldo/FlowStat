@@ -10,7 +10,7 @@ from playwright.sync_api import Browser, Page
 from flowstat.model.events import Event, EventKind
 from flowstat.model.states import RunOutcome
 from flowstat.repo.runs import RunStore
-from tests.browser.conftest import Server
+from tests.browser.conftest import Server, use_token
 from tests.unit.api.helpers import TOKENS, T
 
 pytestmark = pytest.mark.browser
@@ -42,9 +42,7 @@ def open_page(browser: Browser, server: Server, role: str) -> Page:
     page = browser.new_page()
     page.goto(f"{server.url}/ui/?plain")
     page.wait_for_selector("body[data-ready]")
-    page.fill("#token", TOKENS[role])
-    page.click("#sign-in button[type=submit]")
-    page.click("#tab-statistics")
+    use_token(page, TOKENS[role], "statistics")
     return page
 
 

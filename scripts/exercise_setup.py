@@ -6,8 +6,8 @@ Usage:
 
 ``start`` makes a clean database with three users, the nine regions of the synthetic catalogue and
 the synthetic forms of the quarter 2025Q1, starts the core, and prints the address of the editor and
-the token of the designer. It runs until Ctrl+C. Nothing is published: the person who takes the
-exercise does that.
+the name and the password of each user. It runs until Ctrl+C. Nothing is published: the person who
+takes the exercise does that.
 
 ``check`` is for the observer, after the person has published a workflow with the name WORKFLOW. It
 starts two runs with the quarter 2025Q1, answers the first with *approved* and the second with
@@ -89,7 +89,7 @@ def prepare(work: Path, port: int, logins: bool = False) -> Setup:
     """A clean core in ``work`` listening on ``port``; the caller stops the process.
 
     With ``logins`` the page shows a button for each user (the core is started with
-    ``--demo-logins``); without it the person pastes a token, as the exercise asks.
+    ``--demo-logins``); without it the person signs in with a name and a password.
     """
     if demo.http_ok(f"http://127.0.0.1:{port}/health"):
         # A core of an earlier start would answer in the place of the new one, with its old users.
@@ -174,9 +174,7 @@ def start(work: Path, port: int, logins: bool = False) -> int:
     setup = prepare(work, port, logins)
     try:
         print(f"\nThe core is running. Open {setup.base}/ui/ in a browser.")
-        if not logins:
-            print(f"Token of the designer (paste it into the page): {setup.tokens['designer']}")
-        print("The users of this start, each with a password for POST /login:")
+        print("Sign in on the page with a name and a password. The users of this start:")
         for key, (name, role, titles) in USERS.items():
             what = f"{role}, {', '.join(titles)}" if titles else role
             print(f"    {name:<5} {setup.passwords[key]}   ({what})")

@@ -49,18 +49,18 @@ python -m flowstat.serve --db flowstat.db --data forms/ --target results.db
 ```
 
 The editor is a page of the same server. Fetch it once (about 15 MB, from the npm registry, with its
-checksums checked), then open `http://127.0.0.1:8000/ui/` and paste the token of a designer or an
-admin (`flowstat user add dina --role designer`):
+checksums checked), then open `http://127.0.0.1:8000/ui/` and sign in with a name and a password
+(`flowstat user add dina --role designer --password`):
 
 ```bash
 python scripts/fetch_ui.py
 ```
 
-The page has three views. Editor: the text with live diagnostics, completion and the graph. Runs: the runs of the core and the runs that deployed services have shipped to it (`GET /runs?deployment=<id>`). Services: what is deployed, which version, where, its status, how many runs it has shipped and when it last sent something; a click shows its runs. A deployed service sends the history of its runs to the core by itself, with a key of its own; `python -m flowstat.serve` tells services where the core is (`--ingest-url`, by default its own address).
+The page opens with a sign-in screen (a name and a password; an API token is the other way in). After it come a home page (what the system does, how many workflows, runs and services there are, the approvals that wait) and the views below. Each has its own address (`#/home`, `#/editor/<workflow>`, `#/runs/<run>`, `#/services`, `#/migration`, `#/statistics`), so the back and forward buttons, a reload and a link work, and the menu shows only what the role may use. Editor: the text with live diagnostics, completion and the graph. Runs: the runs of the core and the runs that deployed services have shipped to it (`GET /runs?deployment=<id>`). Services: what is deployed, which version, where, its status, how many runs it has shipped and when it last sent something; a click shows its runs. A deployed service sends the history of its runs to the core by itself, with a key of its own; `python -m flowstat.serve` tells services where the core is (`--ingest-url`, by default its own address).
 
 Without that step the page still works, in a plain text area (no completion, and the graph is a list of layers). In the editor, type `${` inside a value to get the inputs and the outputs that are available at that step; the button "Show graph" draws the workflow.
 
-The whole story can be shown on the page: the button "Example" puts the quarterly consolidation in the editor; Save draft and Publish; "Run" starts a run of the published version (it proposes the inputs the text declares); the Runs view shows the run stopping at the approval, with the graph of the run coloured by the state of each step; "Approve" or "Reject" answers it, with the token of the chief statistician (a designer is refused, and the page says why). The synthetic forms of the quarter 2025Q1 that the run reads are made by `python scripts/exercise_setup.py start`. For a demonstration add `--logins`: the page then shows a button for each role (Admin, Designer, Chief statistician, Operator) instead of asking for a token. It works only on `127.0.0.1`, because it hands the tokens of the demonstration users to whoever can reach the page.
+The whole story can be shown on the page: the button "Load example" puts the quarterly consolidation in the editor; Save draft and Publish; "Run" starts a run of the published version (it proposes the inputs the text declares); the Runs view shows the run stopping at the approval, with the graph of the run coloured by the state of each step; "Approve" or "Reject" answers it, when signed in as the chief statistician (a designer is refused, and the page says why). The synthetic forms of the quarter 2025Q1 that the run reads are made by `python scripts/exercise_setup.py start`. For a demonstration add `--logins`: the page then shows a button for each role (Admin, Designer, Chief statistician, Operator) next to the name and password form. It works only on `127.0.0.1`, because it hands the tokens of the demonstration users to whoever can reach the page.
 
 ## Showing the project
 

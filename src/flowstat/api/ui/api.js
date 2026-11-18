@@ -1,5 +1,6 @@
-// Calls to the API of the core. The token is typed by the person and lives in sessionStorage of
-// this tab only: it is not in the address, not in localStorage and not in any file of the page.
+// Calls to the API of the core. The token of a session (or an API token the person pastes) lives in
+// sessionStorage of this tab only: it is not in the address, not in localStorage and not in any
+// file of the page.
 
 const KEY = "flowstat.token";
 
@@ -35,6 +36,14 @@ function token() {
   return session.token || memory;
 }
 
+// Called once when the core refuses a token that the page holds (a session that has ended, a user
+// that was disabled): the page then goes to the sign-in screen.
+let onUnauthorized = null;
+
+export function whenUnauthorized(handler) {
+  onUnauthorized = handler;
+}
+
 export class ApiError extends Error {
   constructor(status, errors) {
     super(errors.map((e) => `${e.code} ${e.message}`).join("; "));
@@ -45,7 +54,8 @@ export class ApiError extends Error {
 
 export async function call(method, path, body) {
   const headers = { Accept: "application/json" };
-  if (token()) headers.Authorization = `Bearer ${token()}`;
+  const held = token();
+  if (held) headers.Authorization = `Bearer ${held}`;
   if (body !== undefined) headers["Content-Type"] = "application/json";
   let response;
   try {
@@ -66,6 +76,7 @@ export async function call(method, path, body) {
   }
   if (!response.ok) {
     const errors = (data && data.errors) || [{ code: "E-HTTP", message: response.statusText }];
+    if (response.status === 401 && held && path !== "/login" && onUnauthorized) onUnauthorized();
     throw new ApiError(response.status, errors);
   }
   return data;

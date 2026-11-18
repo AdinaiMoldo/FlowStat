@@ -22,7 +22,7 @@ from tests.unit.api.helpers import Env, make_env
 
 pytest.importorskip("playwright.sync_api", reason="Playwright is not installed")
 import uvicorn
-from playwright.sync_api import Browser, sync_playwright
+from playwright.sync_api import Browser, Page, sync_playwright
 
 VENDOR = UI_DIR / "vendor" / "VERSIONS.json"
 
@@ -58,6 +58,28 @@ def serving(app: ASGIApp) -> Iterator[str]:
     finally:
         instance.should_exit = True
         thread.join(timeout=10)
+
+
+def use_token(page: Page, token: str, view: str = "editor") -> None:
+    """Sign in with an API token (the form under "Use an API token instead") and open ``view``.
+
+    The sign-in page takes a name and a password; a token is the way in that needs neither, so
+    the tests that are about something else than signing in use it.
+    """
+    if page.is_hidden("#token"):
+        page.click("#token-toggle")
+    page.fill("#token", token)
+    page.click("#sign-in button[type=submit]")
+    page.wait_for_function("document.body.dataset.view !== 'login'")
+    page.evaluate("view => { location.hash = '#/' + view; }", view)
+    page.wait_for_function("view => document.body.dataset.view === view", arg=view)
+
+
+def sign_out(page: Page) -> None:
+    """Sign out; the page is loaded again, so this returns when the new page is ready."""
+    with page.expect_event("load"):
+        page.click("#sign-out")
+    page.wait_for_selector("body[data-ready]")
 
 
 @pytest.fixture(scope="session")

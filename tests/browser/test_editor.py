@@ -7,7 +7,7 @@ import time
 import pytest
 from playwright.sync_api import Browser, Page
 
-from tests.browser.conftest import Server
+from tests.browser.conftest import Server, use_token
 from tests.unit.api.helpers import TOKENS
 
 pytestmark = pytest.mark.browser
@@ -30,8 +30,7 @@ def open_page(browser: Browser, server: Server, role: str, query: str = "") -> P
     page = browser.new_page()
     page.goto(f"{server.url}/ui/{query}")
     page.wait_for_selector("body[data-ready]")
-    page.fill("#token", TOKENS[role])
-    page.click("#sign-in button[type=submit]")
+    use_token(page, TOKENS[role])
     return page
 
 
@@ -147,8 +146,7 @@ def test_the_page_shows_where_to_get_the_editor_when_it_is_missing(
     page.goto(f"{server.url}/ui/")
     page.wait_for_selector("body[data-ready=plain]")
     assert "scripts/fetch_ui.py" in page.inner_text("#notice")
-    page.fill("#token", TOKENS["designer"])
-    page.click("#sign-in button[type=submit]")
+    use_token(page, TOKENS["designer"])
     page.fill("#plain", BAD)
     page.wait_for_selector("[data-testid=problem]", timeout=5000)
     page.close()

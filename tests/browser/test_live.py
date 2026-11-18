@@ -17,7 +17,7 @@ from playwright.sync_api import Browser, Page, Request
 from flowstat.model.events import Event, EventKind
 from flowstat.model.states import RunOutcome
 from flowstat.repo.runs import RunStore
-from tests.browser.conftest import Server
+from tests.browser.conftest import Server, use_token
 from tests.unit.api.helpers import EXAMPLE, NAME, TOKENS, T
 
 pytestmark = pytest.mark.browser
@@ -43,8 +43,7 @@ def open_runs(browser: Browser, server: Server, live: int | None = 200) -> Page:
     query = "?plain" + (f"&live={live}" if live is not None else "")
     page.goto(f"{server.url}/ui/{query}")
     page.wait_for_selector("body[data-ready]")
-    page.fill("#token", TOKENS["operator"])
-    page.click("#sign-in button[type=submit]")
+    use_token(page, TOKENS["operator"])
     page.click("#tab-runs")
     page.wait_for_function("document.getElementById('runs-status').textContent.includes('run(s)')")
     return page
@@ -140,7 +139,8 @@ def test_another_view_asks_nothing_and_coming_back_asks_again(
     browser: Browser, server: Server
 ) -> None:
     page = open_runs(browser, server)
-    page.click("#tab-statistics")
+    page.click("#tab-services")  # the operator has no Statistics; Services does not read the runs
+    page.wait_for_function("document.body.dataset.view === 'services'")
     page.wait_for_timeout(300)
     seen = counted(page)
     page.wait_for_timeout(1200)
@@ -175,22 +175,21 @@ def test_a_refresh_that_fails_keeps_the_table_and_the_next_one_repairs_it(
     page.close()
 
 
-def test_a_page_without_a_token_does_not_ask_again_and_again(
+def test_a_page_without_a_token_does_not_ask_at_all_and_comes_back_after_signing_in(
     browser: Browser, server: Server
 ) -> None:
     page = browser.new_page()
-    page.goto(f"{server.url}/ui/?plain&live=200")
-    page.wait_for_selector("body[data-ready]")
-    page.click("#tab-runs")
-    page.wait_for_function("document.getElementById('runs-status').textContent.includes('sign in')")
-    page.wait_for_timeout(300)
     seen = counted(page)
-    page.wait_for_timeout(1200)
-    assert seen == []  # a 401 stops the refresh until the person signs in
+    page.goto(f"{server.url}/ui/?plain&live=200#/runs")
+    page.wait_for_selector("body[data-ready]")
+    assert page.evaluate("document.body.dataset.view") == "login"  # the guard sent it here
+    page.wait_for_timeout(1500)
+    assert seen == []  # nobody is signed in, so the runs are not asked for
+    page.click("#token-toggle")
     page.fill("#token", TOKENS["operator"])
     page.click("#sign-in button[type=submit]")
-    page.click("#tab-runs")
     page.wait_for_function("document.getElementById('runs-status').textContent.includes('run(s)')")
+    assert page.evaluate("document.body.dataset.view") == "runs"  # the page that was wanted
     page.close()
 
 
@@ -218,8 +217,7 @@ def test_the_services_view_shows_a_service_that_stops_answering_without_a_click(
     page = browser.new_page()
     page.goto(f"{server.url}/ui/?plain&live=200")
     page.wait_for_selector("body[data-ready]")
-    page.fill("#token", TOKENS["operator"])
-    page.click("#sign-in button[type=submit]")
+    use_token(page, TOKENS["operator"])
     page.click("#tab-services")
     row = page.locator("[data-testid=service][data-id=svc-live]")
     row.wait_for(timeout=5000)
@@ -231,7 +229,7 @@ def test_the_services_view_shows_a_service_that_stops_answering_without_a_click(
         timeout=5000,
     )
     seen = counted_deployments(page)
-    page.click("#tab-statistics")  # another view: the services are no longer asked for
+    page.click("#tab-editor")  # another view: the services are no longer asked for
     page.wait_for_timeout(300)
     before = len(seen)
     page.wait_for_timeout(1000)
