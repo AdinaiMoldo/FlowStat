@@ -74,6 +74,17 @@ function mover(run, owners, onMove) {
   return td;
 }
 
+// The state of a page with nothing to list: what is missing, and what to do about it.
+function say(title, text) {
+  const box = $("migration-empty");
+  const strong = document.createElement("strong");
+  strong.textContent = title;
+  const span = document.createElement("span");
+  span.textContent = text;
+  box.replaceChildren(strong, span);
+  box.hidden = false;
+}
+
 export function createMigration() {
   async function owners(name, version) {
     const found = ["core"];
@@ -107,7 +118,8 @@ export function createMigration() {
     try {
       const workflows = await call("GET", "/workflows");
       fill($("migration-workflow"), workflows.map((w) => w.name), (n) => n);
-      status.textContent = workflows.length ? "" : "no workflows yet";
+      status.textContent = "";
+      if (!workflows.length) say("No workflows yet", "Write and publish a workflow in the Editor first.");
       await loadVersions();
     } catch (error) {
       status.textContent = problem(error);
@@ -121,6 +133,15 @@ export function createMigration() {
     const published = versions.filter((v) => v.status === "published").map((v) => v.number);
     fill($("migration-from"), published, (n) => `v${n}`);
     fill($("migration-to"), published, (n) => `v${n}`);
+    $("migration-check").disabled = published.length < 2;
+    if (published.length < 2) {
+      $("migration-rows").replaceChildren();
+      $("migration-table").hidden = true;
+      say("Only one version of this workflow is published", "Publish a newer version, and the unfinished runs of the older one can be moved to it here.");
+    } else {
+      $("migration-table").hidden = true;
+      say("Choose the versions and press Check", "The check lists the unfinished runs of the older version and says which of them can move to the newer one.");
+    }
     if (published.length > 1 && $("migration-from").value === $("migration-to").value) {
       $("migration-to").value = String(published[published.length - 1]);
       $("migration-from").value = String(published[published.length - 2]);
@@ -138,6 +159,12 @@ export function createMigration() {
       const answer = await call("GET", `/workflows/${encodeURIComponent(name)}/migration?${query}`);
       const movable = answer.runs.filter((r) => r.migratable).length;
       status.textContent = `${note ? note + "; " : ""}${answer.runs.length} unfinished run(s), ${movable} can move`;
+      $("migration-table").hidden = answer.runs.length === 0;
+      if (answer.runs.length === 0) {
+        say("No unfinished runs", `No run of ${name} is waiting or running on v${$("migration-from").value}.`);
+      } else {
+        $("migration-empty").hidden = true;
+      }
       for (const r of answer.runs) {
         const tr = document.createElement("tr");
         tr.dataset.testid = "migration-run";

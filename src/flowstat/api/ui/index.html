@@ -170,6 +170,7 @@
         <label class="muted" for="forms-quarter">Quarter</label>
         <input id="forms-quarter" value="2025Q1" size="7" autocomplete="off" spellcheck="false">
         <button type="button" id="forms-refresh">Refresh</button>
+        <button type="button" id="forms-clear" hidden>Remove all</button>
         <span id="forms-count" class="muted" aria-live="polite"></span>
         <span class="spacer"></span>
         <span id="forms-status" class="muted" aria-live="polite"></span>
@@ -187,7 +188,8 @@
         <thead><tr><th>Region</th><th>Form</th><th>Rows</th><th>Size</th><th>Rules</th><th></th></tr></thead>
         <tbody id="forms-rows"></tbody>
       </table>
-      <p class="muted">A form is an Excel file with the columns code, name and value. It is stored where the workflow reads it. A form that breaks a rule (an empty or repeated code, a value that is not a number or is negative) is accepted and shown here; the check step of the run stops at it.</p>
+      <p class="muted">A form is an Excel file with the columns code, name and value. A form that breaks a rule (an empty or repeated code, a value that is not a number or is negative) is accepted and marked here; the check step of the run stops at it.</p>
+      <p id="forms-readonly" class="muted" hidden>Forms are sent by the operators of the regions. This page shows what arrived.</p>
     </section>
   </main>
 
@@ -208,6 +210,7 @@
     <section class="panel">
       <div class="row"><h2 id="run-title">Run</h2><span id="run-summary" class="muted"></span></div>
       <p id="run-empty" class="muted">Choose a run.</p>
+      <div id="run-failure" class="failure" data-testid="failure" hidden></div>
       <div id="run-decision" class="decision" hidden></div>
       <p id="run-note" class="notice" hidden></p>
       <div id="run-graph-pane" class="run-graph" hidden>
@@ -228,11 +231,15 @@
         <button type="button" id="services-refresh">Refresh</button>
         <span id="services-status" class="muted" aria-live="polite"></span>
       </div>
-      <table class="table" aria-label="Services">
+      <div id="services-empty" class="empty" hidden>
+        <strong>No services are connected</strong>
+        <span>A service is a published workflow that runs on its own machine and reports its runs to this core. Once one is deployed, it is listed here with its status and its runs.</span>
+      </div>
+      <table class="table" id="services-table" aria-label="Services" hidden>
         <thead><tr><th>Service</th><th>Workflow</th><th>Kind</th><th>Status</th><th>Endpoint</th><th>Runs</th><th>Last event</th></tr></thead>
         <tbody id="services-rows"></tbody>
       </table>
-      <p class="muted">Click a service to see the runs it has shipped to this core.</p>
+      <p id="services-hint" class="muted" hidden>Click a service to see the runs it has shipped to this core.</p>
     </section>
   </main>
 
@@ -249,11 +256,12 @@
         <button type="button" id="migration-check">Check</button>
         <span id="migration-status" class="muted" aria-live="polite"></span>
       </div>
-      <table class="table" aria-label="Unfinished runs">
+      <div id="migration-empty" class="empty" hidden></div>
+      <table class="table" id="migration-table" aria-label="Unfinished runs" hidden>
         <thead><tr><th>Run</th><th>Owner</th><th>Status</th><th>Verdict</th><th>Reasons</th><th>Steps</th><th>Move</th></tr></thead>
         <tbody id="migration-rows"></tbody>
       </table>
-      <p class="muted">The check reads the history of each run and changes nothing. Moving a run sends it to the version and owner chosen; commands for it go to the new owner from then on.</p>
+      <p class="muted">The check reads the history of each run and changes nothing. A run that is moved goes on under the version and the owner chosen.</p>
     </section>
   </main>
 
@@ -264,11 +272,16 @@
         <button type="button" id="statistics-refresh">Refresh</button>
         <span id="statistics-status" class="muted" aria-live="polite"></span>
       </div>
-      <table class="table" aria-label="Statistics">
+      <div id="statistics-tiles" class="stats" hidden></div>
+      <div id="statistics-empty" class="empty" hidden>
+        <strong>No runs to count yet</strong>
+        <span>Start a run of a published workflow, and its numbers appear here.</span>
+      </div>
+      <table class="table" id="statistics-table" aria-label="Statistics" hidden>
         <thead><tr><th>Workflow</th><th>Runs</th><th>Running</th><th>Finished</th><th>Succeeded</th><th>Goal not reached</th><th>Failed</th><th>Failure rate</th><th>Average duration</th><th>Versions</th></tr></thead>
         <tbody id="statistics-rows"></tbody>
       </table>
-      <p class="muted">Counted from the stored events, including the copy of the services' runs, which may lag. A failure is a run that ended FAILED, COMPENSATED or COMPENSATION_FAILED; a goal that is not reached is a result, not a failure. Only an admin may read this page.</p>
+      <p class="muted">A failure is a run that ended FAILED, COMPENSATED or COMPENSATION_FAILED. A goal that was not reached is a result, not a failure.</p>
     </section>
   </main>
 

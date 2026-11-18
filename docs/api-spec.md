@@ -435,8 +435,10 @@ The service ships its events to the core in order and at least once:
 - **Sign-in buttons for a demonstration (US-45).** `GET /demo/logins` exists only when the core is
   started with `--demo-logins FILE` (the `tokens.json` that `scripts/exercise_setup.py` writes: an
   object `tokens` of name to token). It is public, answers `{"logins": [{"name", "token"}]}` with
-  `Cache-Control: no-store`, and is not in the OpenAPI document. The page asks for it once; a core
-  without the option answers 404 and the page shows no button. Anyone who can reach the port can
+  `Cache-Control: no-store`, and is not in the OpenAPI document. A core that has the option adds
+  `"demo_logins": "yes"` to the answer of `GET /health`; the page asks for the buttons only then, so
+  a core without the option is never asked for a route that is not there (that would be an error in the
+  console of the browser), and the page shows no button. Anyone who can reach the port can
   read the tokens, so the executable refuses the option unless `--host` is `127.0.0.1`, `localhost`
   or `::1`, and refuses a file without a `tokens` object. Without the option nothing changes.
 

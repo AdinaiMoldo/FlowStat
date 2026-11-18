@@ -150,6 +150,7 @@ def test_without_the_option_the_core_has_no_route_that_gives_tokens(tmp_path: Pa
 
     [app] = _serve_with(tmp_path)
     assert TestClient(app).get("/demo/logins").status_code == 404
+    assert TestClient(app).get("/health").json() == {"status": "ok"}  # so the page asks no more
 
 
 def test_with_the_option_the_page_can_ask_for_the_logins_of_the_demonstration(
@@ -168,6 +169,8 @@ def test_with_the_option_the_page_can_ask_for_the_logins_of_the_demonstration(
         ]
     }
     assert "/demo/logins" not in TestClient(app).get("/openapi.json").text  # not advertised
+    # the page learns from /health that the route is there, so it never asks for a missing one
+    assert TestClient(app).get("/health").json() == {"status": "ok", "demo_logins": "yes"}
 
 
 @pytest.mark.parametrize("host", ["0.0.0.0", "192.168.1.5", "example.org"])

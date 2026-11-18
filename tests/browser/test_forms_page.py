@@ -3,40 +3,15 @@ rules they break, and the run that follows reads exactly what was sent."""
 
 from __future__ import annotations
 
-import importlib
-import sys
-from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 from playwright.sync_api import Browser, Page
 
-from tests.browser.conftest import Server, serving, use_token
-from tests.unit.api.helpers import EXAMPLE, NAME, TOKENS, make_env
+from tests.browser.conftest import Server, use_token
+from tests.unit.api.helpers import EXAMPLE, NAME, TOKENS
 
 pytestmark = pytest.mark.browser
-
-ROOT = Path(__file__).resolve().parents[2]
-
-
-@pytest.fixture(scope="module")
-def sets(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Path]:
-    sys.path.insert(0, str(ROOT / "scripts"))
-    try:
-        make_forms = importlib.import_module("make_forms")
-    finally:
-        sys.path.remove(str(ROOT / "scripts"))
-    out = tmp_path_factory.mktemp("sample-forms")
-    make_forms.write_sets(out)
-    return {name: out / name for name in ("good", "six-regions", "with-a-mistake")}
-
-
-@pytest.fixture
-def forms_server(tmp_path: Path) -> Iterator[Server]:
-    """A core of its own for each test: what one test sends must not be there for the next."""
-    env = make_env(tmp_path)
-    with serving(env.client.app) as url:
-        yield Server(env, url)
 
 
 def open_forms(browser: Browser, server: Server, role: str = "operator") -> Page:
@@ -112,7 +87,7 @@ def test_a_form_with_a_mistake_is_accepted_and_shown_with_its_rule(
     assert "breaks the rules" in row.inner_text()
     assert "value is negative" in row.locator("[data-testid=rules]").inner_text()
     assert page.locator("[data-testid=rules] .badge.bad").count() == 1
-    assert "break the rules" in page.inner_text("#forms-note")
+    assert "BAT breaks the rules" in page.inner_text("#forms-note")
     page.close()
 
 
