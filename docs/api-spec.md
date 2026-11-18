@@ -80,6 +80,8 @@ walks the routes. `public` is the exception, for `GET /health` and `POST /login`
 | `deployments:write` | `POST /deployments`, `DELETE /deployments/{id}` | yes | no | no |
 | `runs:migrate` | `POST /runs/{id}/migrate`, `POST /migrations/recover` | yes | no | yes |
 | `statistics:read` | `GET /statistics` | yes | no | no |
+| `forms:read` | `GET /forms` | yes | yes | yes |
+| `forms:write` | `PUT /forms/{region}/{quarter}`, `DELETE /forms/{region}/{quarter}` | yes | no | yes |
 | `handover:control` | `/migration/{run_id}/...` and `/keys...` of a deployed service | yes | no | no |
 | `events:ingest` | `POST /deployments/{id}/events` (the ingest key of that deployment, section 9) | no | no | no |
 
@@ -111,6 +113,8 @@ also this body, code `E-API-001`, status 422; FastAPI's own format is replaced.
 | 422 | `E-INPUT-001`..`008` | invalid run inputs, one error per input (the codes of `compiler/inputs.py`) |
 | 422 | `E-API-004` | the text has errors and cannot be published; `errors` holds the diagnostics |
 | 422 | `E-API-005` | the decision is not one the step declares |
+| 422 | `E-FORM-001` | the quarter is not like `2025Q1`, or the file is not a readable form (not an xlsx, or the first row is not `code, name, value`) |
+| 413 | `E-FORM-002` | the form has more than 2,000,000 bytes |
 | 405 | `E-API-006` | the route exists, the method does not |
 | 500 | `E-API-500` | an unexpected failure; the message is generic and the detail is in the server log |
 
@@ -541,3 +545,31 @@ result and is counted apart (DR-02); a `CANCELLED` run is finished, counts in `c
 `running` is every run that has not finished (created, running or waiting). `failure_rate` is `failed / finished` (null when nothing has
 finished), `average_duration` the mean of `RUN_FINISHED.at - RUN_STARTED.at` over finished runs in
 the unit of the engine's clock (seconds), null when nothing has finished.
+
+## 11. The regional forms (US-49)
+
+The workflow of the quarterly consolidation reads one Excel form for each region from the data
+directory of the core, `<data>/<region code>/<quarter>.xlsx` (`xlsx.read`). These routes put the
+forms there, so that a person can do it from the page and nobody needs a shell on the machine.
+
+- `PUT /forms/{region}/{quarter}` (`forms:write`: admin, operator). The body is the file itself
+  (`application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`), at most 2,000,000 bytes
+  (413 `E-FORM-002`; the announced length and the length that arrives are both checked). `region`
+  must be a code of the catalogue list `regions` and safe to use as a folder name (letters, digits,
+  `_` and `-`), otherwise 404 `E-API-002`; a code is never used as a path before this check, so
+  `..` and slashes reach nothing. `quarter` must look like `2025Q1` (422 `E-FORM-001`). The file
+  must be a readable xlsx with the first row `code, name, value` (422 `E-FORM-001`, and the message
+  says which); it is written beside its place and moved there only after it was read, so a file
+  that is not a form never replaces a good one. A second form for the same region and quarter
+  replaces the first. Answer: `{region, name, quarter, received, rows, size, problems}`.
+- A form that reads but breaks the statistical rules of `statguard.validate` (empty or repeated
+  code, a value that is not a number, a negative value) is **accepted**, and the reasons are in
+  `problems` (the first 5, then "and N more"). It is not refused because the check of the rules is a
+  step of the workflow, and what a run does with a bad form is what a demonstration wants to show.
+- `GET /forms?quarter=2025Q1` (`forms:read`) lists the regions of the catalogue in its order, each
+  with `received` and, when received, `rows`, `size` and `problems` (or the reason the file cannot be
+  read, when it was put there by hand). It reads the files, so it shows what a run would read.
+- `DELETE /forms/{region}/{quarter}` (`forms:write`) removes a form: 204, or 404 when there is none.
+- Not done: the form is not signed or versioned, and the route keeps no record of who sent it. A
+  region that sends twice overwrites its first form; the history of what a run read is in its
+  events (`xlsx.read` output), not in the directory.

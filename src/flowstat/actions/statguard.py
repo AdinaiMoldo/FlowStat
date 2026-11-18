@@ -7,7 +7,8 @@ from flowstat.actions.base import ActionContext, ActionError, Args
 SHOWN = 3  # violations quoted in the message; the count tells how many there are
 
 
-def _problems(rows: list[object]) -> list[str]:
+def violations(rows: list[object]) -> list[str]:
+    """The rules the rows of a form break, one sentence for each; empty when the form is fine."""
     if not rows:
         return ["the form has no rows"]
     found: list[str] = []
@@ -34,7 +35,7 @@ def _problems(rows: list[object]) -> list[str]:
 def validate(args: Args, ctx: ActionContext) -> dict[str, object]:
     rows = args["rows"]
     assert isinstance(rows, list)
-    found = _problems(rows)
+    found = violations(rows)
     if found:
         more = f" (and {len(found) - SHOWN} more)" if len(found) > SHOWN else ""
         raise ActionError(

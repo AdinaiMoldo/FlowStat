@@ -15,6 +15,7 @@ from flowstat.api import (
     deployments,
     errors,
     expiring,
+    forms,
     migrations,
     resuming,
     runs,
@@ -46,6 +47,7 @@ def create_app(config: AppConfig) -> FastAPI:
     app.include_router(deployments.router)
     app.include_router(migrations.router)
     app.include_router(statistics.router)
+    app.include_router(forms.router)
     if config.demo_logins is not None:  # only a demonstration has this route
         app.include_router(demo.router)
     ui.mount(app)
