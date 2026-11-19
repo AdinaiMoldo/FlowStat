@@ -347,7 +347,7 @@ def _user_add(args: argparse.Namespace) -> int:
     token = _new_token()
     try:
         password = _ask_password() if args.password else None
-        user = users.add(args.name, args.role, args.title, token, _now())
+        user = users.add(args.name, args.role, args.title, token, _now(), args.region)
         if password is not None:
             _set_password(users, args.name, password)
     except UserExistsError:
@@ -355,7 +355,8 @@ def _user_add(args: argparse.Namespace) -> int:
     except ValueError as error:
         return _err(str(error))
     titles = f" (titles: {', '.join(sorted(user.titles))})" if user.titles else ""
-    print(f"user {user.name}, role {user.role}{titles}")
+    offices = f" (regions: {', '.join(sorted(user.regions))})" if user.regions else ""
+    print(f"user {user.name}, role {user.role}{titles}{offices}")
     print(f"token: {token}")
     print("Keep the token now: only its hash is stored, and it is not shown again.")
     return EXIT_OK
@@ -386,7 +387,8 @@ def _user_list(args: argparse.Namespace) -> int:
     for user in UserService(open_database(args.db)).all():
         titles = ",".join(sorted(user.titles)) or "-"
         state = "disabled" if user.disabled else "active"
-        print(f"{user.name}  {user.role}  {titles}  {state}")
+        offices = ",".join(sorted(user.regions)) or "-"
+        print(f"{user.name}  {user.role}  {titles}  {offices}  {state}")
     return EXIT_OK
 
 
@@ -462,6 +464,12 @@ def _parser() -> argparse.ArgumentParser:
     add.add_argument("--role", required=True, choices=list(ROLES))
     add.add_argument(
         "--title", action="append", default=[], help="a title, e.g. chief_statistician"
+    )
+    add.add_argument(
+        "--region",
+        action="append",
+        default=[],
+        help="bind an operator to a regional office (its code, e.g. OSH); may be repeated",
     )
     add.add_argument(
         "--password",

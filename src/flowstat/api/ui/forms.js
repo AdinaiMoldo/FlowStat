@@ -9,6 +9,7 @@ const QUARTER = /^20[0-9]{2}Q[1-4]$/;
 function problem(error) {
   if (error instanceof ApiError) {
     if (error.status === 401) return "your session has ended: sign in again";
+    if (error.status === 403 && error.message.includes("E-AUTH-005")) return error.message.replace(/^E-[A-Z]+-\d+ /, "");
     if (error.status === 403) return "you may not send forms (an operator or an admin may)";
     if (error.status === 0) return "the server cannot be reached";
     return error.message.replace(/^E-[A-Z]+-\d+ /, "");
@@ -55,7 +56,7 @@ function names(list) {
 }
 
 export function createForms() {
-  const state = { forms: [], canWrite: false, quarter: "2025Q1", open: new Set() };
+  const state = { forms: [], canWrite: false, offices: [], quarter: "2025Q1", open: new Set() };
 
   const quarter = () => $("forms-quarter").value.trim().toUpperCase();
 
@@ -133,7 +134,15 @@ export function createForms() {
       if (list.children.length) rules.append(list);
     }
     const actions = cell("");
-    if (state.canWrite) {
+    // An operator of regional offices changes only their forms (the server refuses the others).
+    const mine = state.offices.length === 0 || state.offices.includes(form.region);
+    if (state.canWrite && !mine) {
+      const note = document.createElement("span");
+      note.className = "muted";
+      note.textContent = "another office";
+      actions.append(note);
+    }
+    if (state.canWrite && mine) {
       const choose = document.createElement("label");
       choose.className = "button small";
       choose.textContent = form.received ? "Replace" : "Choose file";
@@ -225,6 +234,7 @@ export function createForms() {
 
   async function load(user) {
     state.canWrite = user.permissions.includes("forms:write");
+    state.offices = user.regions || [];
     $("forms-send").hidden = !state.canWrite;
     $("forms-readonly").hidden = state.canWrite;
     state.quarter = quarter() || state.quarter;

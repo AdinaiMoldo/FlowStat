@@ -284,3 +284,41 @@ def test_a_region_that_sends_again_has_a_history_and_the_page_says_what_was_fixe
     bat.locator("[data-testid=history-toggle]").click()  # closes it again
     assert page.locator("[data-testid=history]").count() == 0
     page.close()
+
+
+def test_an_operator_of_one_office_is_offered_only_the_form_of_that_office(
+    browser: Browser, forms_server: Server, sets: dict[str, Path]
+) -> None:
+    """US-64: Choose and Remove are there for OSH only; the other rows say whose they are."""
+    from flowstat.repo.db import open_database
+    from flowstat.service.users import UserService
+    from tests.unit.api.helpers import T
+
+    token = "e5" * 32
+    db = open_database(forms_server.env.config.db_path)
+    UserService(db).add("aibek", "operator", set(), token, T, regions={"OSH"})
+    db.close()
+    first = open_forms(browser, forms_server, "admin")
+    first.set_input_files("#forms-files", files(sets["good"]))
+    first.wait_for_function(
+        "document.getElementById('forms-count').textContent.startsWith('9 of 9')"
+    )
+    first.close()
+    page = browser.new_page()
+    page.goto(f"{forms_server.url}/ui/?plain")
+    page.wait_for_selector("body[data-ready]")
+    use_token(page, token, "forms")
+    page.wait_for_selector("[data-testid=form]")
+    mine = page.locator("[data-testid=form][data-region=OSH]")
+    other = page.locator("[data-testid=form][data-region=BIS]")
+    assert mine.locator("input[type=file]").count() == 1
+    assert mine.get_by_role("button", name="Remove").count() == 1
+    assert other.locator("input[type=file]").count() == 0
+    assert other.get_by_role("button", name="Remove").count() == 0
+    assert "another office" in other.inner_text()
+    mine.get_by_role("button", name="Remove").click()
+    page.wait_for_function(
+        "document.getElementById('forms-count').textContent.startsWith('8 of 9')"
+    )
+    assert "OSH" not in received(page) and "BIS" in received(page)
+    page.close()

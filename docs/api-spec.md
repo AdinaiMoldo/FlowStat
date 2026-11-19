@@ -24,7 +24,7 @@ answer an approval step (section 5).
 `Authorization: Bearer <token>` on every request except `GET /health` and `POST /login`.
 
 - A token is 32 random bytes, hex-encoded, made once by `flowstat user add NAME --role ROLE
-  [--title T ...]` and printed once. The database keeps only its SHA-256, so a stolen database does
+  [--title T ...] [--region CODE ...]` and printed once. The database keeps only its SHA-256, so a stolen database does
   not give the tokens. A token is looked up by its hash, so there is no comparison of secrets whose
   time could leak. The random bytes come from the command line
   (the edge); no lower layer reads a source of randomness.
@@ -38,7 +38,12 @@ answer an approval step (section 5).
   at once on `POST /logout`, when the user is disabled, and when it expires. A person has any number
   of sessions at the same time. The session token is made by the edge like the other tokens and only
   its SHA-256 is stored (table `sessions`). `GET /me` says who is signed in (`name`, `role`,
-  `titles`, and the `permissions` of the role, so that a page shows only what works).
+  `titles`, `regions`, and the `permissions` of the role, so that a page shows only what works).
+- An operator can be bound to regional offices (`--region`, the codes of the catalogue list
+  `regions`; US-64). Such an operator sends and removes only the forms of his offices and assigns
+  or comments only their problems; for another office the reply is 403 `E-AUTH-005` and nothing
+  changes. Reading is not limited. An admin, and an operator bound to no office (the central
+  office), are not limited. Only an operator can be bound.
 - The password is stored as a salted scrypt hash (`scrypt$N$r$p$salt$hash`, N = 16384, r = 8,
   p = 1, a salt of 16 random bytes made by the edge); the parameters are stored with each hash so
   they can be raised later. It has 10 to 128 characters. It is set by the administrator of the
@@ -110,6 +115,7 @@ also this body, code `E-API-001`, status 422; FastAPI's own format is replaced.
 | 401 | `E-AUTH-001` | no, unknown or disabled token |
 | 401 | `E-AUTH-004` | the name or the password of the sign-in is wrong (the same for every reason) |
 | 403 | `E-AUTH-002` | the role lacks the permission, or the title for the approval is missing |
+| 403 | `E-AUTH-005` | the form or the problem belongs to the office of another region (US-64) |
 | 429 | `E-AUTH-003` | too many failed sign-ins for this name; wait a minute |
 | 404 | `E-API-002` | workflow, version, run or deployment not found |
 | 409 | `E-API-003` | the version is a draft (not published); the run is being driven right now; the step is not waiting; the deployment is not running |

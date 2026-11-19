@@ -223,7 +223,7 @@ def test_user_disable_and_list(tmp_path: Path, capsys: pytest.CaptureFixture[str
     assert main(["user", "disable", "nobody", "--db", db]) == 2
     capsys.readouterr()
     assert main(["user", "list", "--db", db]) == 0
-    assert capsys.readouterr().out.split() == ["ada", "admin", "-", "disabled"]
+    assert capsys.readouterr().out.split() == ["ada", "admin", "-", "-", "disabled"]
 
 
 def test_a_decision_the_step_does_not_declare_is_refused_on_run_and_resume(
@@ -281,3 +281,17 @@ def test_a_password_that_is_too_short_or_a_user_that_is_not_there_is_refused(
     monkeypatch.setattr("sys.stdin", io.StringIO("a long enough password\n"))
     assert main(["user", "passwd", "ghost", "--db", db]) != 0
     assert "no user 'ghost'" in capsys.readouterr().err
+
+
+def test_user_add_binds_an_operator_to_regional_offices_and_the_list_shows_them(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    db = str(tmp_path / "flowstat.db")
+    code = main(["user", "add", "aibek", "--role", "operator", "--region", "OSH",
+                 "--region", "OSC", "--db", db])  # fmt: skip
+    out = capsys.readouterr().out
+    assert code == 0 and "regions: OSC, OSH" in out
+    assert main(["user", "add", "dina", "--role", "designer", "--region", "OSH", "--db", db]) == 2
+    assert "only an operator" in capsys.readouterr().err
+    assert main(["user", "list", "--db", db]) == 0
+    assert "aibek  operator  -  OSC,OSH  active" in capsys.readouterr().out

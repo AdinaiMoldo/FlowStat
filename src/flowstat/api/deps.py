@@ -12,7 +12,7 @@ from flowstat.api.errors import ApiError, ErrorItem, fail
 from flowstat.repo.db import connect
 from flowstat.repo.users import User
 from flowstat.service.ingest import IngestService, UnknownKeyError, WrongDeploymentError
-from flowstat.service.permissions import allowed
+from flowstat.service.permissions import allowed, office_allows
 from flowstat.service.runs import RunService
 from flowstat.service.users import UserService
 from flowstat.service.workflows import WorkflowService
@@ -106,3 +106,17 @@ def require(permission: str) -> Callable[..., object]:
         return user
 
     return check
+
+
+def require_office(request: Request, region: str) -> None:
+    """Refuse (403 E-AUTH-005) a change to what belongs to the office of ``region`` when the user
+    is an operator of other regional offices (US-64). Call it after the permission was checked."""
+    user = request.state.user
+    if not office_allows(user.role, user.regions, region):
+        own = ", ".join(sorted(user.regions))
+        raise fail(
+            403,
+            "E-AUTH-005",
+            f"{region} is the office of another region; you work for {own}",
+            "region",
+        )

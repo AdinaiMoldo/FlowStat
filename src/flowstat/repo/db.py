@@ -338,6 +338,7 @@ _LATER_COLUMNS = [
     ("deployments", "control_key_next", "TEXT"),
     ("deployments", "ingest_key_next_sha256", "TEXT"),
     ("users", "password_hash", "TEXT"),
+    ("users", "regions", "TEXT"),  # US-64: a JSON list; NULL or [] is the central office
 ]
 
 
