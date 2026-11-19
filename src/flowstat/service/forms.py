@@ -72,6 +72,7 @@ class FormService:
         rules_of: Callable[[str], str] | None = None,
         versions: FormVersionRepo | None = None,
         clock: Callable[[], str] | None = None,
+        after_version: Callable[[str, str, int, tuple[Finding, ...], str], None] | None = None,
     ) -> None:
         self.data_dir = data_dir
         self.catalogue = catalogue
@@ -83,6 +84,9 @@ class FormService:
         # file and nothing more, as it was before US-55
         self.versions = versions
         self.clock = clock
+        # told when a new version was kept: region, quarter, its number, its findings and the
+        # sender (the problems of the form are brought up to date there, US-56)
+        self.after_version = after_version
 
     def _unlocked(self, quarter: str) -> None:
         held = None if self.locking is None else self.locking(quarter)
@@ -204,9 +208,11 @@ class FormService:
         # a file that is sent again unchanged is the version it was, not a new one
         new = current is None or current.sha256 != digest
         if self.versions is not None and self.clock is not None and new:
-            self.versions.add(
+            kept = self.versions.add(
                 region, quarter, digest, len(data), rows, by, self.clock(), used, found, data
             )
+            if self.after_version is not None:
+                self.after_version(region, quarter, kept.number, found, by)
         return self._describe(region, name, quarter)
 
     def remove(self, region: str, quarter: str, by: str = "") -> None:

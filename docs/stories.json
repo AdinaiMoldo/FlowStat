@@ -538,5 +538,14 @@
     "sp": 8,
     "priority": "Must",
     "milestone": "M11"
+  },
+  {
+    "id": "US-56",
+    "story": "As an operator, I see each error of a form I sent as a problem with someone who works on it, so that a mistake is corrected, discussed and checked again instead of lost in a list",
+    "criteria": "Given a new version of a form with errors, when it is kept, then one problem is opened for each mistake (the same code for the same indicator or cell), assigned to the user who sent it, with the cell, the message and the found and expected values, and the history says who and when; warnings open nothing, and the same file sent again changes nothing; a user who may write (admin, operator) gives a problem to a user who exists and is not disabled, or takes it away, and adds a comment of up to 2,000 characters; a resolved problem cannot be assigned but can be commented; every role reads the problems with filters (quarter, region, status, assignee, only those to work on); when a corrected version comes, a problem whose mistake is gone goes to revalidating and then to resolved, a problem whose mistake is still there (also in another cell) goes to revalidating and then to reopened with the new cell, and a resolved problem whose mistake returns is reopened, each change as an event of the system with the number of the version; and the page Problems lists them, shows the history of one, and lets an operator or an administrator comment, assign, and assign to themselves, while a designer only reads",
+    "function": "B2",
+    "sp": 8,
+    "priority": "Must",
+    "milestone": "M11"
   }
 ]

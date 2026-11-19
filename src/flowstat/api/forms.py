@@ -35,6 +35,7 @@ from flowstat.service.forms import (
     FormRefused,
     FormService,
 )
+from flowstat.service.problems import ProblemService
 
 router = SecuredRouter(tags=["forms"])
 
@@ -61,6 +62,7 @@ def service_of(request: Request, db: sqlite3.Connection) -> FormService:
         rules_of,
         FormVersionRepo(db),
         config_of(request).clock,
+        ProblemService(db, config_of(request).new_id, config_of(request).clock).on_version,
     )
 
 

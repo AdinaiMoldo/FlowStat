@@ -616,3 +616,17 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Chose: removing a form keeps the history and says who removed it and when; there is no route to delete a version, because the audit trail (US-62) should not have one either.
 - Found: no existing test compared a whole `FormOut`, except one; the new fields are additions and the golden file only grew (599 lines added).
 - Not done: giving out the content of an old version, making an old version current again, a limit on how many versions are kept, and a lock that reads whether a campaign was ever approved (see US-54). The state of a region in a campaign (late, corrected) comes with US-56.
+
+## 2026-11-19 M11: US-56, problems and corrections
+
+- Why: US-54 and US-55 tell a region what is wrong and whether the second form fixed it, but nobody owns a mistake. A list of errors is read once and forgotten; a problem has someone who works on it, a talk and an end.
+- Did: `model/problems.py` (pure; the statuses, `reconcile` that decides what a new version does to the problems of the form), the tables `problems` (one for each region, quarter and mistake) and `problem_events` (append only, by triggers), `service/problems.py`, four routes (`GET /problems`, `GET /problems/{id}`, `POST .../assignee`, `POST .../comments`), the permissions `problems:read` and `problems:write`, the page Problems, and a demonstration with one resolved and one open problem.
+- Chose: the problems are brought up to date inside the same request that keeps the version (`FormService.after_version`), not by a later job, so a form and its problems are seen in the same state after the reply. The call is made after the version is stored, and the version is the truth; the writes of the problems are not one transaction with it, so a crash between them leaves the problems to the next version, which compares with what is stored.
+- Chose: one problem for one mistake, matched like the comparison of versions (the code and the indicator, or the cell when there is no indicator). A mistake that moves to another cell is the same problem, and a wrong value moved from C5 to C6 does not close it.
+- Chose: the default assignee is the sender of the version. The one who made the file is the one who knows the figure; the chief statistician can give it to someone else.
+- Chose: REVALIDATING is written as an event and not left as a state that waits: the new version is already checked when the problems are compared, so the status passes through it in one step. The page and the history still show it, so the path is the one the story asks for.
+- Chose: only users that exist and are not disabled can be assigned (E-PROB-002), and a resolved problem cannot be assigned (E-PROB-003) but can be commented, so a closing remark does not need a new problem.
+- Chose: the history has no route and no trigger that lets it change, as with the versions; the audit trail of US-62 will read it.
+- Found: the first version of the seed sent every form of the quarter without a mistake in JAL, so the campaign showed nine valid forms and the page Problems would have had only a resolved one. One form of JAL now keeps a mistake (households above the population): the campaign has eight valid and one with an error, which is what a real quarter looks like.
+- Not done: notifying the assignee (US-61), a deadline for a problem, grouping problems of one form, closing a problem by hand without a new version, and a limit for the number of comments.
+

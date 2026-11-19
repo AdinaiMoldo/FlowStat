@@ -250,3 +250,10 @@ tr.failed td { background: #fef3f2; }
 .actions { margin-top: 6px; }
 .reasons li[data-severity="warning"], .reasons li[data-severity="info"] { color: var(--muted); }
 .reasons .code { font-size: 11px; font-family: ui-monospace, monospace; }
+
+/* Problems of the forms (US-56) */
+.history { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 6px; }
+.history li { padding-left: 10px; border-left: 3px solid #c9d0de; }
+label.inline { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+#problem-write { display: grid; gap: 10px; }
+#problem-write textarea { width: 100%; box-sizing: border-box; resize: vertical; }

@@ -115,16 +115,31 @@ def open_client(work: Path, db: str, now: datetime, timeline: Timeline | None = 
     return client
 
 
+# the region whose form of the quarter keeps a mistake: one problem stays open in the demonstration
+RELATION_IN = "JAL"
+
+
 def bearer(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
 def send_form(
-    client: TestClient, token: str, region: str, quarter: str, work: Path, mistake: bool
+    client: TestClient,
+    token: str,
+    region: str,
+    quarter: str,
+    work: Path,
+    mistake: bool,
+    households_too_many: bool = False,
 ) -> None:
     """One form of a region sent through the API, as an operator does on the page."""
     path = work / "send.xlsx"
-    make_forms.write_form(path, make_forms.rows_of(region, mistake=mistake))
+    rows = make_forms.rows_of(region, mistake=mistake)
+    if (
+        households_too_many
+    ):  # more households than people: a mistake of the relation, not of a range
+        rows[1] = (rows[1][0], rows[1][1], rows[0][2] * 10)
+    make_forms.write_form(path, rows)
     reply = client.put(
         f"/forms/{region}/{quarter}",
         content=path.read_bytes(),
@@ -267,9 +282,15 @@ def seed(work: Path, db: str, tokens: dict[str, str], now: datetime) -> dict[str
         line.set(now - timedelta(hours=3))
         for region in make_forms.REGIONS:
             mistaken = region == make_forms.MISTAKE_IN
-            send_form(client, tokens["operator"], region, "2024Q4", work, mistake=mistaken)
+            send_form(
+                client, tokens["operator"], region, "2024Q4", work, mistake=mistaken,
+                households_too_many=region == RELATION_IN,
+            )  # fmt: skip
         line.set(now - timedelta(hours=2))
         send_form(client, tokens["operator2"], make_forms.MISTAKE_IN, "2024Q4", work, mistake=False)
+        # the error of BAT became a problem when its first form came, and its second form resolved
+        # it; the error of JAL was never corrected, so one problem is still open and the campaign
+        # has eight valid forms and one with an error
         line.set(now)
     finally:
         client.close()

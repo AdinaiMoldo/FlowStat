@@ -601,3 +601,45 @@ class CampaignOut(BaseModel):
     created_at: str
     updated_at: str
     progress: ProgressOut
+
+
+class ProblemOut(BaseModel):
+    id: str
+    region: str
+    quarter: str
+    code: str  # the code of the error that opened it, VAL-<group>-<number>
+    indicator: str
+    cell: str  # where the error was last seen
+    message: str
+    actual: str
+    expected: str
+    status: str  # OPEN, REVALIDATING, RESOLVED or REOPENED
+    assignee: str | None
+    opened_in: int  # the version of the form in which the error was first seen
+    seen_in: int  # the latest version in which it was seen
+    created_at: str
+    updated_at: str
+
+
+class ProblemEventOut(BaseModel):
+    at: str
+    by: str  # a user, or ``system`` for what a new version of the form did
+    kind: str  # OPENED, ASSIGNED, COMMENTED, REVALIDATING, RESOLVED or REOPENED
+    text: str
+    version: int | None
+
+
+class ProblemDetailOut(ProblemOut):
+    events: list[ProblemEventOut]  # the history, the oldest first
+
+
+class ProblemsOut(BaseModel):
+    problems: list[ProblemOut]
+
+
+class AssigneeIn(Request):
+    assignee: str | None  # a user name, or null to take the assignment away
+
+
+class CommentIn(Request):
+    text: str

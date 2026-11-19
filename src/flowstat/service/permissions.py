@@ -22,6 +22,8 @@ PERMISSIONS: dict[str, frozenset[str]] = {
     "forms:write": frozenset({"admin", "operator"}),
     "campaigns:read": frozenset({"admin", "designer", "operator"}),
     "campaigns:write": frozenset({"admin"}),
+    "problems:read": frozenset({"admin", "designer", "operator"}),
+    "problems:write": frozenset({"admin", "operator"}),
     "handover:control": frozenset({"admin"}),
     # Held by no role: it belongs to the ingest key of one deployment (api/deps.py).
     "events:ingest": frozenset(),

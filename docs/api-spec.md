@@ -84,6 +84,8 @@ walks the routes. `public` is the exception, for `GET /health` and `POST /login`
 | `forms:write` | `PUT /forms/{region}/{quarter}`, `DELETE /forms/{region}/{quarter}` | yes | no | yes |
 | `campaigns:read` | `GET /campaigns`, `GET /campaigns/{id}` | yes | yes | yes |
 | `campaigns:write` | `POST /campaigns`, `PUT /campaigns/{id}`, `POST /campaigns/{id}/transitions` | yes | no | no |
+| `problems:read` | `GET /problems`, `GET /problems/{id}` | yes | yes | yes |
+| `problems:write` | `POST /problems/{id}/assignee`, `POST /problems/{id}/comments` | yes | no | yes |
 | `handover:control` | `/migration/{run_id}/...` and `/keys...` of a deployed service | yes | no | no |
 | `events:ingest` | `POST /deployments/{id}/events` (the ingest key of that deployment, section 9) | no | no | no |
 
@@ -667,3 +669,34 @@ needed. `ARCHIVED` has no way out, and nothing goes back to `DRAFT`.
 Forms and campaigns. When a campaign of a quarter is `APPROVED`, `FINALIZED` or `ARCHIVED`, a form
 of that quarter cannot be replaced or removed: `PUT` and `DELETE` of section 11 answer 409
 `E-CAMP-006`, and reading is free. A quarter that has no campaign is as free as before.
+
+## 13. Problems of the forms (US-56)
+
+Every error that a new version of a form carries (section 11) becomes a problem: one problem for
+one mistake of one form, where the same mistake is the same `code` with the same indicator (or the
+same cell). Warnings open nothing. The problem is given to the user who sent the version, and the
+system keeps its history from then on. A version that is byte for byte the current file is not a
+new version and changes nothing.
+
+- `GET /problems` (`problems:read`: every role) answers `{problems: [...]}`, the oldest first, and
+  takes the filters `quarter`, `region`, `status`, `assignee` and `active=true` (the problems that
+  still need work: `OPEN`, `REVALIDATING` and `REOPENED`). A problem has `id`, `region`, `quarter`,
+  `code`, `indicator`, `cell` (where the error was seen last), `message`, `actual`, `expected`,
+  `status`, `assignee`, `opened_in` and `seen_in` (versions of the form), `created_at` and
+  `updated_at`.
+- `GET /problems/{id}` answers the same fields and `events`, the history, the oldest first: `at`,
+  `by` (a user, or `system`), `kind` (`OPENED`, `ASSIGNED`, `COMMENTED`, `REVALIDATING`,
+  `RESOLVED`, `REOPENED`), `text` and `version`. 404 `E-API-002` when there is no such problem.
+- `POST /problems/{id}/assignee` (`problems:write`: admin and operator) with `{"assignee": "<user>"}`
+  gives the problem to a user, or with `null` takes the assignment away; 200 with the detail. 422
+  `E-PROB-002` (field `assignee`) when the user is unknown or disabled, 409 `E-PROB-003` when the
+  problem is `RESOLVED`.
+- `POST /problems/{id}/comments` (`problems:write`) with `{"text": "..."}` adds a comment (at most
+  2,000 characters after trimming) to the history: 201 with the detail, 422 `E-PROB-001` (field
+  `text`) when it is empty or too long. A resolved problem may still be commented.
+
+The life cycle. A new version of the form is compared with the problems of that form: a problem
+whose mistake is gone goes `REVALIDATING` and then `RESOLVED`; a problem whose mistake is still
+there (the cell may have moved) goes `REVALIDATING` and then `REOPENED` and takes the new cell and
+values; a resolved problem whose mistake comes back is `REOPENED`; a mistake that no problem has is
+`OPEN`. Each change is an event by `system` with the number of the version.
