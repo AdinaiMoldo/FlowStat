@@ -158,6 +158,44 @@ CREATE TABLE IF NOT EXISTS form_versions (
     PRIMARY KEY (region, quarter, number)
 );
 
+CREATE TABLE IF NOT EXISTS problems (
+    id          TEXT    PRIMARY KEY,
+    region      TEXT    NOT NULL,
+    quarter     TEXT    NOT NULL,
+    key         TEXT    NOT NULL,
+    code        TEXT    NOT NULL,
+    indicator   TEXT    NOT NULL,
+    cell        TEXT    NOT NULL,
+    message     TEXT    NOT NULL,
+    actual      TEXT    NOT NULL,
+    expected    TEXT    NOT NULL,
+    status      TEXT    NOT NULL,
+    assignee    TEXT,
+    opened_in   INTEGER NOT NULL,
+    seen_in     INTEGER NOT NULL,
+    created_at  TEXT    NOT NULL,
+    updated_at  TEXT    NOT NULL,
+    UNIQUE (region, quarter, key)
+);
+
+CREATE TABLE IF NOT EXISTS problem_events (
+    seq         INTEGER PRIMARY KEY AUTOINCREMENT,
+    problem_id  TEXT    NOT NULL,
+    at          TEXT    NOT NULL,
+    by          TEXT    NOT NULL,
+    kind        TEXT    NOT NULL,
+    text        TEXT    NOT NULL,
+    version     INTEGER
+);
+
+CREATE TRIGGER IF NOT EXISTS problem_events_no_update
+BEFORE UPDATE ON problem_events
+BEGIN SELECT RAISE(ABORT, 'the history of a problem is append-only'); END;
+
+CREATE TRIGGER IF NOT EXISTS problem_events_no_delete
+BEFORE DELETE ON problem_events
+BEGIN SELECT RAISE(ABORT, 'the history of a problem is append-only'); END;
+
 CREATE TABLE IF NOT EXISTS service_settings (
     name  TEXT PRIMARY KEY,
     value TEXT NOT NULL

@@ -25,6 +25,7 @@
     <nav class="menu" aria-label="Pages">
       <a id="tab-home" href="#/home" data-view="home">Home</a>
       <a id="tab-campaigns" href="#/campaigns" data-view="campaigns" data-needs="campaigns:read">Campaigns</a>
+      <a id="tab-problems" href="#/problems" data-view="problems" data-needs="problems:read">Problems</a>
       <a id="tab-editor" href="#/editor" data-view="editor" data-needs="workflows:read">Editor</a>
       <a id="tab-forms" href="#/forms" data-view="forms" data-needs="forms:read">Forms</a>
       <a id="tab-runs" href="#/runs" data-view="runs" data-needs="runs:read">Runs</a>
@@ -102,6 +103,50 @@
         <p id="home-recent-empty" class="muted" hidden>No runs yet.</p>
       </section>
     </div>
+  </main>
+
+  <main class="ops" id="view-problems" hidden>
+    <section class="panel">
+      <div class="row">
+        <h2>Problems</h2>
+        <span class="spacer"></span>
+        <span id="problems-status" class="muted" aria-live="polite"></span>
+        <label class="inline"><input type="checkbox" id="problems-active" checked> Only those to work on</label>
+      </div>
+      <div id="problems-empty" class="empty" hidden>
+        <strong>No problems</strong>
+        <span>An error in a new version of a form opens one.</span>
+      </div>
+      <table class="table" id="problems-table" aria-label="Problems" hidden>
+        <thead><tr><th>Status</th><th>Form</th><th>Error</th><th>Assigned to</th><th>Changed</th></tr></thead>
+        <tbody id="problems-rows"></tbody>
+      </table>
+    </section>
+    <section class="panel" id="problem-detail">
+      <div class="row"><h2 id="problem-title">Problem</h2><span id="problem-state"></span></div>
+      <p id="problem-choose" class="muted">Choose a problem.</p>
+      <div id="problem-body" hidden>
+        <p id="problem-message" data-testid="problem-message"></p>
+        <p id="problem-facts" class="muted"></p>
+        <p>Assigned to: <strong id="problem-assignee" data-testid="problem-assignee"></strong></p>
+        <h3>History</h3>
+        <ol id="problem-events" class="history"></ol>
+        <div id="problem-write" data-needs="problems:write">
+          <form id="problem-assign-form" class="row">
+            <label for="problem-assign-input">Assign to</label>
+            <input id="problem-assign-input" maxlength="80" autocomplete="off" placeholder="user name">
+            <button type="submit" id="problem-assign">Assign</button>
+            <button type="button" id="problem-assign-me">Assign to me</button>
+          </form>
+          <form id="problem-comment-form" class="fields">
+            <label for="problem-comment-text">Comment</label>
+            <textarea id="problem-comment-text" rows="2" maxlength="2000"></textarea>
+            <div class="row"><button type="submit" id="problem-comment" class="primary">Add comment</button></div>
+          </form>
+        </div>
+        <p id="problem-note" class="notice" hidden role="alert"></p>
+      </div>
+    </section>
   </main>
 
   <main class="ops" id="view-campaigns" hidden>

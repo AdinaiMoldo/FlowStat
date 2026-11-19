@@ -12,3 +12,5 @@ Every C function has two levels: a known algorithm with our transformation, and 
 | C5 | Trace conformance | Epoch-fence handover | the conformance verdict |
 | A2 (US-55) | Versions kept with their findings, file hash | One-to-one matching of findings by code and indicator | the findings kept with each version |
 | B1 (US-54) | Exact decimal reading of cells and one pass over the rows | Relations and sums over the figures that no rule refused | the figures kept by the first pass |
+| B2 (US-56) | One pass over the problems of a form, looked up by key | Status path through revalidating, one event for each step | the errors of the new version |
+

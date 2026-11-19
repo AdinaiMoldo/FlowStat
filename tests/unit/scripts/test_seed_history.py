@@ -143,8 +143,9 @@ def test_there_are_two_campaigns_one_validating_and_one_collecting(seeded) -> No
     by_period = {c["period"]: c for c in found}
     assert by_period["2024Q4"]["status"] == "VALIDATING"
     assert by_period["2025Q1"]["status"] == "COLLECTING"
-    # the forms of 2024Q4 were written for its run: all nine are there and valid
-    assert by_period["2024Q4"]["progress"]["valid"] == 9
+    # all nine forms of 2024Q4 are there; the one of JAL keeps an error (an open problem)
+    assert by_period["2024Q4"]["progress"]["valid"] == 8
+    assert by_period["2024Q4"]["progress"]["invalid"] == 1
     # the quarter of the live demonstration has none yet
     assert by_period["2025Q1"]["progress"]["received"] == 0
     # the deadline of the first has passed and the second is ahead, on the clock of the seed
@@ -168,3 +169,21 @@ def test_a_corrected_form_has_two_versions_and_the_first_error_is_gone(seeded) -
     assert [f["code"] for f in got["fixed"]] == ["VAL-RANGE-001"]
     assert got["remaining"] == [] and got["introduced"] == []
     assert all(v["uploaded_at"] < "2026-11-18T15:00:00" for v in kept)  # none in the future
+
+
+def test_the_demonstration_has_a_resolved_problem_and_an_open_one(seeded) -> None:  # type: ignore[no-untyped-def]
+    _, client, tokens = seeded
+    auth = {"Authorization": f"Bearer {tokens['admin']}"}
+    found = client.get("/problems", headers=auth).json()["problems"]
+    assert sorted((p["region"], p["code"], p["status"], p["assignee"]) for p in found) == [
+        ("BAT", "VAL-RANGE-001", "RESOLVED", "atai"),
+        ("JAL", "VAL-REL-001", "OPEN", "atai"),
+    ]
+    bat = next(p for p in found if p["region"] == "BAT")
+    history = client.get(f"/problems/{bat['id']}", headers=auth).json()["events"]
+    assert [(e["kind"], e["by"]) for e in history] == [
+        ("OPENED", "system"),
+        ("REVALIDATING", "system"),
+        ("RESOLVED", "system"),
+    ]
+    assert all(e["at"] < "2026-11-18T15:00:01" for e in history)  # none in the future

@@ -10,6 +10,7 @@ import { createMigration } from "./migration.js";
 import { createOps } from "./ops.js";
 import { href, nextOf, parse } from "./router.js";
 import { createCampaigns } from "./campaigns.js";
+import { createProblems } from "./problems.js";
 import { createStatistics } from "./statistics.js";
 
 const $ = (id) => document.getElementById(id);
@@ -436,6 +437,7 @@ async function loadLogins() {
 const TITLES = {
   home: "Home",
   campaigns: "Campaigns",
+  problems: "Problems",
   editor: "Editor",
   forms: "Forms",
   runs: "Runs",
@@ -504,6 +506,7 @@ async function render() {
   if (view === "home") state.home.load(state.user);
   if (view === "editor") enterEditor(route, same);
   if (view === "campaigns") state.campaigns.load(state.user, route.arg);
+  if (view === "problems") state.problems.load(state.user, route.arg);
   if (view === "forms") state.forms.load(state.user);
   if (view === "migration" && !same) state.migration.load();
   if (view === "statistics" && !same) state.statistics.load();
@@ -530,6 +533,7 @@ async function main() {
   state.home = createHome();
   state.forms = createForms();
   state.campaigns = createCampaigns({ goTo });
+  state.problems = createProblems({ goTo });
   const plain = new URLSearchParams(location.search).has("plain");
   state.editor = await createEditor($("editor"), $("plain"), plain);
   if (state.editor.kind === "plain") {
