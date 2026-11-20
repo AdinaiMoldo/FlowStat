@@ -87,5 +87,6 @@ Recount of 5 November: the baseline of 203 SP stays the zero point of the burndo
 | US-56 | As an operator, I see each error of a form I sent as a problem with someone who works on it, so that a mistake is corrected, discussed and checked again instead of lost in a list | B2 | 8 | Must | M11 | done |
 | US-57 | As a statistician of the committee, I make a preliminary and a final result of a campaign that says which regions are in it and why the others are not, so that an incomplete total is never read as the total of the country | A5 | 13 | Must | M11 | done |
 | US-64 | As an operator of a regional office, I send and remove only the forms of my office, so that one region cannot change or delete the report of another | A3 | 3 | Must | M11 | done |
+| DEF-2 | As a developer, I am told who holds the database when a test dies of `database is locked`, so that the lock that comes now and then on the Ubuntu runner can be explained and not run again until it is green | B2 | 3 | Must | M11 | in progress (the report is there; the cause is not found) |
 
 Acceptance criteria: `stories.md`. The same stories are GitHub issues, grouped by milestone.

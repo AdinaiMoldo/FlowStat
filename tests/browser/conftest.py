@@ -136,3 +136,23 @@ def forms_server(tmp_path: Path) -> Iterator[Server]:
     env = make_env(tmp_path)
     with serving(env.client.app) as url:
         yield Server(env, url)
+
+
+# -- DEF-2: when a test dies of "database is locked", say who holds the database -----------------
+@pytest.fixture(scope="session", autouse=True)
+def watch_connections() -> Iterator[None]:
+    from tests.support import sqlite_watch
+
+    sqlite_watch.install()
+    yield
+    sqlite_watch.uninstall()
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[None]) -> Iterator[None]:
+    outcome = yield
+    report = outcome.get_result()  # type: ignore[attr-defined]
+    if report.failed and "database is locked" in str(report.longrepr):
+        from tests.support import sqlite_watch
+
+        report.sections.append(("who holds the database (DEF-2)", sqlite_watch.report()))
