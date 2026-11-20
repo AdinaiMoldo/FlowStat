@@ -73,6 +73,7 @@ class FormService:
         versions: FormVersionRepo | None = None,
         clock: Callable[[], str] | None = None,
         after_version: Callable[[str, str, int, tuple[Finding, ...], str], None] | None = None,
+        after_remove: Callable[[str, str], None] | None = None,
     ) -> None:
         self.data_dir = data_dir
         self.catalogue = catalogue
@@ -87,6 +88,8 @@ class FormService:
         # told when a new version was kept: region, quarter, its number, its findings and the
         # sender (the problems of the form are brought up to date there, US-56)
         self.after_version = after_version
+        # told when the current form of a region was removed: region, quarter (US-57)
+        self.after_remove = after_remove
 
     def _unlocked(self, quarter: str) -> None:
         held = None if self.locking is None else self.locking(quarter)
@@ -225,6 +228,8 @@ class FormService:
         path.unlink()
         if self.versions is not None and self.clock is not None:
             self.versions.mark_removed(region, quarter, self.clock(), by)
+        if self.after_remove is not None:
+            self.after_remove(region, quarter)
 
     # -- the history (US-55) -----------------------------------------------------------------------
     def history(self, region: str, quarter: str) -> list[FormVersion]:

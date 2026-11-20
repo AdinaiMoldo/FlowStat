@@ -27,6 +27,7 @@ from flowstat.model.rules import Finding
 from flowstat.repo.campaigns import CampaignRepo
 from flowstat.repo.catalogue import CatalogueRepo
 from flowstat.repo.form_versions import FormVersionRepo
+from flowstat.service.consolidations import ConsolidationService
 from flowstat.service.forms import (
     MAX_BYTES,
     FormInfo,
@@ -55,14 +56,25 @@ def service_of(request: Request, db: sqlite3.Connection) -> FormService:
         alive = [c for c in campaigns.of_period(quarter) if c.status != ARCHIVED]
         return alive[0].settings.rules if alive else "basic"
 
+    config = config_of(request)
+    problems = ProblemService(db, config.new_id, config.clock)
+    results = ConsolidationService(db, config.clock)
+
+    def after_version(
+        region: str, quarter: str, number: int, found: tuple[Finding, ...], by: str
+    ) -> None:
+        problems.on_version(region, quarter, number, found, by)
+        results.on_form(region, quarter, f"changed (version {number})")
+
     return FormService(
-        config_of(request).data_dir,
+        config.data_dir,
         CatalogueRepo(db),
         locking,
         rules_of,
         FormVersionRepo(db),
-        config_of(request).clock,
-        ProblemService(db, config_of(request).new_id, config_of(request).clock).on_version,
+        config.clock,
+        after_version,
+        lambda region, quarter: results.on_form(region, quarter, "was removed"),
     )
 
 

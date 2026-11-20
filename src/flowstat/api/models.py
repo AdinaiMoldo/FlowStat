@@ -643,3 +643,58 @@ class AssigneeIn(Request):
 
 class CommentIn(Request):
     text: str
+
+
+class ConsolidationIn(Request):
+    kind: str  # PRELIMINARY or FINAL
+
+
+class IncludedOut(BaseModel):
+    region: str
+    version: int  # the version of the form that was read
+    sha256: str  # of that file
+
+
+class LeftOutOut(BaseModel):
+    region: str
+    reason: str  # missing or invalid
+    detail: str
+
+
+class LinePartOut(BaseModel):
+    region: str
+    version: int
+    value: str  # an exact decimal, as text
+
+
+class LineOut(BaseModel):
+    code: str
+    name: str
+    total: str  # an exact decimal, as text
+    parts: list[LinePartOut]  # the figures the total was added from
+
+
+class ConsolidationOut(BaseModel):
+    campaign: str
+    period: str
+    number: int  # 1, 2, 3 ... for the campaign
+    kind: str  # PRELIMINARY or FINAL
+    complete: bool  # every region of the campaign is in it
+    count: int  # the regions that are in
+    expected: int
+    share: str  # count of expected, in percent with one decimal
+    included: list[IncludedOut]
+    left_out: list[LeftOutOut]
+    made_by: str
+    made_at: str
+    stale: bool  # a form changed or a newer result was made after it
+    stale_at: str | None = None
+    stale_reason: str | None = None
+
+
+class ConsolidationDetailOut(ConsolidationOut):
+    lines: list[LineOut]
+
+
+class ConsolidationsOut(BaseModel):
+    results: list[ConsolidationOut]

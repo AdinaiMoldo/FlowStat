@@ -158,6 +158,22 @@ CREATE TABLE IF NOT EXISTS form_versions (
     PRIMARY KEY (region, quarter, number)
 );
 
+-- The results of a campaign (US-57). A row is written once; only the two columns that say it is
+-- stale are set later, once.
+CREATE TABLE IF NOT EXISTS consolidations (
+    campaign_id  TEXT    NOT NULL REFERENCES campaigns(id),
+    number       INTEGER NOT NULL,
+    kind         TEXT    NOT NULL CHECK (kind IN ('PRELIMINARY', 'FINAL')),
+    complete     INTEGER NOT NULL,
+    expected     INTEGER NOT NULL,
+    body         TEXT    NOT NULL,
+    made_by      TEXT    NOT NULL,
+    made_at      TEXT    NOT NULL,
+    stale_at     TEXT,
+    stale_reason TEXT,
+    PRIMARY KEY (campaign_id, number)
+);
+
 CREATE TABLE IF NOT EXISTS problems (
     id          TEXT    PRIMARY KEY,
     region      TEXT    NOT NULL,

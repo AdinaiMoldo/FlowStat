@@ -547,5 +547,14 @@
     "sp": 8,
     "priority": "Must",
     "milestone": "M11"
+  },
+  {
+    "id": "US-57",
+    "story": "As a statistician of the committee, I make a preliminary and a final result of a campaign that says which regions are in it and why the others are not, so that an incomplete total is never read as the total of the country",
+    "criteria": "Given a campaign that is being validated, when enough valid forms are there for a preliminary result (`preliminary_min`), then a result is made that lists the regions included with the version and the hash of the form of each, the regions left out with the reason (missing, or invalid with the number of errors), the share, who made it and when, and is marked incomplete unless every region is in it; a final result needs the policy of the campaign (`final_min`) and is refused with the regions that are not in otherwise; a refused result keeps nothing and leaves the campaign where it was; every total is an exact decimal and carries the figures it was added from (region, form version, value); each result has a number and is never changed; a form of a region of the campaign that is sent again or removed marks the results stale with the reason and sends a campaign whose result was shown back to collecting, and the next result is a new number; a preliminary result moves the campaign to PRELIMINARY and a final one to PENDING_APPROVAL; an admin or an operator makes a result and every role reads them; the page Campaigns makes a result, lists them with complete, incomplete and stale, and shows where each total comes from",
+    "function": "A5",
+    "sp": 13,
+    "priority": "Must",
+    "milestone": "M11"
   }
 ]

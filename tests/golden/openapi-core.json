@@ -364,6 +364,246 @@
         "title": "CompletionOut",
         "type": "object"
       },
+      "ConsolidationDetailOut": {
+        "properties": {
+          "campaign": {
+            "title": "Campaign",
+            "type": "string"
+          },
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "expected": {
+            "title": "Expected",
+            "type": "integer"
+          },
+          "included": {
+            "items": {
+              "$ref": "#/components/schemas/IncludedOut"
+            },
+            "title": "Included",
+            "type": "array"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "left_out": {
+            "items": {
+              "$ref": "#/components/schemas/LeftOutOut"
+            },
+            "title": "Left Out",
+            "type": "array"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/LineOut"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "made_at": {
+            "title": "Made At",
+            "type": "string"
+          },
+          "made_by": {
+            "title": "Made By",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          },
+          "period": {
+            "title": "Period",
+            "type": "string"
+          },
+          "share": {
+            "title": "Share",
+            "type": "string"
+          },
+          "stale": {
+            "title": "Stale",
+            "type": "boolean"
+          },
+          "stale_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stale At"
+          },
+          "stale_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stale Reason"
+          }
+        },
+        "required": [
+          "campaign",
+          "period",
+          "number",
+          "kind",
+          "complete",
+          "count",
+          "expected",
+          "share",
+          "included",
+          "left_out",
+          "made_by",
+          "made_at",
+          "stale",
+          "lines"
+        ],
+        "title": "ConsolidationDetailOut",
+        "type": "object"
+      },
+      "ConsolidationIn": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "ConsolidationIn",
+        "type": "object"
+      },
+      "ConsolidationOut": {
+        "properties": {
+          "campaign": {
+            "title": "Campaign",
+            "type": "string"
+          },
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "expected": {
+            "title": "Expected",
+            "type": "integer"
+          },
+          "included": {
+            "items": {
+              "$ref": "#/components/schemas/IncludedOut"
+            },
+            "title": "Included",
+            "type": "array"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "left_out": {
+            "items": {
+              "$ref": "#/components/schemas/LeftOutOut"
+            },
+            "title": "Left Out",
+            "type": "array"
+          },
+          "made_at": {
+            "title": "Made At",
+            "type": "string"
+          },
+          "made_by": {
+            "title": "Made By",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          },
+          "period": {
+            "title": "Period",
+            "type": "string"
+          },
+          "share": {
+            "title": "Share",
+            "type": "string"
+          },
+          "stale": {
+            "title": "Stale",
+            "type": "boolean"
+          },
+          "stale_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stale At"
+          },
+          "stale_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stale Reason"
+          }
+        },
+        "required": [
+          "campaign",
+          "period",
+          "number",
+          "kind",
+          "complete",
+          "count",
+          "expected",
+          "share",
+          "included",
+          "left_out",
+          "made_by",
+          "made_at",
+          "stale"
+        ],
+        "title": "ConsolidationOut",
+        "type": "object"
+      },
+      "ConsolidationsOut": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/ConsolidationOut"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "results"
+        ],
+        "title": "ConsolidationsOut",
+        "type": "object"
+      },
       "CoreRunSummary": {
         "properties": {
           "created_at": {
@@ -1609,6 +1849,29 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "IncludedOut": {
+        "properties": {
+          "region": {
+            "title": "Region",
+            "type": "string"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "region",
+          "version",
+          "sha256"
+        ],
+        "title": "IncludedOut",
+        "type": "object"
+      },
       "IngestIn": {
         "properties": {
           "events": {
@@ -1686,6 +1949,83 @@
           "state"
         ],
         "title": "KeyRotationOut",
+        "type": "object"
+      },
+      "LeftOutOut": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "region": {
+            "title": "Region",
+            "type": "string"
+          }
+        },
+        "required": [
+          "region",
+          "reason",
+          "detail"
+        ],
+        "title": "LeftOutOut",
+        "type": "object"
+      },
+      "LineOut": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "parts": {
+            "items": {
+              "$ref": "#/components/schemas/LinePartOut"
+            },
+            "title": "Parts",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "total",
+          "parts"
+        ],
+        "title": "LineOut",
+        "type": "object"
+      },
+      "LinePartOut": {
+        "properties": {
+          "region": {
+            "title": "Region",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "region",
+          "version",
+          "value"
+        ],
+        "title": "LinePartOut",
         "type": "object"
       },
       "LoginIn": {
@@ -3319,6 +3659,272 @@
           "campaigns"
         ],
         "x-permission": "campaigns:write"
+      }
+    },
+    "/campaigns/{campaign_id}/consolidations": {
+      "get": {
+        "operationId": "list_consolidations_campaigns__campaign_id__consolidations_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "title": "Campaign Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsolidationsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no valid token (E-AUTH-001)"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the role lacks the permission (E-AUTH-002)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "not found (E-API-002)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "conflict with the state of the resource (E-API-003)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the request is invalid (E-API-001, E-API-004, E-API-005, E-INPUT-*)"
+          }
+        },
+        "summary": "The results of a campaign, the newest first",
+        "tags": [
+          "consolidations"
+        ],
+        "x-permission": "campaigns:read"
+      },
+      "post": {
+        "operationId": "make_consolidation_campaigns__campaign_id__consolidations_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "title": "Campaign Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsolidationIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsolidationDetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no valid token (E-AUTH-001)"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the role lacks the permission (E-AUTH-002)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "not found (E-API-002)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "conflict with the state of the resource (E-API-003)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the request is invalid (E-API-001, E-API-004, E-API-005, E-INPUT-*)"
+          }
+        },
+        "summary": "Make a preliminary or a final result from the valid forms of the campaign",
+        "tags": [
+          "consolidations"
+        ],
+        "x-permission": "consolidations:write"
+      }
+    },
+    "/campaigns/{campaign_id}/consolidations/{number}": {
+      "get": {
+        "operationId": "get_consolidation_campaigns__campaign_id__consolidations__number__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "title": "Campaign Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "number",
+            "required": true,
+            "schema": {
+              "title": "Number",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsolidationDetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no valid token (E-AUTH-001)"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the role lacks the permission (E-AUTH-002)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "not found (E-API-002)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "conflict with the state of the resource (E-API-003)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the request is invalid (E-API-001, E-API-004, E-API-005, E-INPUT-*)"
+          }
+        },
+        "summary": "One result, with the figures that each total was added from",
+        "tags": [
+          "consolidations"
+        ],
+        "x-permission": "campaigns:read"
       }
     },
     "/campaigns/{campaign_id}/transitions": {

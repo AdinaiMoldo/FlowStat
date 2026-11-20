@@ -85,5 +85,6 @@ Recount of 5 November: the baseline of 203 SP stays the zero point of the burndo
 | DEF-1 | As a developer, I get a test run that does not die at random, so that a green main means the tests passed and not that the crash did not come | B2 | 5 | Must | M11 | done |
 | US-55 | As an operator, I send the form of my region again after a correction and both versions are kept with their results, so that I and the chief statistician can see which errors are gone | A2 | 8 | Must | M11 | done |
 | US-56 | As an operator, I see each error of a form I sent as a problem with someone who works on it, so that a mistake is corrected, discussed and checked again instead of lost in a list | B2 | 8 | Must | M11 | done |
+| US-57 | As a statistician of the committee, I make a preliminary and a final result of a campaign that says which regions are in it and why the others are not, so that an incomplete total is never read as the total of the country | A5 | 13 | Must | M11 | done |
 
 Acceptance criteria: `stories.md`. The same stories are GitHub issues, grouped by milestone.
