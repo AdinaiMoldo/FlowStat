@@ -313,3 +313,35 @@ def test_the_module_keeps_to_the_standard_library() -> None:
         for a in (n.names if isinstance(n, ast.Import | ast.ImportFrom) else [])
     }
     assert top <= {"__future__", "collections", "dataclasses", "decimal", "enum", "flowstat"}
+
+
+# -- the demographic template with a total (US-63) --------------------------------------------
+def demographic(**changes: object) -> list[dict[str, object]]:
+    values: dict[str, object] = {
+        "D01": 1000, "D02": 400, "D03": 600, "D04": 250, "D05": 21.5, "D06": 7, "D07": 8,
+        "D08": 2,
+    }  # fmt: skip
+    values.update(changes)
+    names = {i.code: i.name for i in named("regional-demography-v2").indicators}
+    return [row(code, names[code], value) for code, value in values.items() if value != "absent"]
+
+
+def test_the_demographic_template_passes_a_form_whose_total_is_the_sum_of_its_parts() -> None:
+    rules = named("regional-demography-v2")
+    assert known("regional-demography-v2") and rules.closed
+    assert check(demographic(), rules) == []
+
+
+def test_a_total_that_is_not_the_sum_of_urban_and_rural_is_an_arithmetic_error() -> None:
+    found = check(demographic(D02=410), named("regional-demography-v2"))
+    assert codes(found) == ["VAL-ARITH-001"]
+    assert found[0].indicator == "D01" and found[0].actual == "1000"
+    assert "1010" in found[0].expected and "differs by 10" in found[0].message
+
+
+def test_a_missing_row_a_text_for_a_number_and_too_many_divorces_are_told_apart() -> None:
+    rules = named("regional-demography-v2")
+    assert codes(check(demographic(D06="absent"), rules)) == ["VAL-COMP-001"]
+    assert codes(check(demographic(D05="about twenty"), rules)) == ["VAL-TYPE-001"]
+    assert codes(check(demographic(D04=1200), rules)) == ["VAL-REL-001"]  # more homes than people
+    assert codes(check(demographic(D02=-400, D03=1400), rules)) == ["VAL-RANGE-001"]

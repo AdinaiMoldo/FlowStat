@@ -2,7 +2,7 @@
 
 Usage:
     python scripts/exercise_setup.py start [--dir exercise-data] [--port 8000] [--logins]
-                                           [--no-forms] [--with-history]
+                                           [--no-forms] [--with-history] [--with-campaign]
     python scripts/exercise_setup.py check WORKFLOW [--dir exercise-data]
 
 ``start`` makes a clean database with five users, the nine regions of the synthetic catalogue and
@@ -107,6 +107,7 @@ def prepare(
     forms: bool = True,
     history: bool = False,
     now: datetime | None = None,
+    campaign: bool = False,
 ) -> Setup:
     """A clean core in ``work`` listening on ``port``; the caller stops the process.
 
@@ -115,7 +116,8 @@ def prepare(
     ``forms`` false the folder of the forms is left empty, for a person who sends them on the page;
     the sample sets to send are made in ``sample-forms`` either way. With ``history`` the example
     is published and nine runs are made in the past (``now`` is when they end; the clock of the
-    process by default, given by the caller so that the history does not read it itself).
+    process by default, given by the caller so that the history does not read it itself). With
+    ``campaign`` a campaign that has been through the whole cycle is made as well (US-63).
     """
     if demo.http_ok(f"http://127.0.0.1:{port}/health"):
         # A core of an earlier start would answer in the place of the new one, with its old users.
@@ -146,6 +148,8 @@ def prepare(
     )
     if history:
         seed_history.seed(work, db, tokens, now or datetime.now(UTC))
+    if campaign:
+        seed_history.seed_campaign(work, db, tokens, now or datetime.now(UTC))
     extra = ["--demo-logins", str(work / "tokens.json")] if logins else []
     process = demo.start_core(work, port, db, extra)
     regions = YAML(typ="safe").load(CATALOGUE.read_text(encoding="utf8"))["regions"]
@@ -252,9 +256,14 @@ def stop(setup: Setup) -> None:
 
 
 def start(
-    work: Path, port: int, logins: bool = False, forms: bool = True, history: bool = False
+    work: Path,
+    port: int,
+    logins: bool = False,
+    forms: bool = True,
+    history: bool = False,
+    campaign: bool = False,
 ) -> int:
-    setup = prepare(work, port, logins, forms, history)
+    setup = prepare(work, port, logins, forms, history, campaign=campaign)
     try:
         print(f"\nThe core is running. Open {setup.base}/ui/ in a browser.")
         print("Sign in on the page with a name and a password. The users of this start:")
@@ -314,13 +323,27 @@ def main(argv: list[str] | None = None) -> int:
         help="start with the example published, nine runs of the last two weeks (one waits for "
         "the chief statistician) and a service, so that no page is empty",
     )
+    begin.add_argument(
+        "--with-campaign",
+        action="store_true",
+        help="start with a campaign of 2025Q2 that has been through the whole cycle: a good form, "
+        "a missing row, a wrong sum, a text for a number, a region that sent nothing, the "
+        "corrections, a rejected result and a result that waits for the chief statistician",
+    )
     look = kinds.add_parser("check", help="run the published workflow with both answers")
     look.add_argument("workflow")
     look.add_argument("--dir", type=Path, default=Path("exercise-data"))
     args = parser.parse_args(argv)
     try:
         if args.command == "start":
-            return start(args.dir, args.port, args.logins, not args.no_forms, args.with_history)
+            return start(
+                args.dir,
+                args.port,
+                args.logins,
+                not args.no_forms,
+                args.with_history,
+                args.with_campaign,
+            )
         return check(args.dir, args.workflow)
     except demo.DemoError as error:
         print(f"\nStopped: {error}")

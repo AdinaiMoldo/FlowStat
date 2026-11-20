@@ -695,3 +695,13 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Did: the report now also has (1) the statements of the last 30 seconds of the cursors of `flowstat.repo.db` that were slow, that failed (with how long they waited) or that were reads not finished, each with its thread and connection, and (2) the other processes that have the database or its journal open, read from `/proc`. A cursor or a connection that is closed counts as finished. Tests first, two more.
 - Rule kept: the failure was read and written here before the job was run again.
 
+## 2026-11-21 M11: US-63, a campaign that has been through the cycle
+
+- Why: US-57, US-58, US-61 and US-64 can each be shown only after a quarter of an hour of clicking: send forms, break three of them, correct them, make results, reject one. The author asked for more examples and for names that sound like the office.
+- Did: `seed_campaign` in `scripts/seed_history.py`, the option `--with-campaign` of `exercise_setup.py`, `demography_rows` in `scripts/make_forms.py` with four cases of a form, and the rule set `regional-demography-v2` in `model/rules.py`. Tests first.
+- Chose: a second template and not more data for the first. `regional-indicators-v1` has no total, so the arithmetic rule (`SumOf`) was used by a test and by no campaign. The new one has eight indicators with the names a demographic form has (resident population, urban, rural, households, live births, deaths, marriages, divorces) and one rule of arithmetic: the total is urban plus rural. The figures are invented from the place of the region in the list, in the size of real regions, and the same at every call.
+- Chose: the story is made through the API, by the users who would do it, in the order it would happen, with the clock of the history. Nothing is written into a table directly, so the demonstration cannot show a state that the system would refuse to reach.
+- Chose: it ends where a person takes over. The third result waits for the chief statistician, and Naryn has still sent nothing, so the presenter can approve, or send the form of Naryn and watch the result go stale.
+- Found: the seed of the identifiers. `open_client` made its identifiers from a fixed seed, so the campaign made after the history got the run identifiers of the history and the store refused them. The second story has another seed.
+- Not done: the page was not looked at in a browser test for this story (the pages it shows have their own tests); the names of the regions are still those of the catalogue with invented codes; a real template of the Committee is not known.
+

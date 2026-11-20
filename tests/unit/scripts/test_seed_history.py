@@ -187,3 +187,120 @@ def test_the_demonstration_has_a_resolved_problem_and_an_open_one(seeded) -> Non
         ("RESOLVED", "system"),
     ]
     assert all(e["at"] < "2026-11-18T15:00:01" for e in history)  # none in the future
+
+
+# -- the campaign with the cases of the cycle (US-63) --------------------------------------------
+@pytest.fixture
+def cycle(tmp_path: Path):  # type: ignore[no-untyped-def]
+    work = tmp_path / "exercise"
+    work.mkdir()
+    db = str(work / "flowstat.db")
+    tokens = {
+        "admin": demo.make_user(db, "adinai", "admin"),
+        "designer": demo.make_user(db, "azamat", "designer"),
+        "chief": demo.make_user(db, "alua", "operator", "chief_statistician"),
+        "operator": demo.make_user(db, "atai", "operator"),
+        "operator2": demo.make_user(db, "marina", "operator"),
+        "osh": demo.make_user(db, "aibek", "operator", regions=("OSH",)),
+        "chui": demo.make_user(db, "gulnara", "operator", regions=("CHU",)),
+    }
+    summary = seed_history.seed_campaign(work, db, tokens, NOW)
+    client = seed_history.open_client(work, db, NOW)
+    admin = {"Authorization": f"Bearer {tokens['admin']}"}
+    return summary, client, admin
+
+
+def cid_of(cycle) -> str:  # type: ignore[no-untyped-def]
+    _, client, admin = cycle
+    (found,) = client.get("/campaigns", headers=admin).json()
+    return str(found["id"])
+
+
+def test_the_campaign_of_the_cycle_waits_for_the_approval_of_its_third_result(cycle) -> None:  # type: ignore[no-untyped-def]
+    summary, client, admin = cycle
+    (campaign,) = client.get("/campaigns", headers=admin).json()
+    assert campaign["name"] == "Quarterly Demographic Report, Q2 2025"
+    assert (
+        campaign["status"] == "PENDING_APPROVAL" and campaign["rules"] == "regional-demography-v2"
+    )
+    assert (campaign["preliminary_min"], campaign["final_min"]) == (5, 7)
+    progress = campaign["progress"]
+    assert (progress["received"], progress["valid"], progress["missing"]) == (8, 8, ["NAR"])
+    assert summary["campaign"] == campaign["id"] and summary["period"] == "2025Q2"
+
+
+def test_its_results_tell_the_story_preliminary_then_rejected_then_waiting(cycle) -> None:  # type: ignore[no-untyped-def]
+    _, client, admin = cycle
+    cid = cid_of(cycle)
+    results = client.get(f"/campaigns/{cid}/consolidations", headers=admin).json()["results"]
+    third, second, first = results
+    assert (first["kind"], first["count"], first["stale"]) == ("PRELIMINARY", 6, True)
+    assert [o["region"] for o in first["left_out"]] == ["JAL", "NAR", "TAL"]
+    assert (second["kind"], second["count"], second["complete"]) == ("FINAL", 7, False)
+    assert second["decision"]["decision"] == "REJECT" and second["decision"]["by"] == "alua"
+    assert "Talas" in second["decision"]["comment"]
+    assert (third["kind"], third["count"], third["stale"], third["decision"]) == (
+        "FINAL",
+        8,
+        False,
+        None,
+    )
+    assert [(o["region"], o["reason"]) for o in third["left_out"]] == [("NAR", "missing")]
+    detail = client.get(f"/campaigns/{cid}/consolidations/3", headers=admin).json()
+    total = next(ln for ln in detail["lines"] if ln["code"] == "D01")
+    urban = next(ln for ln in detail["lines"] if ln["code"] == "D02")
+    rural = next(ln for ln in detail["lines"] if ln["code"] == "D03")
+    from decimal import Decimal
+
+    assert Decimal(total["total"]) == Decimal(urban["total"]) + Decimal(rural["total"])
+    assert len(total["parts"]) == 8
+
+
+def test_three_forms_had_a_mistake_of_another_kind_and_each_was_corrected(cycle) -> None:  # type: ignore[no-untyped-def]
+    _, client, admin = cycle
+    problems = client.get("/problems?quarter=2025Q2", headers=admin).json()["problems"]
+    by_region = {p["region"]: (p["code"], p["status"]) for p in problems}
+    assert by_region == {
+        "BAT": ("VAL-COMP-001", "RESOLVED"),
+        "JAL": ("VAL-ARITH-001", "RESOLVED"),
+        "TAL": ("VAL-TYPE-001", "RESOLVED"),
+    }
+    for region in ("BAT", "JAL", "TAL"):
+        versions = client.get(f"/forms/{region}/2025Q2/versions", headers=admin).json()["versions"]
+        assert [(v["version"], v["errors"]) for v in versions] == [(2, 0), (1, 1)]
+    forms = {
+        f["region"]: f for f in client.get("/forms?quarter=2025Q2", headers=admin).json()["forms"]
+    }
+    assert forms["NAR"]["received"] is False
+    assert forms["OSH"]["uploaded_by"] == "aibek" and forms["CHU"]["uploaded_by"] == "gulnara"
+
+
+def test_the_workflow_was_run_twice_and_the_second_run_took_what_did_not_change(cycle) -> None:  # type: ignore[no-untyped-def]
+    _, client, admin = cycle
+    cid = cid_of(cycle)
+    newest, oldest = client.get(f"/campaigns/{cid}/runs", headers=admin).json()["runs"]
+    assert oldest["reused"] == 0 and oldest["executed"] > 0
+    assert newest["reused"] > 0 and newest["executed"] > 0
+    assert (
+        newest["forms"]["TAL"] == 2 and oldest["forms"]["TAL"] == 1 and "NAR" not in newest["forms"]
+    )
+
+
+def test_the_cycle_is_added_to_the_history_without_changing_it(tmp_path: Path) -> None:
+    work = tmp_path / "exercise"
+    work.mkdir()
+    db = str(work / "flowstat.db")
+    tokens = {
+        "admin": demo.make_user(db, "adinai", "admin"),
+        "designer": demo.make_user(db, "azamat", "designer"),
+        "chief": demo.make_user(db, "alua", "operator", "chief_statistician"),
+        "operator": demo.make_user(db, "atai", "operator"),
+        "operator2": demo.make_user(db, "marina", "operator"),
+    }
+    seed_history.seed(work, db, tokens, NOW)
+    seed_history.seed_campaign(work, db, tokens, NOW)  # no regional operators: the others send
+    client = seed_history.open_client(work, db, NOW)
+    admin = {"Authorization": f"Bearer {tokens['admin']}"}
+    names = [c["name"] for c in client.get("/campaigns", headers=admin).json()]
+    assert len(names) == 3 and "Quarterly Demographic Report, Q2 2025" in names
+    assert len(client.get("/runs", headers=admin).json()) == 9 + 2

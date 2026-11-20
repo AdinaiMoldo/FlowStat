@@ -196,14 +196,15 @@ export function createCampaigns({ goTo }) {
     open.addEventListener("click", () => goTo(`runs/${encodeURIComponent(r.run_id)}`));
     const id = element("td");
     id.append(open);
-    const work = r.executed + r.reused === 0 ? "none yet" : `${r.executed} computed, ${r.reused} taken from an earlier run`;
+    const work = r.executed + r.reused === 0 ? "none yet" : `${r.executed} computed, ${r.reused} taken`;
     const cell = element("td", "", work);
-    if (r.executed_steps.length) cell.title = `computed: ${r.executed_steps.join(", ")}`;
+    cell.title = "taken: the result of an earlier run was used, because the inputs of the step did not change";
+    if (r.executed_steps.length) cell.title += `; computed: ${r.executed_steps.join(", ")}`;
     tr.append(
       id,
       element("td", "", r.outcome ? `${r.status} (${r.outcome})` : r.status),
       cell,
-      element("td", "muted", `${r.started_by}, ${r.started_at.replace("T", " ").replace("Z", " UTC")}`),
+      element("td", "muted", `${r.started_by}, ${r.started_at.slice(0, 16).replace("T", " ")}`),
     );
     return tr;
   }
@@ -257,7 +258,7 @@ export function createCampaigns({ goTo }) {
     tr.append(
       what,
       element("td", "", `${r.count} of ${r.expected} (${r.share}%)`),
-      element("td", "muted", `${r.made_by}, ${r.made_at.replace("T", " ").replace("Z", " UTC")}`),
+      element("td", "muted", `${r.made_by}, ${r.made_at.slice(0, 16).replace("T", " ")}`),
     );
     return tr;
   }
@@ -333,7 +334,7 @@ export function createCampaigns({ goTo }) {
     if (r.decision) {
       taken.classList.toggle("good", r.decision.decision === "APPROVE");
       taken.textContent =
-        `${words[r.decision.decision]} by ${r.decision.by}, ${r.decision.at.replace("T", " ").replace("Z", " UTC")}` +
+        `${words[r.decision.decision]} by ${r.decision.by}, ${r.decision.at.slice(0, 16).replace("T", " ")}` +
         (r.decision.comment ? `: ${r.decision.comment}` : "");
     }
     // the approver of the campaign decides about its current final result, once

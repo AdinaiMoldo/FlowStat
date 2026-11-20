@@ -646,7 +646,7 @@ of validation rules, the thresholds of completeness and the title that approves.
   422 `E-CAMP-001` with the `field` that is wrong, 409 `E-CAMP-005` when the name is used. The
   body has `name`, `year`, `quarter`, `regions` (codes of the catalogue), `deadline` (a date),
   `workflow`, `workflow_version` (the version must exist; a draft version is accepted for a draft
-  campaign), and optionally `template`, `rules` (`basic` or `regional-indicators-v1`; another name is
+  campaign), and optionally `template`, `rules` (`basic`, `regional-indicators-v1` or `regional-demography-v2`, which has a total that must be the sum of its parts; another name is
   422 `E-CAMP-001` with the field `rules`; the set decides which findings the forms of the quarter get,
   section 11), `preliminary_min`, `final_min` and `approver`.
   The thresholds default to about three quarters of the regions and to all of them; they must
