@@ -65,6 +65,8 @@ export function createCampaigns({ goTo }) {
   let editing = null; // the id of the draft being edited, or null for a new campaign
   let regionsCache = null;
   let pending = null; // the change that asked to be pressed twice
+  let results = []; // the results of the campaign in the right panel, the newest first
+  let openResult = null; // the number of the result whose figures are shown
 
   const can = (permission) => user !== null && user.permissions.includes(permission);
 
@@ -176,6 +178,101 @@ export function createCampaigns({ goTo }) {
       `${c.workflow} v${c.workflow_version} · preliminary from ${c.preliminary_min}, final needs ${c.final_min} · approved by ${c.approver.replaceAll("_", " ")} · rules ${c.rules}`;
     $("campaign-note").hidden = true;
     actions(c);
+    renderResults(c);
+  }
+
+  // -- the results (US-57) -------------------------------------------------------------------
+  const MAKES = new Set(["VALIDATING", "READY_FOR_CONSOLIDATION", "PRELIMINARY"]);
+
+  function resultRow(c, r) {
+    const tr = element("tr");
+    tr.dataset.testid = "result";
+    tr.dataset.number = String(r.number);
+    const what = element("td");
+    const open = element("button", "small", `#${r.number} ${r.kind === "FINAL" ? "final" : "preliminary"}`);
+    open.type = "button";
+    open.addEventListener("click", () => showResult(c, r.number));
+    what.append(open, document.createTextNode(" "));
+    what.append(element("span", r.complete ? "badge good" : "badge wait", r.complete ? "complete" : "incomplete"));
+    if (r.stale) {
+      const stale = element("span", "badge bad", "stale");
+      stale.title = r.stale_reason || "";
+      what.append(document.createTextNode(" "), stale);
+    }
+    tr.append(
+      what,
+      element("td", "", `${r.count} of ${r.expected} (${r.share}%)`),
+      element("td", "muted", `${r.made_by}, ${r.made_at.replace("T", " ").replace("Z", " UTC")}`),
+    );
+    return tr;
+  }
+
+  function renderResults(c) {
+    const may = can("consolidations:write") && MAKES.has(c.status);
+    $("result-preliminary").hidden = !may;
+    $("result-final").hidden = !may;
+    $("result-preliminary").onclick = () => makeResult(c, "PRELIMINARY");
+    $("result-final").onclick = () => makeResult(c, "FINAL");
+    $("results-rows").replaceChildren(...results.map((r) => resultRow(c, r)));
+    $("results-table").hidden = results.length === 0;
+    $("results-empty").hidden = results.length > 0;
+    if (!results.some((r) => r.number === openResult)) {
+      openResult = null;
+      $("result-detail").hidden = true;
+    }
+  }
+
+  async function loadResults(id) {
+    try {
+      results = (await call("GET", `/campaigns/${encodeURIComponent(id)}/consolidations`)).results;
+    } catch {
+      results = [];
+    }
+  }
+
+  async function makeResult(c, kind) {
+    const note = $("results-note");
+    note.hidden = true;
+    try {
+      const made = await call("POST", `/campaigns/${encodeURIComponent(c.id)}/consolidations`, { kind });
+      await reload(c.id);
+      await showResult(c, made.number);
+    } catch (error) {
+      note.textContent = problem(error);
+      note.hidden = false;
+    }
+  }
+
+  async function showResult(c, number) {
+    let r;
+    try {
+      r = await call("GET", `/campaigns/${encodeURIComponent(c.id)}/consolidations/${number}`);
+    } catch (error) {
+      $("results-note").textContent = problem(error);
+      $("results-note").hidden = false;
+      return;
+    }
+    openResult = number;
+    const out = r.left_out.map((o) => `${o.region} (${o.reason}: ${o.detail})`);
+    const stale = r.stale ? ` Stale: ${r.stale_reason}.` : "";
+    $("result-left").textContent =
+      `Result #${r.number}, ${r.kind === "FINAL" ? "final" : "preliminary"}, ${r.complete ? "complete" : "incomplete"}. ` +
+      `In: ${r.included.map((i) => `${i.region} v${i.version}`).join(", ")}. ` +
+      (out.length ? `Left out: ${out.join("; ")}.` : "No region is left out.") +
+      stale;
+    $("result-lines").replaceChildren(
+      ...r.lines.map((line) => {
+        const tr = element("tr");
+        tr.dataset.testid = "result-line";
+        tr.append(
+          element("td", "", `${line.code} ${line.name}`),
+          element("td", "", line.total),
+          element("td", "muted", line.parts.map((p) => `${p.region} v${p.version}: ${p.value}`).join(" + ")),
+        );
+        return tr;
+      }),
+    );
+    $("result-detail").hidden = false;
   }
 
   async function change(c, to, button) {
@@ -290,6 +387,8 @@ export function createCampaigns({ goTo }) {
       return;
     }
     if (select !== undefined) shown = select;
+    if (shown && campaigns.some((x) => x.id === shown)) await loadResults(shown);
+    else results = [];
     renderList();
     renderDetail();
   }

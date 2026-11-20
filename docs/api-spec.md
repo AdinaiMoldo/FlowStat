@@ -87,8 +87,9 @@ walks the routes. `public` is the exception, for `GET /health` and `POST /login`
 | `statistics:read` | `GET /statistics` | yes | no | no |
 | `forms:read` | `GET /forms` | yes | yes | yes |
 | `forms:write` | `PUT /forms/{region}/{quarter}`, `DELETE /forms/{region}/{quarter}` | yes | no | yes |
-| `campaigns:read` | `GET /campaigns`, `GET /campaigns/{id}` | yes | yes | yes |
+| `campaigns:read` | `GET /campaigns`, `GET /campaigns/{id}`, `GET /campaigns/{id}/consolidations`, `GET /campaigns/{id}/consolidations/{number}` | yes | yes | yes |
 | `campaigns:write` | `POST /campaigns`, `PUT /campaigns/{id}`, `POST /campaigns/{id}/transitions` | yes | no | no |
+| `consolidations:write` | `POST /campaigns/{id}/consolidations` | yes | no | yes |
 | `problems:read` | `GET /problems`, `GET /problems/{id}` | yes | yes | yes |
 | `problems:write` | `POST /problems/{id}/assignee`, `POST /problems/{id}/comments` | yes | no | yes |
 | `handover:control` | `/migration/{run_id}/...` and `/keys...` of a deployed service | yes | no | no |
@@ -706,3 +707,35 @@ whose mistake is gone goes `REVALIDATING` and then `RESOLVED`; a problem whose m
 there (the cell may have moved) goes `REVALIDATING` and then `REOPENED` and takes the new cell and
 values; a resolved problem whose mistake comes back is `REOPENED`; a mistake that no problem has is
 `OPEN`. Each change is an event by `system` with the number of the version.
+
+## 14. Results of a campaign (US-57)
+
+A result is the national figures of a campaign, made from the valid current forms of its regions.
+It is `PRELIMINARY` or `FINAL`. A preliminary result needs `preliminary_min` valid forms and a
+final one needs `final_min`, the policy of completeness of the campaign (section 12). A result is
+`complete` only when every region of the campaign is in it; a result of seven regions of nine says
+so in the data (`complete: false`, `count`, `expected`, `share`, `left_out`), not only on the page.
+
+- `POST /campaigns/{id}/consolidations` with `{kind}` (`consolidations:write`: admin, operator)
+  makes a result and answers 201 with it. The campaign must be `VALIDATING`,
+  `READY_FOR_CONSOLIDATION` or `PRELIMINARY`, otherwise 409 `E-CONS-003`. Too few valid forms give
+  409 `E-CONS-001` (preliminary) or 409 `E-CONS-002` (final, with the regions that are not in); an
+  unknown kind is 422 `E-CONS-004`. Nothing is kept and the campaign stays where it was when a
+  result is refused. A preliminary result moves the campaign to `PRELIMINARY`, a final one to
+  `PENDING_APPROVAL`; these are changes of the system (section 12).
+- A region is `included` with the `version` and the `sha256` of the form that was read, which is
+  the current version that was kept (section 11) and not the file on the disk. A region is
+  `left_out` with the `reason` `missing` (no current form) or `invalid` (the current version has
+  errors that block it) and a `detail`.
+- `lines` has one entry for each indicator code, in code order: `code`, `name`, `total` and
+  `parts`, the figures that the total was added from (`region`, `version`, `value`). Totals and
+  values are exact decimals written as text: 400 + 400.1 is `"800.1"`. A cell that is empty or
+  "not applicable" adds nothing and is not a part.
+- Each result of a campaign has a `number` (1, 2, 3 ...) and is never changed. It becomes `stale`
+  (`stale_at`, `stale_reason`) when a form of a region of the campaign is sent again or removed, or
+  when a newer result is made. A changed form also sends a campaign that is `PRELIMINARY` or
+  `PENDING_APPROVAL` back to `COLLECTING`, so a result that somebody is reading or about to approve
+  cannot silently differ from the forms.
+- `GET /campaigns/{id}/consolidations` (`campaigns:read`: every role) answers `{results: [...]}`,
+  the newest first, without the lines; `GET /campaigns/{id}/consolidations/{number}` answers one
+  result with its lines. An unknown campaign or number is 404 `E-API-002`.

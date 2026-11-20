@@ -211,6 +211,25 @@
         <p id="campaign-settings" class="muted"></p>
         <p id="campaign-note" class="notice" hidden role="alert"></p>
         <div id="campaign-actions" class="row actions" data-needs="campaigns:write"></div>
+        <div class="row">
+          <h3>Results</h3>
+          <span class="spacer"></span>
+          <button type="button" id="result-preliminary" data-testid="make-preliminary" hidden>Make a preliminary result</button>
+          <button type="button" id="result-final" class="primary" data-testid="make-final" hidden>Make the final result</button>
+        </div>
+        <p id="results-note" class="notice" hidden role="alert"></p>
+        <p id="results-empty" class="muted">No result has been made yet.</p>
+        <table class="table" id="results-table" aria-label="Results of the campaign" hidden>
+          <thead><tr><th>Result</th><th>Regions</th><th>Made</th></tr></thead>
+          <tbody id="results-rows"></tbody>
+        </table>
+        <div id="result-detail" data-testid="result-detail" hidden>
+          <p id="result-left" class="muted"></p>
+          <table class="table static" aria-label="Figures of the result">
+            <thead><tr><th>Indicator</th><th>Total</th><th>Comes from</th></tr></thead>
+            <tbody id="result-lines"></tbody>
+          </table>
+        </div>
       </div>
     </section>
   </main>

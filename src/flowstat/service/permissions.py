@@ -22,6 +22,7 @@ PERMISSIONS: dict[str, frozenset[str]] = {
     "forms:write": frozenset({"admin", "operator"}),
     "campaigns:read": frozenset({"admin", "designer", "operator"}),
     "campaigns:write": frozenset({"admin"}),
+    "consolidations:write": frozenset({"admin", "operator"}),
     "problems:read": frozenset({"admin", "designer", "operator"}),
     "problems:write": frozenset({"admin", "operator"}),
     "handover:control": frozenset({"admin"}),
