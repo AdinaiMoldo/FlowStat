@@ -31,9 +31,11 @@ def filled(tmp_path: Path) -> str:
     return path
 
 
-def left_in_the_middle(path: str) -> tuple[sqlite3.Connection, sqlite3.Cursor]:
+def left_in_the_middle(
+    path: str, sql: str = "SELECT run_id FROM runs ORDER BY run_id"
+) -> tuple[sqlite3.Connection, sqlite3.Cursor]:
     reader = connect(path)
-    cursor = reader.execute("SELECT run_id FROM runs ORDER BY run_id")
+    cursor = reader.execute(sql)
     cursor.fetchone()  # four rows are still to come: the read holds its lock
     return reader, cursor
 
@@ -58,11 +60,13 @@ def test_a_read_left_in_the_middle_blocks_a_writer_and_the_report_names_it(
 
 def test_a_connection_that_was_closed_is_not_in_the_report(watched: None, tmp_path: Path) -> None:
     path = filled(tmp_path)
-    reader, cursor = left_in_the_middle(path)
+    mine = "SELECT workflow, run_id FROM runs ORDER BY run_id DESC"  # of this test only
+    reader, cursor = left_in_the_middle(path, mine)
+    assert mine in sqlite_watch.report()
     cursor.close()
     reader.close()
     del reader, cursor
-    assert "SELECT run_id FROM runs ORDER BY run_id" not in sqlite_watch.report()
+    assert mine not in sqlite_watch.report()
 
 
 def test_a_read_that_was_finished_is_told_apart_from_one_that_was_not(
