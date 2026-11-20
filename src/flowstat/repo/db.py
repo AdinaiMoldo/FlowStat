@@ -174,6 +174,47 @@ CREATE TABLE IF NOT EXISTS consolidations (
     PRIMARY KEY (campaign_id, number)
 );
 
+-- The decision about a result (US-61): one for a result version, written once.
+CREATE TABLE IF NOT EXISTS result_decisions (
+    campaign_id TEXT    NOT NULL,
+    number      INTEGER NOT NULL,
+    decision    TEXT    NOT NULL CHECK (decision IN ('APPROVE', 'REJECT', 'CORRECT')),
+    comment     TEXT    NOT NULL,
+    decided_by  TEXT    NOT NULL,
+    decided_at  TEXT    NOT NULL,
+    PRIMARY KEY (campaign_id, number)
+);
+
+-- The runs of the workflow that were started from a campaign (US-58), with the version of the
+-- form of each region at that moment.
+CREATE TABLE IF NOT EXISTS campaign_runs (
+    run_id      TEXT    PRIMARY KEY,
+    campaign_id TEXT    NOT NULL REFERENCES campaigns(id),
+    started_by  TEXT    NOT NULL,
+    started_at  TEXT    NOT NULL,
+    forms       TEXT    NOT NULL
+);
+
+-- The result of a step that only computes, kept under a key made of the action, its arguments and
+-- the content of the file it reads, so that a later run of a campaign need not compute it again.
+CREATE TABLE IF NOT EXISTS step_results (
+    key         TEXT    PRIMARY KEY,
+    action      TEXT    NOT NULL,
+    output      TEXT    NOT NULL,
+    run_id      TEXT    NOT NULL,
+    step        TEXT    NOT NULL,
+    created_at  TEXT    NOT NULL
+);
+
+-- For each step of a run of a campaign that only computes: was it computed or taken.
+CREATE TABLE IF NOT EXISTS step_uses (
+    run_id      TEXT    NOT NULL,
+    step        TEXT    NOT NULL,
+    reused      INTEGER NOT NULL,
+    from_run    TEXT,
+    PRIMARY KEY (run_id, step)
+);
+
 CREATE TABLE IF NOT EXISTS problems (
     id          TEXT    PRIMARY KEY,
     region      TEXT    NOT NULL,

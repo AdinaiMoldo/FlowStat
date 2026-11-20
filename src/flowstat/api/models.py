@@ -647,6 +647,23 @@ class CommentIn(Request):
     text: str
 
 
+class CampaignRunOut(BaseModel):
+    run_id: str
+    started_by: str
+    started_at: str
+    status: str  # of the run, as GET /runs/{id} gives it
+    outcome: str | None
+    forms: dict[str, int]  # region -> the version of its form when the run was started
+    executed: int  # steps that only compute and were computed in this run
+    reused: int  # steps that only compute and were taken from an earlier run
+    executed_steps: list[str]
+    reused_steps: list[str]
+
+
+class CampaignRunsOut(BaseModel):
+    runs: list[CampaignRunOut]
+
+
 class ConsolidationIn(Request):
     kind: str  # PRELIMINARY or FINAL
 
@@ -676,6 +693,18 @@ class LineOut(BaseModel):
     parts: list[LinePartOut]  # the figures the total was added from
 
 
+class ResultDecisionIn(Request):
+    decision: str  # APPROVE, REJECT or CORRECT
+    comment: str = ""  # needed for REJECT and CORRECT
+
+
+class ResultDecisionOut(BaseModel):
+    decision: str
+    comment: str
+    by: str
+    at: str
+
+
 class ConsolidationOut(BaseModel):
     campaign: str
     period: str
@@ -692,6 +721,7 @@ class ConsolidationOut(BaseModel):
     stale: bool  # a form changed or a newer result was made after it
     stale_at: str | None = None
     stale_reason: str | None = None
+    decision: ResultDecisionOut | None = None  # what the approver decided about this version
 
 
 class ConsolidationDetailOut(ConsolidationOut):

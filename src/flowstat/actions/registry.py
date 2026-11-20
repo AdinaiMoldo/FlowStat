@@ -79,6 +79,9 @@ class Registry:
             )
         return out
 
+    def spec(self, action: str) -> ActionSpec | None:
+        return self._specs.get(action)
+
     def is_idempotent(self, action: str) -> bool:
         """Whether the engine may repeat a call of this action after a crash (unknown: no)."""
         spec = self._specs.get(action)
@@ -139,6 +142,8 @@ def default_registry(hosts: frozenset[str] | None = None) -> Registry:
                 read_form,
                 idempotent=True,
                 output_types={"rows": rows},
+                repeatable=True,
+                reads="path",
             ),
             ActionSpec(
                 "statguard.validate",
@@ -149,6 +154,7 @@ def default_registry(hosts: frozenset[str] | None = None) -> Registry:
                 param_types={"rows": rows},
                 optional={"rules": "string"},
                 output_types={"rows": rows},
+                repeatable=True,
             ),
             ActionSpec(
                 "stats.aggregate",
@@ -158,6 +164,7 @@ def default_registry(hosts: frozenset[str] | None = None) -> Registry:
                 idempotent=True,
                 param_types={"parts": f"list<{rows}>"},
                 output_types={"rows": rows},
+                repeatable=True,
             ),
             ActionSpec(
                 "approval.wait",

@@ -23,6 +23,7 @@ PERMISSIONS: dict[str, frozenset[str]] = {
     "campaigns:read": frozenset({"admin", "designer", "operator"}),
     "campaigns:write": frozenset({"admin"}),
     "consolidations:write": frozenset({"admin", "operator"}),
+    "consolidations:decide": frozenset({"admin", "operator"}),  # and the title of the approver
     "problems:read": frozenset({"admin", "designer", "operator"}),
     "problems:write": frozenset({"admin", "operator"}),
     "handover:control": frozenset({"admin"}),

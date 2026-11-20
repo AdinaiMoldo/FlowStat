@@ -11,6 +11,7 @@ from fastapi import FastAPI
 from flowstat.actions.registry import default_registry
 from flowstat.api import (
     auth,
+    campaign_runs,
     campaigns,
     consolidations,
     demo,
@@ -52,6 +53,7 @@ def create_app(config: AppConfig) -> FastAPI:
     app.include_router(statistics.router)
     app.include_router(forms.router)
     app.include_router(campaigns.router)
+    app.include_router(campaign_runs.router)
     app.include_router(consolidations.router)
     app.include_router(problems.router)
     if config.demo_logins is not None:  # only a demonstration has this route

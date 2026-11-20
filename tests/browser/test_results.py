@@ -97,3 +97,93 @@ def test_a_final_result_that_the_policy_refuses_says_why_and_a_designer_only_rea
     assert reader.is_hidden("[data-testid=make-final]")
     assert problems == []
     reader.close()
+
+
+def test_the_workflow_is_run_from_the_campaign_and_a_second_run_takes_what_did_not_change(
+    browser: Browser, forms_server: Server, tmp_path: Path
+) -> None:
+    from tests.unit.actions.helpers import REGION_CODES
+
+    save_workflow(forms_server, published=True)
+    made = forms_server.env.call("admin", "POST", "/campaigns", json={
+        "name": "Quarterly Regional Statistics, Q3 2026", "year": 2026, "quarter": 3,
+        "regions": list(REGION_CODES), "deadline": "2026-10-31",
+        "workflow": "quarterly_consolidation", "workflow_version": 1,
+        "rules": "regional-indicators-v1",
+    })  # fmt: skip
+    cid = str(made.json()["id"])
+    for to in ("OPEN", "COLLECTING"):
+        forms_server.env.call("admin", "POST", f"/campaigns/{cid}/transitions", json={"to": to})
+    for region in REGION_CODES:
+        send(forms_server, tmp_path, region)
+    page, problems = open_page(browser, forms_server, "operator")
+    page.click("[data-testid=campaign]")
+    page.wait_for_selector("[data-testid=campaign-run]:not([hidden])")
+    assert "has not been run" in page.inner_text("#campaign-runs-empty")
+    page.click("[data-testid=campaign-run]")
+    page.wait_for_selector("[data-testid=campaign-run-row]")
+    first = page.locator("[data-testid=campaign-run-row]").first.inner_text()
+    assert "WAITING" in first and "19 computed, 0 taken" in first
+    send(forms_server, tmp_path, "OSH", MORE)
+    page.click("[data-testid=campaign-run]")
+    page.wait_for_function(
+        "document.querySelectorAll('[data-testid=campaign-run-row]').length === 2"
+    )
+    newest = page.locator("[data-testid=campaign-run-row]").first.inner_text()
+    assert "3 computed, 16 taken from an earlier run" in newest
+    assert problems == []
+    page.close()
+
+
+def test_the_chief_statistician_asks_for_a_correction_and_then_approves_the_new_result(
+    browser: Browser, forms_server: Server, tmp_path: Path
+) -> None:
+    for region in ("BIS", "OSC", "BAT"):
+        send(forms_server, tmp_path, region)
+    cid = validating(forms_server)
+    env = forms_server.env
+    assert (
+        env.call(
+            "admin", "POST", f"/campaigns/{cid}/consolidations", json={"kind": "FINAL"}
+        ).status_code
+        == 201
+    )
+    clerk, _ = open_page(browser, forms_server, "clerk")  # an operator without the title
+    clerk.click("[data-testid=campaign]")
+    clerk.click("[data-testid=result] button")
+    clerk.wait_for_selector("[data-testid=result-detail]:not([hidden])")
+    assert clerk.is_hidden("#result-decide")
+    clerk.close()
+    page, problems = open_page(browser, forms_server, "operator")  # olga, chief statistician
+    page.click("[data-testid=campaign]")
+    page.click("[data-testid=result] button")
+    page.wait_for_selector("#result-decide:not([hidden])")
+    page.click("[data-testid=decide][data-decision=REJECT]")  # no comment: refused, said why
+    page.wait_for_selector("#results-note:not([hidden])")
+    assert "comment is needed" in page.inner_text("#results-note")
+    page.fill("#result-comment", "BIS: the population is the figure of last year")
+    page.click("[data-testid=decide][data-decision=CORRECT]")
+    page.wait_for_selector("[data-testid=result-decision]:not([hidden])")
+    assert "A correction was asked for by olga" in page.inner_text("[data-testid=result-decision]")
+    assert "figure of last year" in page.inner_text("[data-testid=result-decision]")
+    assert page.is_hidden("#result-decide")
+    send(forms_server, tmp_path, "BIS", MORE)
+    env.call("admin", "POST", f"/campaigns/{cid}/transitions", json={"to": "VALIDATING"})
+    assert (
+        env.call(
+            "admin", "POST", f"/campaigns/{cid}/consolidations", json={"kind": "FINAL"}
+        ).status_code
+        == 201
+    )
+    page.reload()
+    page.wait_for_selector("body[data-ready]")
+    page.wait_for_selector("[data-testid=result][data-number='2']")
+    page.click("[data-testid=result][data-number='2'] button")
+    page.wait_for_selector("#result-decide:not([hidden])")
+    page.click("[data-testid=decide][data-decision=APPROVE]")
+    page.wait_for_function(
+        "document.querySelector('[data-testid=result-decision]').textContent"
+        ".startsWith('Approved by olga')"
+    )
+    assert [p for p in problems if "422" not in p] == []  # the refused rejection is meant
+    page.close()

@@ -79,7 +79,7 @@ walks the routes. `public` is the exception, for `GET /health` and `POST /login`
 | `workflows:publish` | `POST /workflows/{name}/versions/{n}/publish` | yes | yes | no |
 | `catalogue:write` | `PUT /catalogue/{list}` | yes | no | no |
 | `runs:read` | `GET /runs`, `GET /runs/{id}` | yes | yes | yes |
-| `runs:start` | `POST /workflows/{name}/runs` | yes | yes | yes |
+| `runs:start` | `POST /workflows/{name}/runs`, `POST /campaigns/{id}/runs` | yes | yes | yes |
 | `runs:decide` | `POST /runs/{id}/decisions` (and the title check, section 5) | yes | no | yes |
 | `deployments:read` | `GET /deployments`, `GET /deployments/{id}` | yes | yes | yes |
 | `deployments:write` | `POST /deployments`, `DELETE /deployments/{id}` | yes | no | no |
@@ -87,9 +87,10 @@ walks the routes. `public` is the exception, for `GET /health` and `POST /login`
 | `statistics:read` | `GET /statistics` | yes | no | no |
 | `forms:read` | `GET /forms` | yes | yes | yes |
 | `forms:write` | `PUT /forms/{region}/{quarter}`, `DELETE /forms/{region}/{quarter}` | yes | no | yes |
-| `campaigns:read` | `GET /campaigns`, `GET /campaigns/{id}`, `GET /campaigns/{id}/consolidations`, `GET /campaigns/{id}/consolidations/{number}` | yes | yes | yes |
+| `campaigns:read` | `GET /campaigns`, `GET /campaigns/{id}`, `GET /campaigns/{id}/consolidations`, `GET /campaigns/{id}/consolidations/{number}`, `GET /campaigns/{id}/runs` | yes | yes | yes |
 | `campaigns:write` | `POST /campaigns`, `PUT /campaigns/{id}`, `POST /campaigns/{id}/transitions` | yes | no | no |
 | `consolidations:write` | `POST /campaigns/{id}/consolidations` | yes | no | yes |
+| `consolidations:decide` | `POST /campaigns/{id}/consolidations/{number}/decision` (and the title that the campaign names as `approver`) | yes | no | yes |
 | `problems:read` | `GET /problems`, `GET /problems/{id}` | yes | yes | yes |
 | `problems:write` | `POST /problems/{id}/assignee`, `POST /problems/{id}/comments` | yes | no | yes |
 | `handover:control` | `/migration/{run_id}/...` and `/keys...` of a deployed service | yes | no | no |
@@ -739,3 +740,43 @@ so in the data (`complete: false`, `count`, `expected`, `share`, `left_out`), no
 - `GET /campaigns/{id}/consolidations` (`campaigns:read`: every role) answers `{results: [...]}`,
   the newest first, without the lines; `GET /campaigns/{id}/consolidations/{number}` answers one
   result with its lines. An unknown campaign or number is 404 `E-API-002`.
+
+### The decision about a result (US-61)
+
+- `POST /campaigns/{id}/consolidations/{number}/decision` with `{decision, comment}`
+  (`consolidations:decide`: admin, operator) answers 200 with the result. The caller must hold the
+  title that the campaign names as `approver` (`chief_statistician` by default), otherwise 403
+  `E-AUTH-002`; an admin needs no title, as for the approval of a run (section 5).
+- `decision` is `APPROVE`, `REJECT` or `CORRECT` (ask the regions for a correction); anything else
+  is 422 `E-CONS-004`. `REJECT` and `CORRECT` need a `comment` of 1 to 2,000 characters, otherwise
+  422 `E-CONS-008`.
+- A decision is about one result version. It is taken about the final result (409 `E-CONS-006`
+  for a preliminary one) that is current, that is not stale and the newest of its campaign (409
+  `E-CONS-005`), while the campaign is `PENDING_APPROVAL` (409 `E-CONS-006`), and once (409
+  `E-CONS-007`). A result made after a form changed is another version and has no decision: an
+  approval is never inherited.
+- The campaign follows: `APPROVE` moves it to `APPROVED` (its forms can no longer change, 409
+  `E-CAMP-006`), `REJECT` to `REJECTED`, `CORRECT` back to `COLLECTING`. The result carries the
+  `decision` (`decision`, `comment`, `by`, `at`) from then on, in the list and alone.
+
+## 15. The workflow of a campaign (US-58)
+
+- `POST /campaigns/{id}/runs` (`runs:start`) starts a run of the workflow version of the campaign
+  with the input `quarter` set to its period, and answers 202 like `POST /workflows/{name}/runs`.
+  The campaign must be between `COLLECTING` and `APPROVED`, otherwise 409 `E-CAMP-009`. The run
+  reads the forms as they are (the file of a region is its current version, section 11), and the
+  version of the form of each region at that moment is kept with the run.
+- A run that was started this way does again only the steps whose inputs changed. A step whose
+  action only computes (`xlsx.read`, `statguard.validate`, `stats.aggregate`) has a key made of the
+  action, its arguments and the content of the file it reads. When an earlier run of a campaign
+  kept a result under the same key, the step takes it and is not computed; otherwise it is computed
+  and its result is kept. A corrected form therefore repeats the read of that form, the check of
+  its rows and the steps that are given their outputs, and nothing else.
+- A step with an effect (`db.write`, `http.call`, `email.send`), a step that waits for a person
+  and an undo are always done. A failure is never kept. The history of the run is the same as that
+  of any run: the step is `SUCCEEDED` with its output, whether it was computed or taken.
+- A run that was started with `POST /workflows/{name}/runs` keeps nothing and takes nothing.
+- `GET /campaigns/{id}/runs` (`campaigns:read`) answers `{runs: [...]}`, the newest first: `run_id`,
+  `started_by`, `started_at`, the `status` and `outcome` of the run, `forms` (region to form
+  version), and for the steps that only compute how many were `executed` and how many `reused`,
+  with their names.

@@ -29,14 +29,17 @@ from flowstat.api.models import (
     StepOut,
 )
 from flowstat.api.secured import SecuredRouter
+from flowstat.engine.runner import Executor
 from flowstat.engine.scheduler import Command
 from flowstat.model.history import RunReport
 from flowstat.model.versions import VersionStatus
 from flowstat.repo.db import connect
+from flowstat.repo.reuse import ReuseRepo
 from flowstat.repo.runs import RunNotFoundError
 from flowstat.repo.users import User
 from flowstat.repo.versions import VersionNotFoundError
 from flowstat.service.driving import Machine, drive
+from flowstat.service.reuse import reusing
 from flowstat.service.runs import (
     DecisionNotDeclaredError,
     InvalidInputsError,
@@ -100,6 +103,7 @@ def drive_in_background(
 
     def job() -> None:
         db: sqlite3.Connection | None = None
+        kept: sqlite3.Connection | None = None
         try:
             db = connect(config.db_path)
             workflows = WorkflowService(
@@ -118,10 +122,24 @@ def drive_in_background(
                 config.sleep,
                 config.allowed_hosts,
             )
-            drive(runs, run_id, launch, machine, commands)
+            wrap = None
+            if ReuseRepo(db).is_campaign_run(run_id):
+                # a connection of its own: the worker threads write the kept results while the
+                # driver's connection is inside the transaction of the write-ahead log
+                kept = connect(config.db_path)
+                reuse_db = kept
+
+                def wrap(execute: Executor) -> Executor:
+                    return reusing(
+                        execute, registry.spec, reuse_db, run_id, config.data_dir, config.clock
+                    )
+
+            drive(runs, run_id, launch, machine, commands, wrap=wrap)
         except Exception:  # the log keeps what happened; the next start takes the run up
             log.exception("the run %s stopped with an error", run_id)
         finally:
+            if kept is not None:
+                kept.close()
             if db is not None:
                 db.close()
             locks.release(run_id)
@@ -134,9 +152,15 @@ def drive_in_background(
 
 
 def start_run(
-    request: Request, workflows: WorkflowService, runs: RunService, name: str, body: StartIn
+    request: Request,
+    workflows: WorkflowService,
+    runs: RunService,
+    name: str,
+    body: StartIn,
+    stored: Callable[[str], None] | None = None,
 ) -> Started:
-    """Check, store and start a run of ``name``; shared by the core and the service."""
+    """Check, store and start a run of ``name``; shared by the core and the service. ``stored``
+    is called with the id of the run after it is stored and before it is driven."""
     config = config_of(request)
     number = body.version if body.version is not None else latest_published(workflows, name)
     run_id = config.new_id()
@@ -154,6 +178,8 @@ def start_run(
                 for e in error.errors
             ],
         ) from None
+    if stored is not None:
+        stored(run_id)
     locks = locks_of(request)
     locks.try_acquire(run_id)  # the id is new, so the lock is free
     drive_in_background(

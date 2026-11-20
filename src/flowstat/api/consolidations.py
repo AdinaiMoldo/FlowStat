@@ -21,27 +21,43 @@ from flowstat.api.models import (
     LeftOutOut,
     LineOut,
     LinePartOut,
+    ResultDecisionIn,
+    ResultDecisionOut,
 )
 from flowstat.api.secured import SecuredRouter
 from flowstat.model.campaign import CampaignError
 from flowstat.model.consolidation import ConsolidationError
 from flowstat.model.rules import plain
 from flowstat.repo.campaigns import CampaignNotFoundError, CampaignRepo
-from flowstat.repo.consolidations import ConsolidationNotFoundError, Stored
+from flowstat.repo.consolidations import ConsolidationNotFoundError, Decision, Stored
 from flowstat.service.consolidations import ConsolidationService
 
 router = SecuredRouter(tags=["consolidations"])
 
-STATUS_OF = {"E-CONS-001": 409, "E-CONS-002": 409, "E-CONS-003": 409, "E-CONS-004": 422}
+STATUS_OF = {
+    "E-CONS-001": 409,
+    "E-CONS-002": 409,
+    "E-CONS-003": 409,
+    "E-CONS-004": 422,
+    "E-CONS-005": 409,
+    "E-CONS-006": 409,
+    "E-CONS-007": 409,
+    "E-CONS-008": 422,
+}
 
 
 def service_of(request: Request, db: sqlite3.Connection) -> ConsolidationService:
     return ConsolidationService(db, config_of(request).clock)
 
 
-def summary(found: Stored, period: str) -> dict[str, Any]:
+def summary(found: Stored, period: str, decision: Decision | None = None) -> dict[str, Any]:
     r = found.result
     return {
+        "decision": None
+        if decision is None
+        else ResultDecisionOut(
+            decision=decision.decision, comment=decision.comment, by=decision.by, at=decision.at
+        ),
         "campaign": found.campaign_id,
         "period": period,
         "number": found.number,
@@ -62,7 +78,7 @@ def summary(found: Stored, period: str) -> dict[str, Any]:
     }
 
 
-def detail(found: Stored, period: str) -> ConsolidationDetailOut:
+def detail(found: Stored, period: str, decision: Decision | None = None) -> ConsolidationDetailOut:
     lines = [
         LineOut(
             code=ln.code,
@@ -72,7 +88,7 @@ def detail(found: Stored, period: str) -> ConsolidationDetailOut:
         )
         for ln in found.result.lines
     ]
-    return ConsolidationDetailOut(**summary(found, period), lines=lines)
+    return ConsolidationDetailOut(**summary(found, period, decision), lines=lines)
 
 
 async def work(call: Callable[[], Any]) -> Any:
@@ -123,9 +139,13 @@ async def list_consolidations(
     campaign_id: str, request: Request, db: sqlite3.Connection = Depends(get_db)
 ) -> ConsolidationsOut:
     def read() -> ConsolidationsOut:
-        found = service_of(request, db).all(campaign_id)
+        service = service_of(request, db)
+        found = service.all(campaign_id)
         period = period_of(db, campaign_id)
-        return ConsolidationsOut(results=[ConsolidationOut(**summary(f, period)) for f in found])
+        taken = service.decisions(campaign_id)
+        return ConsolidationsOut(
+            results=[ConsolidationOut(**summary(f, period, taken.get(f.number))) for f in found]
+        )
 
     listed: ConsolidationsOut = await work(read)
     return listed
@@ -141,8 +161,40 @@ async def get_consolidation(
     campaign_id: str, number: int, request: Request, db: sqlite3.Connection = Depends(get_db)
 ) -> ConsolidationDetailOut:
     def read() -> ConsolidationDetailOut:
-        found = service_of(request, db).get(campaign_id, number)
-        return detail(found, period_of(db, campaign_id))
+        service = service_of(request, db)
+        found = service.get(campaign_id, number)
+        taken = service.decisions(campaign_id).get(number)
+        return detail(found, period_of(db, campaign_id), taken)
 
     one: ConsolidationDetailOut = await work(read)
     return one
+
+
+@router.secured(
+    "POST",
+    "/campaigns/{campaign_id}/consolidations/{number}/decision",
+    "consolidations:decide",
+    summary="Approve the final result, reject it, or ask the regions for a correction",
+)
+async def decide_consolidation(
+    campaign_id: str,
+    number: int,
+    body: ResultDecisionIn,
+    request: Request,
+    db: sqlite3.Connection = Depends(get_db),
+) -> ConsolidationDetailOut:
+    user = request.state.user
+
+    def decide() -> ConsolidationDetailOut:
+        service = service_of(request, db)
+        campaign = CampaignRepo(db).get(campaign_id)
+        service.get(campaign_id, number)  # 404 before anything is said about titles
+        title = campaign.settings.approver
+        if user.role != "admin" and title not in user.titles:  # an admin needs no title
+            raise fail(403, "E-AUTH-002", f"the decision needs the title {title}")
+        found = service.decide(campaign_id, number, body.decision, body.comment, user.name)
+        taken = service.decisions(campaign_id).get(number)
+        return detail(found, campaign.settings.period, taken)
+
+    made: ConsolidationDetailOut = await work(decide)
+    return made

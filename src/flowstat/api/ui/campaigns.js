@@ -67,6 +67,7 @@ export function createCampaigns({ goTo }) {
   let pending = null; // the change that asked to be pressed twice
   let results = []; // the results of the campaign in the right panel, the newest first
   let openResult = null; // the number of the result whose figures are shown
+  let runsOf = []; // the runs of the workflow of the campaign, the newest first
 
   const can = (permission) => user !== null && user.permissions.includes(permission);
 
@@ -178,7 +179,61 @@ export function createCampaigns({ goTo }) {
       `${c.workflow} v${c.workflow_version} · preliminary from ${c.preliminary_min}, final needs ${c.final_min} · approved by ${c.approver.replaceAll("_", " ")} · rules ${c.rules}`;
     $("campaign-note").hidden = true;
     actions(c);
+    renderRuns(c);
     renderResults(c);
+  }
+
+  // -- the runs of the workflow (US-58) ------------------------------------------------------
+  const RUNS_IN = new Set(["COLLECTING", "VALIDATING", "READY_FOR_CONSOLIDATION", "PRELIMINARY", "PENDING_APPROVAL", "APPROVED"]);
+
+  function runRow(r) {
+    const tr = element("tr");
+    tr.dataset.testid = "campaign-run-row";
+    tr.dataset.run = r.run_id;
+    const open = element("button", "small", r.run_id);
+    open.type = "button";
+    open.title = "Open the run";
+    open.addEventListener("click", () => goTo(`runs/${encodeURIComponent(r.run_id)}`));
+    const id = element("td");
+    id.append(open);
+    const work = r.executed + r.reused === 0 ? "none yet" : `${r.executed} computed, ${r.reused} taken from an earlier run`;
+    const cell = element("td", "", work);
+    if (r.executed_steps.length) cell.title = `computed: ${r.executed_steps.join(", ")}`;
+    tr.append(
+      id,
+      element("td", "", r.outcome ? `${r.status} (${r.outcome})` : r.status),
+      cell,
+      element("td", "muted", `${r.started_by}, ${r.started_at.replace("T", " ").replace("Z", " UTC")}`),
+    );
+    return tr;
+  }
+
+  function renderRuns(c) {
+    $("campaign-run").hidden = !(can("runs:start") && RUNS_IN.has(c.status));
+    $("campaign-run").onclick = () => startRun(c);
+    $("campaign-runs-rows").replaceChildren(...runsOf.map(runRow));
+    $("campaign-runs-table").hidden = runsOf.length === 0;
+    $("campaign-runs-empty").hidden = runsOf.length > 0;
+  }
+
+  async function loadRuns(id) {
+    try {
+      runsOf = (await call("GET", `/campaigns/${encodeURIComponent(id)}/runs`)).runs;
+    } catch {
+      runsOf = [];
+    }
+  }
+
+  async function startRun(c) {
+    const note = $("campaign-runs-note");
+    note.hidden = true;
+    try {
+      await call("POST", `/campaigns/${encodeURIComponent(c.id)}/runs`);
+      await reload(c.id);
+    } catch (error) {
+      note.textContent = problem(error);
+      note.hidden = false;
+    }
   }
 
   // -- the results (US-57) -------------------------------------------------------------------
@@ -272,7 +327,45 @@ export function createCampaigns({ goTo }) {
         return tr;
       }),
     );
+    const words = { APPROVE: "Approved", REJECT: "Rejected", CORRECT: "A correction was asked for" };
+    const taken = $("result-decision");
+    taken.hidden = r.decision === null;
+    if (r.decision) {
+      taken.classList.toggle("good", r.decision.decision === "APPROVE");
+      taken.textContent =
+        `${words[r.decision.decision]} by ${r.decision.by}, ${r.decision.at.replace("T", " ").replace("Z", " UTC")}` +
+        (r.decision.comment ? `: ${r.decision.comment}` : "");
+    }
+    // the approver of the campaign decides about its current final result, once
+    const holds = user.role === "admin" || user.titles.includes(c.approver);
+    const open =
+      can("consolidations:decide") && holds && r.decision === null && r.kind === "FINAL" && !r.stale && c.status === "PENDING_APPROVAL";
+    $("result-decide").hidden = !open;
+    if (open) {
+      $("result-comment").value = "";
+      for (const button of $("result-decide").querySelectorAll("[data-testid=decide]")) {
+        button.onclick = () => decideResult(c, number, button.dataset.decision);
+      }
+    }
     $("result-detail").hidden = false;
+  }
+
+  async function decideResult(c, number, decision) {
+    const note = $("results-note");
+    note.hidden = true;
+    try {
+      await call("POST", `/campaigns/${encodeURIComponent(c.id)}/consolidations/${number}/decision`, {
+        decision,
+        comment: $("result-comment").value,
+      });
+    } catch (error) {
+      note.textContent = problem(error);
+      note.hidden = false;
+      return;
+    }
+    await reload(c.id);
+    const now = campaigns.find((x) => x.id === c.id);
+    if (now) await showResult(now, number);
   }
 
   async function change(c, to, button) {
@@ -387,8 +480,13 @@ export function createCampaigns({ goTo }) {
       return;
     }
     if (select !== undefined) shown = select;
-    if (shown && campaigns.some((x) => x.id === shown)) await loadResults(shown);
-    else results = [];
+    if (shown && campaigns.some((x) => x.id === shown)) {
+      await loadResults(shown);
+      await loadRuns(shown);
+    } else {
+      results = [];
+      runsOf = [];
+    }
     renderList();
     renderDetail();
   }
