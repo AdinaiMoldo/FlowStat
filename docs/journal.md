@@ -630,6 +630,16 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Found: the first version of the seed sent every form of the quarter without a mistake in JAL, so the campaign showed nine valid forms and the page Problems would have had only a resolved one. One form of JAL now keeps a mistake (households above the population): the campaign has eight valid and one with an error, which is what a real quarter looks like.
 - Not done: notifying the assignee (US-61), a deadline for a problem, grouping problems of one form, closing a problem by hand without a new version, and a limit for the number of comments.
 
+## 2026-11-19 M11: US-64, an operator of a regional office and the forms of the others
+
+- Why: the author looked at the page Forms and saw that any operator could remove the form of any region. The audit of M11 had written it down ("rights on one region do not exist") and no story took it. A regional office that can delete the report of another office is not a process anybody would accept.
+- Did: a user has `regions` (a column added to older databases, a JSON list), set with `flowstat user add --region CODE`. `service/permissions.py` has the rule `office_allows`, `api/deps.py` the check `require_office`, called by the two routes that change a form and the two that change a problem. `GET /me` and the sign-in give the offices, and the page Forms shows "another office" instead of Choose and Remove. The demonstration has two regional operators (aibek for OSH, gulnara for CHU). Tests first (`tests/unit/api/test_own_region.py`).
+- Chose: an operator bound to no office is the central office and is not limited, as before. The Committee's own statisticians receive files by other ways and must be able to enter them, and every existing user keeps what he could do. The other choice, an unbound operator who may change nothing, would have been stricter and would have changed every deployment that exists.
+- Chose: reading stays open for everyone. A region may see whether the others have sent; what it may not do is change them. Hiding the forms of other offices is a different requirement and nobody asked for it.
+- Chose: a new code, `E-AUTH-005`, and not `E-AUTH-002`. The role has the permission; it is the object that belongs to someone else, and a page should be able to say so.
+- Chose: the rule is checked in the API layer after the permission, with the region of the path or of the problem. The services stay unaware of who calls, as before.
+- Not done: binding the assignee of a problem to the office, a page to change the offices of a user (the command line makes them), offices on a campaign, and the same rule for starting a run. The page Problems still shows its buttons for a problem of another office and relies on the refusal of the server.
+
 ## 2026-11-20 M11: US-57, the preliminary and the final result of a campaign
 
 - Why: a campaign counted its forms and stopped. Nothing made the national figures from them, and the workflow of the example adds whatever seven of nine regions it finds without saying which.

@@ -96,9 +96,10 @@ def free_port() -> int:
         return port
 
 
-def make_user(db: str, name: str, role: str, *titles: str) -> str:
+def make_user(db: str, name: str, role: str, *titles: str, regions: tuple[str, ...] = ()) -> str:
     out = io.StringIO()
     extra = [part for title in titles for part in ("--title", title)]
+    extra += [part for region in regions for part in ("--region", region)]
     with contextlib.redirect_stdout(out):
         code = cli(["user", "add", name, "--role", role, *extra, "--db", db])
     token = next((ln.split(": ")[1] for ln in out.getvalue().splitlines() if "token: " in ln), "")

@@ -31,5 +31,14 @@ PERMISSIONS: dict[str, frozenset[str]] = {
 }
 
 
+def office_allows(role: str, offices: frozenset[str], region: str) -> bool:
+    """Whether a user may change what belongs to the office of ``region`` (US-64).
+
+    An operator who is bound to regional offices changes only what is theirs. An admin, and an
+    operator of the central office (bound to none), are not limited. Reading is not limited.
+    """
+    return role != "operator" or not offices or region in offices
+
+
 def allowed(role: str, permission: str) -> bool:
     return role in PERMISSIONS.get(permission, frozenset())

@@ -9,7 +9,7 @@ from typing import Any
 from fastapi import Depends, Query, Request, Response
 from fastapi.concurrency import run_in_threadpool
 
-from flowstat.api.deps import config_of, get_db
+from flowstat.api.deps import config_of, get_db, require_office
 from flowstat.api.errors import fail
 from flowstat.api.models import (
     FindingOut,
@@ -168,6 +168,7 @@ async def list_forms(
 async def put_form(
     region: str, quarter: str, request: Request, db: sqlite3.Connection = Depends(get_db)
 ) -> FormOut:
+    require_office(request, region)
     content = await read_body(request)
     found = await work(
         lambda: service_of(request, db).save(region, quarter, content, by_of(request))
@@ -185,6 +186,7 @@ async def put_form(
 async def delete_form(
     region: str, quarter: str, request: Request, db: sqlite3.Connection = Depends(get_db)
 ) -> Response:
+    require_office(request, region)
     await work(lambda: service_of(request, db).remove(region, quarter, by_of(request)))
     return Response(status_code=204)
 

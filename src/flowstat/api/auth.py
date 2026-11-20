@@ -84,6 +84,7 @@ def login(body: LoginIn, request: Request, db: sqlite3.Connection = Depends(get_
         role=user.role,
         titles=sorted(user.titles),
         expires_at=later(now, SESSION_HOURS),
+        regions=sorted(user.regions),
     )
 
 
@@ -95,6 +96,7 @@ def me(request: Request) -> MeOut:
         role=user.role,
         titles=sorted(user.titles),
         permissions=permissions_of(user.role),
+        regions=sorted(user.regions),
     )
 
 

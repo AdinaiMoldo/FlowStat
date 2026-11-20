@@ -9,7 +9,7 @@ from typing import Any
 from fastapi import Depends, Query, Request
 from fastapi.concurrency import run_in_threadpool
 
-from flowstat.api.deps import config_of, get_db
+from flowstat.api.deps import config_of, get_db, require_office
 from flowstat.api.errors import fail
 from flowstat.api.models import (
     AssigneeIn,
@@ -101,6 +101,7 @@ async def assign_problem(
 ) -> ProblemDetailOut:
     def change() -> tuple[Problem, list[Event]]:
         service = service_of(request, db)
+        require_office(request, service.get(problem_id)[0].region)
         service.assign(problem_id, body.assignee, request.state.user.name)
         return service.get(problem_id)
 
@@ -120,6 +121,7 @@ async def comment_problem(
 ) -> ProblemDetailOut:
     def add() -> tuple[Problem, list[Event]]:
         service = service_of(request, db)
+        require_office(request, service.get(problem_id)[0].region)
         service.comment(problem_id, body.text, request.state.user.name)
         return service.get(problem_id)
 

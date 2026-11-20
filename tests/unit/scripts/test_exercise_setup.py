@@ -67,7 +67,9 @@ def test_the_tokens_are_kept_for_the_observer(tmp_path: Path) -> None:
     finally:
         setup.process.terminate()
     assert saved["base"] == setup.base
-    assert set(saved["tokens"]) == {"admin", "designer", "chief", "operator", "operator2"}
+    assert set(saved["tokens"]) == {
+        "admin", "designer", "chief", "operator", "operator2", "osh", "chui",
+    }  # fmt: skip
 
 
 def named(name: str) -> str:

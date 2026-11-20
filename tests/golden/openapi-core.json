@@ -2060,6 +2060,14 @@
             "title": "Permissions",
             "type": "array"
           },
+          "regions": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Regions",
+            "type": "array"
+          },
           "role": {
             "title": "Role",
             "type": "string"
@@ -2770,6 +2778,14 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "regions": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Regions",
+            "type": "array"
           },
           "role": {
             "title": "Role",

@@ -532,6 +532,7 @@ class SessionOut(BaseModel):
     role: str
     titles: list[str]
     expires_at: str
+    regions: list[str] = []  # the regional offices of an operator; empty: not bound to one
 
 
 class MeOut(BaseModel):
@@ -539,6 +540,7 @@ class MeOut(BaseModel):
     role: str
     titles: list[str]
     permissions: list[str]  # what the role may do, for a page that shows only what works
+    regions: list[str] = []  # the regional offices of an operator; empty: not bound to one
 
 
 class CampaignIn(Request):

@@ -21,34 +21,55 @@ class User:
     role: str  # admin, designer or operator
     titles: frozenset[str]  # for example chief_statistician: who may answer an approval
     disabled: bool = False
+    # The regional offices an operator works for (US-64); empty: the central office, no bound.
+    regions: frozenset[str] = frozenset()
 
 
-def _user(row: tuple[str, str, str, int]) -> User:
-    name, role, titles, disabled = row
-    return User(name, role, frozenset(json.loads(titles)), bool(disabled))
+def _user(row: tuple[str, str, str, int, str | None]) -> User:
+    name, role, titles, disabled, regions = row
+    return User(
+        name, role, frozenset(json.loads(titles)), bool(disabled),
+        frozenset(json.loads(regions or "[]")),
+    )  # fmt: skip
 
 
 class UserStore:
     def __init__(self, db: sqlite3.Connection) -> None:
         self.db = db
 
-    def add(self, name: str, role: str, titles: frozenset[str], token_hash: str, now: str) -> User:
+    def add(
+        self,
+        name: str,
+        role: str,
+        titles: frozenset[str],
+        token_hash: str,
+        now: str,
+        regions: frozenset[str] = frozenset(),
+    ) -> User:
         try:
             self.db.execute(
-                "INSERT INTO users (name, role, titles, token_hash, created_at)"
-                " VALUES (?, ?, ?, ?, ?)",
-                (name, role, json.dumps(sorted(titles)), token_hash, now),
+                "INSERT INTO users (name, role, titles, token_hash, created_at, regions)"
+                " VALUES (?, ?, ?, ?, ?, ?)",
+                (
+                    name,
+                    role,
+                    json.dumps(sorted(titles)),
+                    token_hash,
+                    now,
+                    json.dumps(sorted(regions)),
+                ),
             )
         except sqlite3.IntegrityError as error:
             if "UNIQUE" in str(error) or "PRIMARY" in str(error):
                 raise UserExistsError(f"the user '{name}' or its token already exists") from error
             raise
-        return User(name, role, titles)
+        return User(name, role, titles, False, regions)
 
     def by_token_hash(self, token_hash: str) -> User | None:
         """The enabled user with this token hash, or None."""
         row = self.db.execute(
-            "SELECT name, role, titles, disabled FROM users WHERE token_hash = ? AND disabled = 0",
+            "SELECT name, role, titles, disabled, regions FROM users"
+            " WHERE token_hash = ? AND disabled = 0",
             (token_hash,),
         ).fetchone()
         return None if row is None else _user(row)
@@ -93,11 +114,11 @@ class UserStore:
         """The enabled user ``name`` and the hash of its password, or None (unknown, disabled,
         or no password set)."""
         row = self.db.execute(
-            "SELECT name, role, titles, disabled, password_hash FROM users"
+            "SELECT name, role, titles, disabled, regions, password_hash FROM users"
             " WHERE name = ? AND disabled = 0 AND password_hash IS NOT NULL",
             (name,),
         ).fetchone()
-        return None if row is None else (_user(row[:4]), str(row[4]))
+        return None if row is None else (_user(row[:5]), str(row[5]))
 
     def add_session(self, token_hash: str, name: str, now: str, expires_at: str) -> None:
         self.db.execute(
@@ -109,7 +130,7 @@ class UserStore:
     def by_session_hash(self, token_hash: str, now: str) -> User | None:
         """The enabled user of a session that has not expired, or None."""
         row = self.db.execute(
-            "SELECT u.name, u.role, u.titles, u.disabled FROM sessions s"
+            "SELECT u.name, u.role, u.titles, u.disabled, u.regions FROM sessions s"
             " JOIN users u ON u.name = s.user_name"
             " WHERE s.token_hash = ? AND s.expires_at > ? AND u.disabled = 0",
             (token_hash, now),
@@ -123,5 +144,7 @@ class UserStore:
         self.db.execute("DELETE FROM sessions WHERE expires_at <= ?", (now,))
 
     def all(self) -> list[User]:
-        rows = self.db.execute("SELECT name, role, titles, disabled FROM users ORDER BY name")
+        rows = self.db.execute(
+            "SELECT name, role, titles, disabled, regions FROM users ORDER BY name"
+        )
         return [_user(row) for row in rows]
