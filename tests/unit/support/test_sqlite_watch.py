@@ -86,3 +86,9 @@ def test_the_watch_is_shared_and_goes_when_the_last_caller_lets_go(watched: None
     sqlite_watch.install()  # a second caller
     sqlite_watch.uninstall()
     assert sqlite3.connect is patched  # the first caller still has it
+
+
+def test_a_place_is_the_last_folder_and_the_file_on_either_system() -> None:
+    assert sqlite_watch._place("/home/x/flowstat/repo/db.py") == "repo/db.py"
+    assert sqlite_watch._place("D:\\a\\FlowStat\\src\\flowstat\\repo\\db.py") == "repo/db.py"
+    assert sqlite_watch._place("db.py") == "db.py"

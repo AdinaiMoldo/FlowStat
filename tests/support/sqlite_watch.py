@@ -36,10 +36,15 @@ _users = 0  # how many callers asked for the watch; it goes when the last one le
 _HERE = __file__
 
 
+def _place(filename: str) -> str:
+    """The last folder and the file, with either kind of path separator."""
+    parts = filename.replace("\\", "/").split("/")
+    return "/".join(parts[-2:])
+
+
 def _stack() -> list[str]:
     frames = [f for f in traceback.extract_stack()[:-2] if f.filename != _HERE]
-    return [f"{f.filename.rsplit('/', 2)[-2]}/{f.filename.rsplit('/', 1)[-1]}:{f.lineno} {f.name}"
-            for f in frames[-6:]]  # fmt: skip
+    return [f"{_place(f.filename)}:{f.lineno} {f.name}" for f in frames[-6:]]
 
 
 def install() -> None:
