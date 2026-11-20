@@ -12,7 +12,7 @@ from pathlib import Path
 
 from flowstat.actions.base import ActionContext
 from flowstat.actions.registry import default_registry
-from flowstat.engine.runner import run_threaded
+from flowstat.engine.runner import Executor, run_threaded
 from flowstat.engine.scheduler import Command, Start
 from flowstat.model.history import RunReport
 from flowstat.service.runs import Launch, RunService
@@ -35,17 +35,20 @@ def drive(
     machine: Machine,
     commands: list[Command] | None = None,
     answer: Callable[[Start], Mapping[str, object] | None] | None = None,
+    wrap: Callable[[Executor], Executor] | None = None,
 ) -> RunReport:
     """Run the scheduler to the end or to a waiting step; its events are stored before its
-    commands run (write-ahead). ``commands`` continue a restore or an answer."""
+    commands run (write-ahead). ``commands`` continue a restore or an answer. ``wrap`` puts
+    something in front of the actions (the kept results of a run of a campaign, US-58)."""
     base = ActionContext(run_id, "", machine.data_dir, machine.target)
 
     def journal() -> None:
         launch.log.commit(launch.scheduler.events)
 
+    execute = default_registry(machine.hosts).executor(base)
     run_threaded(
         launch.scheduler,
-        default_registry(machine.hosts).executor(base),
+        execute if wrap is None else wrap(execute),
         machine.clock,
         machine.sleep,
         answer,

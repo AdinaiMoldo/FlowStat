@@ -75,3 +75,8 @@ class ActionSpec:
     optional: Mapping[str, str] | None = None  # arguments the action may take, with their types
     effect: bool = False  # the action changes something outside the engine (docs/dsl-spec.md 10.5)
     hosts: frozenset[str] | None = None  # hosts a call may reach; None: any (http.call, US-39)
+    # The output depends on nothing but the arguments (and on the content of the file that the
+    # argument ``reads`` names): it only computes. A run of a campaign may take such a result
+    # from an earlier run instead of computing it again (US-58). Never true with ``effect``.
+    repeatable: bool = False
+    reads: str | None = None  # the argument that is a path under the data directory

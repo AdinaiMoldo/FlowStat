@@ -79,7 +79,7 @@ walks the routes. `public` is the exception, for `GET /health` and `POST /login`
 | `workflows:publish` | `POST /workflows/{name}/versions/{n}/publish` | yes | yes | no |
 | `catalogue:write` | `PUT /catalogue/{list}` | yes | no | no |
 | `runs:read` | `GET /runs`, `GET /runs/{id}` | yes | yes | yes |
-| `runs:start` | `POST /workflows/{name}/runs` | yes | yes | yes |
+| `runs:start` | `POST /workflows/{name}/runs`, `POST /campaigns/{id}/runs` | yes | yes | yes |
 | `runs:decide` | `POST /runs/{id}/decisions` (and the title check, section 5) | yes | no | yes |
 | `deployments:read` | `GET /deployments`, `GET /deployments/{id}` | yes | yes | yes |
 | `deployments:write` | `POST /deployments`, `DELETE /deployments/{id}` | yes | no | no |
@@ -87,7 +87,7 @@ walks the routes. `public` is the exception, for `GET /health` and `POST /login`
 | `statistics:read` | `GET /statistics` | yes | no | no |
 | `forms:read` | `GET /forms` | yes | yes | yes |
 | `forms:write` | `PUT /forms/{region}/{quarter}`, `DELETE /forms/{region}/{quarter}` | yes | no | yes |
-| `campaigns:read` | `GET /campaigns`, `GET /campaigns/{id}`, `GET /campaigns/{id}/consolidations`, `GET /campaigns/{id}/consolidations/{number}` | yes | yes | yes |
+| `campaigns:read` | `GET /campaigns`, `GET /campaigns/{id}`, `GET /campaigns/{id}/consolidations`, `GET /campaigns/{id}/consolidations/{number}`, `GET /campaigns/{id}/runs` | yes | yes | yes |
 | `campaigns:write` | `POST /campaigns`, `PUT /campaigns/{id}`, `POST /campaigns/{id}/transitions` | yes | no | no |
 | `consolidations:write` | `POST /campaigns/{id}/consolidations` | yes | no | yes |
 | `problems:read` | `GET /problems`, `GET /problems/{id}` | yes | yes | yes |
@@ -739,3 +739,25 @@ so in the data (`complete: false`, `count`, `expected`, `share`, `left_out`), no
 - `GET /campaigns/{id}/consolidations` (`campaigns:read`: every role) answers `{results: [...]}`,
   the newest first, without the lines; `GET /campaigns/{id}/consolidations/{number}` answers one
   result with its lines. An unknown campaign or number is 404 `E-API-002`.
+
+## 15. The workflow of a campaign (US-58)
+
+- `POST /campaigns/{id}/runs` (`runs:start`) starts a run of the workflow version of the campaign
+  with the input `quarter` set to its period, and answers 202 like `POST /workflows/{name}/runs`.
+  The campaign must be between `COLLECTING` and `APPROVED`, otherwise 409 `E-CAMP-009`. The run
+  reads the forms as they are (the file of a region is its current version, section 11), and the
+  version of the form of each region at that moment is kept with the run.
+- A run that was started this way does again only the steps whose inputs changed. A step whose
+  action only computes (`xlsx.read`, `statguard.validate`, `stats.aggregate`) has a key made of the
+  action, its arguments and the content of the file it reads. When an earlier run of a campaign
+  kept a result under the same key, the step takes it and is not computed; otherwise it is computed
+  and its result is kept. A corrected form therefore repeats the read of that form, the check of
+  its rows and the steps that are given their outputs, and nothing else.
+- A step with an effect (`db.write`, `http.call`, `email.send`), a step that waits for a person
+  and an undo are always done. A failure is never kept. The history of the run is the same as that
+  of any run: the step is `SUCCEEDED` with its output, whether it was computed or taken.
+- A run that was started with `POST /workflows/{name}/runs` keeps nothing and takes nothing.
+- `GET /campaigns/{id}/runs` (`campaigns:read`) answers `{runs: [...]}`, the newest first: `run_id`,
+  `started_by`, `started_at`, the `status` and `outcome` of the run, `forms` (region to form
+  version), and for the steps that only compute how many were `executed` and how many `reused`,
+  with their names.

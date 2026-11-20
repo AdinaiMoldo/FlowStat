@@ -647,6 +647,23 @@ class CommentIn(Request):
     text: str
 
 
+class CampaignRunOut(BaseModel):
+    run_id: str
+    started_by: str
+    started_at: str
+    status: str  # of the run, as GET /runs/{id} gives it
+    outcome: str | None
+    forms: dict[str, int]  # region -> the version of its form when the run was started
+    executed: int  # steps that only compute and were computed in this run
+    reused: int  # steps that only compute and were taken from an earlier run
+    executed_steps: list[str]
+    reused_steps: list[str]
+
+
+class CampaignRunsOut(BaseModel):
+    runs: list[CampaignRunOut]
+
+
 class ConsolidationIn(Request):
     kind: str  # PRELIMINARY or FINAL
 

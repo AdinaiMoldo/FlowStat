@@ -212,6 +212,17 @@
         <p id="campaign-note" class="notice" hidden role="alert"></p>
         <div id="campaign-actions" class="row actions" data-needs="campaigns:write"></div>
         <div class="row">
+          <h3>Runs of the workflow</h3>
+          <span class="spacer"></span>
+          <button type="button" id="campaign-run" data-testid="campaign-run" hidden>Run the workflow</button>
+        </div>
+        <p id="campaign-runs-note" class="notice" hidden role="alert"></p>
+        <p id="campaign-runs-empty" class="muted">The workflow has not been run for this campaign.</p>
+        <table class="table static" id="campaign-runs-table" aria-label="Runs of the workflow of the campaign" hidden>
+          <thead><tr><th>Run</th><th>Status</th><th>Steps that only compute</th><th>Started</th></tr></thead>
+          <tbody id="campaign-runs-rows"></tbody>
+        </table>
+        <div class="row">
           <h3>Results</h3>
           <span class="spacer"></span>
           <button type="button" id="result-preliminary" data-testid="make-preliminary" hidden>Make a preliminary result</button>

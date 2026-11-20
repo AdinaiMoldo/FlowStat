@@ -97,3 +97,39 @@ def test_a_final_result_that_the_policy_refuses_says_why_and_a_designer_only_rea
     assert reader.is_hidden("[data-testid=make-final]")
     assert problems == []
     reader.close()
+
+
+def test_the_workflow_is_run_from_the_campaign_and_a_second_run_takes_what_did_not_change(
+    browser: Browser, forms_server: Server, tmp_path: Path
+) -> None:
+    from tests.unit.actions.helpers import REGION_CODES
+
+    save_workflow(forms_server, published=True)
+    made = forms_server.env.call("admin", "POST", "/campaigns", json={
+        "name": "Quarterly Regional Statistics, Q3 2026", "year": 2026, "quarter": 3,
+        "regions": list(REGION_CODES), "deadline": "2026-10-31",
+        "workflow": "quarterly_consolidation", "workflow_version": 1,
+        "rules": "regional-indicators-v1",
+    })  # fmt: skip
+    cid = str(made.json()["id"])
+    for to in ("OPEN", "COLLECTING"):
+        forms_server.env.call("admin", "POST", f"/campaigns/{cid}/transitions", json={"to": to})
+    for region in REGION_CODES:
+        send(forms_server, tmp_path, region)
+    page, problems = open_page(browser, forms_server, "operator")
+    page.click("[data-testid=campaign]")
+    page.wait_for_selector("[data-testid=campaign-run]:not([hidden])")
+    assert "has not been run" in page.inner_text("#campaign-runs-empty")
+    page.click("[data-testid=campaign-run]")
+    page.wait_for_selector("[data-testid=campaign-run-row]")
+    first = page.locator("[data-testid=campaign-run-row]").first.inner_text()
+    assert "WAITING" in first and "19 computed, 0 taken" in first
+    send(forms_server, tmp_path, "OSH", MORE)
+    page.click("[data-testid=campaign-run]")
+    page.wait_for_function(
+        "document.querySelectorAll('[data-testid=campaign-run-row]').length === 2"
+    )
+    newest = page.locator("[data-testid=campaign-run-row]").first.inner_text()
+    assert "3 computed, 16 taken from an earlier run" in newest
+    assert problems == []
+    page.close()

@@ -429,6 +429,12 @@ Given a campaign that is being validated, when enough valid forms are there for 
 
 Function A5 · 13 SP · Must
 
+### US-58: As an operator, I run the workflow of a campaign from the campaign, and a run after a correction does again only the steps whose inputs changed, so that one corrected form does not cost the work of nine
+
+Given a campaign that is collecting or later, when its workflow is run from the campaign, then the run is of the workflow version of the campaign for its quarter, it reads the current forms, and the version of the form of each region is kept with the run; a step that only computes (reading a form, checking its rows, adding the regions) has a key of its action, its arguments and the content of the file it reads, and a later run of a campaign that reaches the same key takes the kept result instead of computing it; after one form is corrected, the read of that form, its check and the total are computed again and the other steps are taken; a run with nothing changed computes none of them; a step with an effect, a step that waits for a person and an undo are always done, and a failure is never kept; the history of the run is that of any run; a run that was not started from a campaign keeps and takes nothing; a draft or an archived campaign refuses the run; the page Campaigns starts the run and shows for each run how many steps were computed and how many were taken
+
+Function B6 · 8 SP · Must
+
 ### US-64: As an operator of a regional office, I send and remove only the forms of my office, so that one region cannot change or delete the report of another
 
 Given an operator who is bound to regional offices (`flowstat user add NAME --role operator --region CODE`, may be repeated), when he sends or removes the form of one of them, then it is done; when he sends or removes the form of another office, or assigns or comments a problem of another office, then the reply is 403 `E-AUTH-005`, nothing changes and the file stays; reading the forms and the problems of every office stays open; an admin and an operator who is bound to no office (the central office) are not limited; only an operator can be bound; `GET /me` and the reply of the sign-in give the `regions` of the user, and the page Forms offers Choose and Remove only for the offices of the user; a database of an earlier version gets the column and its users are bound to none
