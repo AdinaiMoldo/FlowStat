@@ -434,3 +434,9 @@ Function A5 · 13 SP · Must
 Given an operator who is bound to regional offices (`flowstat user add NAME --role operator --region CODE`, may be repeated), when he sends or removes the form of one of them, then it is done; when he sends or removes the form of another office, or assigns or comments a problem of another office, then the reply is 403 `E-AUTH-005`, nothing changes and the file stays; reading the forms and the problems of every office stays open; an admin and an operator who is bound to no office (the central office) are not limited; only an operator can be bound; `GET /me` and the reply of the sign-in give the `regions` of the user, and the page Forms offers Choose and Remove only for the offices of the user; a database of an earlier version gets the column and its users are bound to none
 
 Function A3 · 3 SP · Must
+
+### DEF-2: As a developer, I am told who holds the database when a test dies of `database is locked`, so that the lock that comes now and then on the Ubuntu runner can be explained and not run again until it is green
+
+Given a browser test that fails with `database is locked`, when its report is printed, then it has a section that lists every SQLite connection alive in the process with its database, the thread and the call stack that opened it, whether it is in a transaction, and for each of its cursors the statement and whether a read was finished; a read of several rows that was left in the middle is shown to block a writer and is named by the report; a closed connection is not listed; the watch is installed for the browser tests only and changes no code of the product; the cause of the lock is found from such a report, or the limit is written down with what was tried
+
+Function B2 · 3 SP · Must

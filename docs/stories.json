@@ -565,5 +565,14 @@
     "sp": 3,
     "priority": "Must",
     "milestone": "M11"
+  },
+  {
+    "id": "DEF-2",
+    "story": "As a developer, I am told who holds the database when a test dies of `database is locked`, so that the lock that comes now and then on the Ubuntu runner can be explained and not run again until it is green",
+    "criteria": "Given a browser test that fails with `database is locked`, when its report is printed, then it has a section that lists every SQLite connection alive in the process with its database, the thread and the call stack that opened it, whether it is in a transaction, and for each of its cursors the statement and whether a read was finished; a read of several rows that was left in the middle is shown to block a writer and is named by the report; a closed connection is not listed; the watch is installed for the browser tests only and changes no code of the product; the cause of the lock is found from such a report, or the limit is written down with what was tried",
+    "function": "B2",
+    "sp": 3,
+    "priority": "Must",
+    "milestone": "M11"
   }
 ]
