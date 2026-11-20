@@ -62,7 +62,12 @@ USERS = {
     "chief": ("alua", "operator", ("chief_statistician",)),
     "operator": ("atai", "operator", ()),
     "operator2": ("marina", "operator", ()),
+    "osh": ("aibek", "operator", ()),
+    "chui": ("gulnara", "operator", ()),
 }
+# The operators of regional offices (US-64): each sends and removes only the forms of its office.
+# The others belong to the central office and are not bound to a region.
+OFFICES: dict[str, tuple[str, ...]] = {"osh": ("OSH",), "chui": ("CHU",)}
 
 
 @dataclass
@@ -122,7 +127,8 @@ def prepare(
     work.mkdir(parents=True)
     db = str(work / "flowstat.db")
     tokens = {
-        key: demo.make_user(db, name, role, *titles) for key, (name, role, titles) in USERS.items()
+        key: demo.make_user(db, name, role, *titles, regions=OFFICES.get(key, ()))
+        for key, (name, role, titles) in USERS.items()
     }
     # A password for each, to sign in on the page. They are made here, for this start only, and
     # written to tokens.json with the tokens; they are of no use outside this folder.
@@ -254,6 +260,8 @@ def start(
         print("Sign in on the page with a name and a password. The users of this start:")
         for key, (name, role, titles) in USERS.items():
             what = f"{role}, {', '.join(titles)}" if titles else role
+            if key in OFFICES:
+                what += f", office {', '.join(OFFICES[key])}"
             print(f"    {name:<5} {setup.passwords[key]}   ({what})")
         if logins:
             print("The page also has a button for each user (a demonstration).")

@@ -29,6 +29,7 @@ SESSION_HOURS = 8
 # they can be raised later without locking anybody out.
 _N, _R, _P = 2**14, 8, 1
 _NAME = re.compile(r"^[a-z][a-z0-9_.-]{0,63}$")
+_REGION = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,31}$")  # a code of the catalogue list
 
 
 def hash_token(token: str) -> str:
@@ -83,7 +84,17 @@ class UserService:
     def __init__(self, db: sqlite3.Connection) -> None:
         self.store = UserStore(db)
 
-    def add(self, name: str, role: str, titles: Iterable[str], token: str, now: str) -> User:
+    def add(
+        self,
+        name: str,
+        role: str,
+        titles: Iterable[str],
+        token: str,
+        now: str,
+        regions: Iterable[str] = (),
+    ) -> User:
+        """Make a user. ``regions`` binds an operator to regional offices (US-64): he sends and
+        removes only their forms. Without it an operator belongs to the central office."""
         if not _NAME.match(name):
             raise ValueError("a user name is lower case letters, digits, '_', '-' or '.'")
         if role not in ROLES:
@@ -93,7 +104,12 @@ class UserService:
         clean = frozenset(titles)
         if not all(_NAME.match(t) for t in clean):
             raise ValueError("a title is lower case letters, digits, '_', '-' or '.'")
-        return self.store.add(name, role, clean, hash_token(token), now)
+        offices = frozenset(regions)
+        if not all(_REGION.match(r) for r in offices):
+            raise ValueError("a region is the code of a regional office, for example OSH")
+        if offices and role != "operator":
+            raise ValueError("only an operator is bound to regional offices")
+        return self.store.add(name, role, clean, hash_token(token), now, offices)
 
     def authenticate(self, token: str, now: str | None = None) -> User | None:
         """The user a token belongs to, or None (unknown, empty or disabled).

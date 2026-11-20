@@ -45,6 +45,7 @@ To use it from the command line, or over HTTP (the contract is `docs/api-spec.md
 
 ```bash
 flowstat user add ada --role admin --password --db flowstat.db  # prints a token once, asks for a password to sign in with
+flowstat user add aibek --role operator --region OSH --password --db flowstat.db  # an operator of one regional office
 python -m flowstat.serve --db flowstat.db --data forms/ --target results.db
 ```
 
