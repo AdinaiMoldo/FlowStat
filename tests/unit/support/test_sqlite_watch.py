@@ -92,3 +92,35 @@ def test_a_place_is_the_last_folder_and_the_file_on_either_system() -> None:
     assert sqlite_watch._place("/home/x/flowstat/repo/db.py") == "repo/db.py"
     assert sqlite_watch._place("D:\\a\\FlowStat\\src\\flowstat\\repo\\db.py") == "repo/db.py"
     assert sqlite_watch._place("db.py") == "db.py"
+
+
+def test_the_report_has_the_statement_that_waited_for_the_lock_and_the_read_that_held_it(
+    watched: None, tmp_path: Path
+) -> None:
+    path = filled(tmp_path)
+    reader, cursor = left_in_the_middle(path)
+    writer = connect(path)
+    writer.execute("PRAGMA busy_timeout = 300")
+    with pytest.raises(sqlite3.OperationalError, match="database is locked"):
+        writer.execute("DELETE FROM runs WHERE run_id = 'r1'")
+    report = sqlite_watch.report()
+    waited = next(ln for ln in report.splitlines() if "DELETE FROM runs" in ln)
+    assert "ERROR database is locked" in waited and "execute 0." in waited
+    held = [ln for ln in report.splitlines() if "read NOT FINISHED" in ln]
+    assert any("SELECT run_id FROM runs ORDER BY run_id" in ln for ln in held)
+    assert "open in this process (pid " in report
+    cursor.close()
+    reader.close()
+    writer.close()
+
+
+def test_a_connection_that_another_thread_opened_is_listed(watched: None, tmp_path: Path) -> None:
+    import threading
+
+    path = filled(tmp_path)
+    made: list[sqlite3.Connection] = []
+    worker = threading.Thread(target=lambda: made.append(sqlite3.connect(path)), name="elsewhere")
+    worker.start()
+    worker.join()
+    report = sqlite_watch.report()
+    assert "opened in thread elsewhere" in report  # its state can be read from this thread

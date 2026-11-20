@@ -687,3 +687,11 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Chose: the primary key refuses a second decision even when two approvers press at the same moment; the check before it gives the readable message, the key gives the guarantee.
 - Not done: a notice to the regions when a correction is asked for (the comment is on the result and the campaign is back in COLLECTING, but nobody is told), taking a decision back, and a second approver.
 
+## 2026-11-20 M11: DEF-2, what the first report said
+
+- Seen: the Ubuntu job of #132 (US-58) failed with `database is locked` in the same five browser tests as on #128 (`test_live.py` twice, the set-up of `test_migration.py` three times), and this time each carries the report. The tests between them passed (two more of `test_live.py`, all of `test_logins.py`), so the lock comes in episodes and is not held for the rest of the session.
+- Found: nobody in the process holds it when the report is made. At the first failure the only open connection is the test's own, the one that waited; at the others there is one connection of a request with its read finished. The guess of this morning, a read left in the middle on a leaked connection, is not what the report shows.
+- Not known: who held the lock while the statement waited. The report is made after the wait, and whoever held the lock may be gone by then; or it is another process.
+- Did: the report now also has (1) the statements of the last 30 seconds of the cursors of `flowstat.repo.db` that were slow, that failed (with how long they waited) or that were reads not finished, each with its thread and connection, and (2) the other processes that have the database or its journal open, read from `/proc`. A cursor or a connection that is closed counts as finished. Tests first, two more.
+- Rule kept: the failure was read and written here before the job was run again.
+
