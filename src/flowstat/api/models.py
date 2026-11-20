@@ -693,6 +693,18 @@ class LineOut(BaseModel):
     parts: list[LinePartOut]  # the figures the total was added from
 
 
+class ResultDecisionIn(Request):
+    decision: str  # APPROVE, REJECT or CORRECT
+    comment: str = ""  # needed for REJECT and CORRECT
+
+
+class ResultDecisionOut(BaseModel):
+    decision: str
+    comment: str
+    by: str
+    at: str
+
+
 class ConsolidationOut(BaseModel):
     campaign: str
     period: str
@@ -709,6 +721,7 @@ class ConsolidationOut(BaseModel):
     stale: bool  # a form changed or a newer result was made after it
     stale_at: str | None = None
     stale_reason: str | None = None
+    decision: ResultDecisionOut | None = None  # what the approver decided about this version
 
 
 class ConsolidationDetailOut(ConsolidationOut):

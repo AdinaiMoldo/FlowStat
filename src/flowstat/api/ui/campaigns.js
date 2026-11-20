@@ -327,7 +327,45 @@ export function createCampaigns({ goTo }) {
         return tr;
       }),
     );
+    const words = { APPROVE: "Approved", REJECT: "Rejected", CORRECT: "A correction was asked for" };
+    const taken = $("result-decision");
+    taken.hidden = r.decision === null;
+    if (r.decision) {
+      taken.classList.toggle("good", r.decision.decision === "APPROVE");
+      taken.textContent =
+        `${words[r.decision.decision]} by ${r.decision.by}, ${r.decision.at.replace("T", " ").replace("Z", " UTC")}` +
+        (r.decision.comment ? `: ${r.decision.comment}` : "");
+    }
+    // the approver of the campaign decides about its current final result, once
+    const holds = user.role === "admin" || user.titles.includes(c.approver);
+    const open =
+      can("consolidations:decide") && holds && r.decision === null && r.kind === "FINAL" && !r.stale && c.status === "PENDING_APPROVAL";
+    $("result-decide").hidden = !open;
+    if (open) {
+      $("result-comment").value = "";
+      for (const button of $("result-decide").querySelectorAll("[data-testid=decide]")) {
+        button.onclick = () => decideResult(c, number, button.dataset.decision);
+      }
+    }
     $("result-detail").hidden = false;
+  }
+
+  async function decideResult(c, number, decision) {
+    const note = $("results-note");
+    note.hidden = true;
+    try {
+      await call("POST", `/campaigns/${encodeURIComponent(c.id)}/consolidations/${number}/decision`, {
+        decision,
+        comment: $("result-comment").value,
+      });
+    } catch (error) {
+      note.textContent = problem(error);
+      note.hidden = false;
+      return;
+    }
+    await reload(c.id);
+    const now = campaigns.find((x) => x.id === c.id);
+    if (now) await showResult(now, number);
   }
 
   async function change(c, to, button) {

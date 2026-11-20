@@ -677,3 +677,13 @@ One entry per significant decision: date, what we chose, what we rejected, what 
 - Limits: `KEY_VERSION` must be raised by hand when an action that only computes changes what it computes, or an old result would be taken. The kept results are never removed. A result is kept as JSON, which is what the history does as well. The time that is saved was not measured; with nine small forms it is milliseconds, and the claim here is about which steps run, not about speed.
 - Not done: the same for a deployed service, a route to clear the kept results, and showing "taken from run X" in the list of the steps of a run.
 
+## 2026-11-20 M11: US-61, the decision about a result
+
+- Why: a final result moved the campaign to PENDING_APPROVAL and nothing could take it from there. The life cycle had the arrows to APPROVED, REJECTED and COLLECTING for the system since US-53; no story made them.
+- Did: the pure rule `decided` in `model/consolidation.py`, the table `result_decisions` (one row for a result version, written once), `ConsolidationService.decide`, the route `POST /campaigns/{id}/consolidations/{number}/decision`, the permission `consolidations:decide`, and on the page the decision of a result and three buttons with a comment for the approver. Tests first: three of the rule, six of the API, one in a browser.
+- Chose: the decision belongs to a result version, by its number, and not to the campaign. That is what makes "an approval is not inherited" a fact of the data: the result made after a correction is number 2 and has no row.
+- Chose: the title, as for the approval of a run. The campaign names the title that approves (`approver`); the route asks for the role (admin or operator) and then for the title, and an admin needs none. Two rules for the same thing in one system would be one too many.
+- Chose: the order of the refusals. An unknown decision, then a preliminary result, then "already decided", then "not the current result", then the status of the campaign, then the comment. A person who approves result 1 after result 2 was made is told that it is not the current one, which is the thing to know.
+- Chose: the primary key refuses a second decision even when two approvers press at the same moment; the check before it gives the readable message, the key gives the guarantee.
+- Not done: a notice to the regions when a correction is asked for (the comment is on the result and the campaign is back in COLLECTING, but nobody is told), taking a decision back, and a second approver.
+

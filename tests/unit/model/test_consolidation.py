@@ -103,3 +103,59 @@ def test_a_code_that_comes_twice_in_one_form_is_added_and_shown_once_for_the_reg
     parts = {"BIS": Part("BIS", 1, "s", (("I01", "a", Decimal("1.5")), ("I01", "a", Decimal("2"))))}
     result = consolidate(PRELIMINARY, ("BIS",), parts, {}, preliminary_min=1, final_min=1)
     assert result.lines[0].parts == (("BIS", 1, Decimal("3.5")),)
+
+
+# -- the decision about a result (US-61) ---------------------------------------------------------
+def test_an_approval_a_rejection_and_a_correction_move_the_campaign() -> None:
+    from flowstat.model.consolidation import APPROVE, CORRECT, REJECT, decided
+
+    ok = dict(kind=FINAL, stale=False, latest=True, status="PENDING_APPROVAL", already=False)
+    assert decided(APPROVE, "", **ok) == "APPROVED"  # type: ignore[arg-type]
+    assert decided(REJECT, "the totals of JAL are wrong", **ok) == "REJECTED"  # type: ignore[arg-type]
+    assert decided(CORRECT, "JAL must send again", **ok) == "COLLECTING"  # type: ignore[arg-type]
+
+
+def test_a_rejection_and_a_correction_need_a_comment() -> None:
+    from flowstat.model.consolidation import CORRECT, REJECT, decided
+
+    for decision in (REJECT, CORRECT):
+        for comment in ("", "   "):
+            with pytest.raises(ConsolidationError) as refused:
+                decided(decision, comment, FINAL, False, True, "PENDING_APPROVAL", False)
+            assert refused.value.code == "E-CONS-008"
+    with pytest.raises(ConsolidationError) as long:
+        decided(REJECT, "x" * 2001, FINAL, False, True, "PENDING_APPROVAL", False)
+    assert long.value.code == "E-CONS-008"
+
+
+def test_only_the_current_final_result_of_a_campaign_that_waits_can_be_decided() -> None:
+    from flowstat.model.consolidation import APPROVE, decided
+
+    cases: list[tuple[dict[str, object], str]] = [
+        (dict(kind=PRELIMINARY), "E-CONS-006"),  # a preliminary result is not approved
+        (dict(stale=True), "E-CONS-005"),  # a form changed: the approval is not inherited
+        (dict(latest=False), "E-CONS-005"),
+        (dict(status="PRELIMINARY"), "E-CONS-006"),
+        (dict(status="APPROVED"), "E-CONS-006"),
+        (dict(already=True), "E-CONS-007"),  # decided once
+    ]
+    for change, code in cases:
+        args: dict[str, object] = dict(
+            kind=FINAL, stale=False, latest=True, status="PENDING_APPROVAL", already=False
+        )
+        args.update(change)
+        with pytest.raises(ConsolidationError) as refused:
+            decided(APPROVE, "", **args)  # type: ignore[arg-type]
+        assert refused.value.code == code, change
+    with pytest.raises(ConsolidationError) as unknown:
+        decided("MAYBE", "", FINAL, False, True, "PENDING_APPROVAL", False)
+    assert unknown.value.code == "E-CONS-004"
+
+
+def test_the_statuses_a_decision_names_are_statuses_of_a_campaign_that_the_system_may_set() -> None:
+    from flowstat.model import campaign as life
+    from flowstat.model import consolidation as model
+
+    assert model._WAITS == life.PENDING
+    for to in model._AFTER.values():
+        assert life.move(life.PENDING, to, life.SYSTEM) == to

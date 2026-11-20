@@ -90,6 +90,7 @@ walks the routes. `public` is the exception, for `GET /health` and `POST /login`
 | `campaigns:read` | `GET /campaigns`, `GET /campaigns/{id}`, `GET /campaigns/{id}/consolidations`, `GET /campaigns/{id}/consolidations/{number}`, `GET /campaigns/{id}/runs` | yes | yes | yes |
 | `campaigns:write` | `POST /campaigns`, `PUT /campaigns/{id}`, `POST /campaigns/{id}/transitions` | yes | no | no |
 | `consolidations:write` | `POST /campaigns/{id}/consolidations` | yes | no | yes |
+| `consolidations:decide` | `POST /campaigns/{id}/consolidations/{number}/decision` (and the title that the campaign names as `approver`) | yes | no | yes |
 | `problems:read` | `GET /problems`, `GET /problems/{id}` | yes | yes | yes |
 | `problems:write` | `POST /problems/{id}/assignee`, `POST /problems/{id}/comments` | yes | no | yes |
 | `handover:control` | `/migration/{run_id}/...` and `/keys...` of a deployed service | yes | no | no |
@@ -739,6 +740,24 @@ so in the data (`complete: false`, `count`, `expected`, `share`, `left_out`), no
 - `GET /campaigns/{id}/consolidations` (`campaigns:read`: every role) answers `{results: [...]}`,
   the newest first, without the lines; `GET /campaigns/{id}/consolidations/{number}` answers one
   result with its lines. An unknown campaign or number is 404 `E-API-002`.
+
+### The decision about a result (US-61)
+
+- `POST /campaigns/{id}/consolidations/{number}/decision` with `{decision, comment}`
+  (`consolidations:decide`: admin, operator) answers 200 with the result. The caller must hold the
+  title that the campaign names as `approver` (`chief_statistician` by default), otherwise 403
+  `E-AUTH-002`; an admin needs no title, as for the approval of a run (section 5).
+- `decision` is `APPROVE`, `REJECT` or `CORRECT` (ask the regions for a correction); anything else
+  is 422 `E-CONS-004`. `REJECT` and `CORRECT` need a `comment` of 1 to 2,000 characters, otherwise
+  422 `E-CONS-008`.
+- A decision is about one result version. It is taken about the final result (409 `E-CONS-006`
+  for a preliminary one) that is current, that is not stale and the newest of its campaign (409
+  `E-CONS-005`), while the campaign is `PENDING_APPROVAL` (409 `E-CONS-006`), and once (409
+  `E-CONS-007`). A result made after a form changed is another version and has no decision: an
+  approval is never inherited.
+- The campaign follows: `APPROVE` moves it to `APPROVED` (its forms can no longer change, 409
+  `E-CAMP-006`), `REJECT` to `REJECTED`, `CORRECT` back to `COLLECTING`. The result carries the
+  `decision` (`decision`, `comment`, `by`, `at`) from then on, in the list and alone.
 
 ## 15. The workflow of a campaign (US-58)
 

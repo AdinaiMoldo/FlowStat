@@ -137,3 +137,58 @@ def consolidate(
         out,
         lines,
     )
+
+
+# -- the decision about a result (US-61) ---------------------------------------------------------
+APPROVE = "APPROVE"
+REJECT = "REJECT"
+CORRECT = "CORRECT"  # ask the regions for a correction
+DECISIONS = (APPROVE, REJECT, CORRECT)
+COMMENT_MAX = 2000
+
+# The statuses of a campaign are written here as text and not imported: this module and
+# ``model/campaign.py`` do not know each other, and a test says that the words agree.
+_WAITS = "PENDING_APPROVAL"
+_AFTER = {APPROVE: "APPROVED", REJECT: "REJECTED", CORRECT: "COLLECTING"}
+
+
+def decided(
+    decision: str,
+    comment: str,
+    kind: str,
+    stale: bool,
+    latest: bool,
+    status: str,
+    already: bool,
+) -> str:
+    """The status the campaign goes to when ``decision`` is taken about a result, or a
+    ``ConsolidationError``.
+
+    A decision is about one result version: the final one that is current (not stale, the latest
+    of its campaign) while the campaign waits for the approval, and it is taken once. A result
+    that was made after a form changed is another version and has no decision. A rejection and a
+    request for a correction say why.
+    """
+    if decision not in DECISIONS:
+        raise ConsolidationError(
+            "E-CONS-004", f"the decision must be one of {', '.join(DECISIONS)}"
+        )
+    if kind != FINAL:
+        raise ConsolidationError("E-CONS-006", "only a final result is approved or rejected")
+    if already:
+        raise ConsolidationError("E-CONS-007", "a decision was already taken about this result")
+    if stale or not latest:
+        raise ConsolidationError(
+            "E-CONS-005",
+            "this result is not the current one any more; decide about the newest result",
+        )
+    if status != _WAITS:
+        raise ConsolidationError(
+            "E-CONS-006", f"the campaign does not wait for an approval; it is {status}"
+        )
+    text = comment.strip()
+    if decision != APPROVE and not text:
+        raise ConsolidationError("E-CONS-008", "say why: a comment is needed")
+    if len(text) > COMMENT_MAX:
+        raise ConsolidationError("E-CONS-008", f"a comment has at most {COMMENT_MAX} characters")
+    return _AFTER[decision]

@@ -174,6 +174,17 @@ CREATE TABLE IF NOT EXISTS consolidations (
     PRIMARY KEY (campaign_id, number)
 );
 
+-- The decision about a result (US-61): one for a result version, written once.
+CREATE TABLE IF NOT EXISTS result_decisions (
+    campaign_id TEXT    NOT NULL,
+    number      INTEGER NOT NULL,
+    decision    TEXT    NOT NULL CHECK (decision IN ('APPROVE', 'REJECT', 'CORRECT')),
+    comment     TEXT    NOT NULL,
+    decided_by  TEXT    NOT NULL,
+    decided_at  TEXT    NOT NULL,
+    PRIMARY KEY (campaign_id, number)
+);
+
 -- The runs of the workflow that were started from a campaign (US-58), with the version of the
 -- form of each region at that moment.
 CREATE TABLE IF NOT EXISTS campaign_runs (

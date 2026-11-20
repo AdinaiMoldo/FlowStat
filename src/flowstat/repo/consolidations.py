@@ -73,6 +73,14 @@ def _stored(row: tuple[object, ...]) -> Stored:
     )
 
 
+@dataclass(frozen=True, slots=True)
+class Decision:
+    decision: str  # APPROVE, REJECT or CORRECT
+    comment: str
+    by: str
+    at: str
+
+
 class ConsolidationRepo:
     def __init__(self, db: sqlite3.Connection) -> None:
         self.db = db
@@ -116,3 +124,25 @@ class ConsolidationRepo:
             (now, reason, campaign_id),
         )
         return int(done.rowcount)
+
+    # -- the decisions (US-61) --------------------------------------------------------------------
+    def decisions(self, campaign_id: str) -> dict[int, Decision]:
+        rows = self.db.execute(
+            "SELECT number, decision, comment, decided_by, decided_at FROM result_decisions"
+            " WHERE campaign_id = ?",
+            (campaign_id,),
+        ).fetchall()
+        return {int(n): Decision(str(d), str(c), str(by), str(at)) for n, d, c, by, at in rows}
+
+    def decide(self, campaign_id: str, number: int, decision: Decision) -> bool:
+        """Keep the decision about a result. False when the result already has one."""
+        try:
+            self.db.execute(
+                "INSERT INTO result_decisions (campaign_id, number, decision, comment,"
+                " decided_by, decided_at) VALUES (?, ?, ?, ?, ?, ?)",
+                (campaign_id, number, decision.decision, decision.comment, decision.by,
+                 decision.at),
+            )  # fmt: skip
+        except sqlite3.IntegrityError:
+            return False
+        return True

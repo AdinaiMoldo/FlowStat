@@ -468,6 +468,16 @@
             "title": "Count",
             "type": "integer"
           },
+          "decision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResultDecisionOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "expected": {
             "title": "Expected",
             "type": "integer"
@@ -590,6 +600,16 @@
           "count": {
             "title": "Count",
             "type": "integer"
+          },
+          "decision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResultDecisionOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "expected": {
             "title": "Expected",
@@ -2787,6 +2807,53 @@
         "title": "RegionProgressOut",
         "type": "object"
       },
+      "ResultDecisionIn": {
+        "additionalProperties": false,
+        "properties": {
+          "comment": {
+            "default": "",
+            "title": "Comment",
+            "type": "string"
+          },
+          "decision": {
+            "title": "Decision",
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision"
+        ],
+        "title": "ResultDecisionIn",
+        "type": "object"
+      },
+      "ResultDecisionOut": {
+        "properties": {
+          "at": {
+            "title": "At",
+            "type": "string"
+          },
+          "by": {
+            "title": "By",
+            "type": "string"
+          },
+          "comment": {
+            "title": "Comment",
+            "type": "string"
+          },
+          "decision": {
+            "title": "Decision",
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision",
+          "comment",
+          "by",
+          "at"
+        ],
+        "title": "ResultDecisionOut",
+        "type": "object"
+      },
       "RunOut": {
         "properties": {
           "finished_at": {
@@ -4031,6 +4098,108 @@
           "consolidations"
         ],
         "x-permission": "campaigns:read"
+      }
+    },
+    "/campaigns/{campaign_id}/consolidations/{number}/decision": {
+      "post": {
+        "operationId": "decide_consolidation_campaigns__campaign_id__consolidations__number__decision_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "title": "Campaign Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "number",
+            "required": true,
+            "schema": {
+              "title": "Number",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResultDecisionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsolidationDetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "no valid token (E-AUTH-001)"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the role lacks the permission (E-AUTH-002)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "not found (E-API-002)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "conflict with the state of the resource (E-API-003)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "the request is invalid (E-API-001, E-API-004, E-API-005, E-INPUT-*)"
+          }
+        },
+        "summary": "Approve the final result, reject it, or ask the regions for a correction",
+        "tags": [
+          "consolidations"
+        ],
+        "x-permission": "consolidations:decide"
       }
     },
     "/campaigns/{campaign_id}/runs": {

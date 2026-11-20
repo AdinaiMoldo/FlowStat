@@ -21,7 +21,7 @@ from flowstat.model.campaign import Campaign, CampaignError
 from flowstat.model.consolidation import ConsolidationError, Left, Part
 from flowstat.model.rules import State, read_value
 from flowstat.repo.campaigns import CampaignRepo
-from flowstat.repo.consolidations import ConsolidationRepo, Stored
+from flowstat.repo.consolidations import ConsolidationRepo, Decision, Stored
 from flowstat.repo.form_versions import FormVersionRepo
 
 # The statuses in which a result can be made, and the way from each to READY.
@@ -107,6 +107,34 @@ class ConsolidationService:
     def get(self, campaign_id: str, number: int) -> Stored:
         self.campaigns.get(campaign_id)
         return self.repo.get(campaign_id, number)
+
+    # -- the decision about a result (US-61) -----------------------------------------------------
+    def decisions(self, campaign_id: str) -> dict[int, Decision]:
+        return self.repo.decisions(campaign_id)
+
+    def decide(self, campaign_id: str, number: int, decision: str, comment: str, by: str) -> Stored:
+        """Approve the result, reject it or ask for a correction; the campaign follows."""
+        campaign = self.campaigns.get(campaign_id)
+        found = self.repo.get(campaign_id, number)
+        newest = self.repo.all(campaign_id)[0].number
+        to = model.decided(
+            decision,
+            comment,
+            found.result.kind,
+            found.stale_at is not None,
+            number == newest,
+            campaign.status,
+            number in self.repo.decisions(campaign_id),
+        )
+        now = self.clock()
+        life.move(campaign.status, to, life.SYSTEM)
+        if not self.repo.decide(campaign_id, number, Decision(decision, comment.strip(), by, now)):
+            raise ConsolidationError("E-CONS-007", "a decision was already taken about this result")
+        if not self.campaigns.set_status(campaign_id, campaign.status, to, now):
+            raise CampaignError(
+                "E-CAMP-007", "the campaign changed while you were asking; read it again"
+            )
+        return found
 
     # -- a form of the period changed ------------------------------------------------------------
     def on_form(self, region: str, quarter: str, what: str) -> None:
