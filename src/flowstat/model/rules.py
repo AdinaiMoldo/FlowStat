@@ -142,7 +142,34 @@ REGIONAL_V1 = RuleSet(
     closed=True,
 )
 
-SETS = {s.name: s for s in (BASIC, REGIONAL_V1)}
+# A template with a total: the resident population is the urban and the rural population added.
+# Like the one above it stands for a template of the committee that this project does not know; it
+# is here so that an arithmetic rule is used by a campaign and not only by a test (US-63).
+_ZERO = Decimal(0)
+REGIONAL_V2 = RuleSet(
+    "regional-demography-v2",
+    indicators=(
+        Indicator("D01", "Resident population, total", low=_ZERO, low_strict=True),
+        Indicator("D02", "Urban population", low=_ZERO),
+        Indicator("D03", "Rural population", low=_ZERO),
+        Indicator("D04", "Households", low=_ZERO),
+        Indicator("D05", "Live births", low=_ZERO),
+        Indicator("D06", "Deaths", low=_ZERO),
+        Indicator("D07", "Marriages", low=_ZERO),
+        Indicator("D08", "Divorces", low=_ZERO),
+    ),
+    at_most=(
+        AtMost("D04", "D01"),
+        AtMost("D05", "D01"),
+        AtMost("D06", "D01"),
+        AtMost("D07", "D01"),
+        AtMost("D08", "D01"),
+    ),
+    sums=(SumOf("D01", ("D02", "D03")),),
+    closed=True,
+)
+
+SETS = {s.name: s for s in (BASIC, REGIONAL_V1, REGIONAL_V2)}
 
 
 def known(name: str) -> bool:

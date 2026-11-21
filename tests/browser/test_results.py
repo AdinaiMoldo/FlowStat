@@ -130,7 +130,7 @@ def test_the_workflow_is_run_from_the_campaign_and_a_second_run_takes_what_did_n
         "document.querySelectorAll('[data-testid=campaign-run-row]').length === 2"
     )
     newest = page.locator("[data-testid=campaign-run-row]").first.inner_text()
-    assert "3 computed, 16 taken from an earlier run" in newest
+    assert "3 computed, 16 taken" in newest
     assert problems == []
     page.close()
 

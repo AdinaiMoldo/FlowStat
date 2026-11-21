@@ -89,14 +89,16 @@ class Timeline:
         return self.at.timestamp() + self.elapsed
 
 
-def open_client(work: Path, db: str, now: datetime, timeline: Timeline | None = None) -> TestClient:
+def open_client(
+    work: Path, db: str, now: datetime, timeline: Timeline | None = None, seed: int = 52
+) -> TestClient:
     """The API of the core in this process, on the files of ``work``, with the clock of the history.
 
     Runs are driven before the reply (there is no pool), identifiers come from a generator with a
     seed, so the same call gives the same history.
     """
     line = timeline or Timeline(now)
-    rng = random.Random(52)
+    rng = random.Random(seed)  # another seed for another story, or the identifiers would collide
     config = AppConfig(
         db_path=db,
         data_dir=work / "forms",
@@ -175,6 +177,160 @@ XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 def expect(reply: Any, status: int, what: str) -> None:
     if reply.status_code != status:
         raise RuntimeError(f"the history could not {what}: {reply.status_code} {reply.text[:300]}")
+
+
+# -- the campaign with the cases of the cycle (US-63) --------------------------------------------
+CYCLE_NAME = "Quarterly Demographic Report, Q2 2025"
+CYCLE_PERIOD = "2025Q2"
+CYCLE_RULES = "regional-demography-v2"
+# region -> (the case of its first form, the key of the user who sends it)
+CYCLE_FORMS = {
+    "BIS": ("good", "operator"),
+    "OSC": ("good", "operator"),
+    "ISK": ("good", "operator2"),
+    "OSH": ("good", "osh"),  # the operator of the office of Osh oblast, when there is one
+    "CHU": ("good", "chui"),
+    "BAT": ("missing-row", "operator2"),
+    "JAL": ("wrong-sum", "operator"),
+    "TAL": ("text-for-a-number", "operator2"),
+}  # NAR sends nothing
+REJECTION = (
+    "Talas and Naryn are not in the result: seven regions of nine cannot be published as the"
+    " figure of the republic"
+)
+
+
+def seed_campaign(work: Path, db: str, tokens: dict[str, str], now: datetime) -> dict[str, Any]:
+    """A campaign that has been through the whole cycle, for the demonstration.
+
+    Eight regions send their form for 2025Q2 and Naryn does not. Three of the forms have a
+    mistake, each of another kind (a row that is missing, a total that is not the sum of its
+    parts, a text where a number belongs), and each is corrected later, so each has two versions
+    and a problem that was resolved. A preliminary result is made from six regions, a final one
+    from seven is rejected by the chief statistician with her reason, and a final one from eight
+    waits for her decision: that is where the demonstration takes over. The workflow is run from
+    the campaign twice, before and after the last correction.
+
+    It can be called after ``seed`` or alone; the users of ``tokens`` must exist in ``db``. The
+    regional operators (``osh``, ``chui``) send the forms of their offices when they exist.
+    """
+    now = now.astimezone(UTC)
+    client = open_client(work, db, now, seed=63)
+    line: Timeline = client.timeline  # type: ignore[attr-defined]
+    admin, designer = bearer(tokens["admin"]), bearer(tokens["designer"])
+    chief = bearer(tokens["chief"])
+
+    def user(key: str) -> str:
+        return tokens.get(key) or tokens["operator"]
+
+    def send(region: str, case: str, key: str) -> None:
+        path = work / "send.xlsx"
+        make_forms.write_form(path, make_forms.demography_rows(region, case))
+        reply = client.put(
+            f"/forms/{region}/{CYCLE_PERIOD}",
+            content=path.read_bytes(),
+            headers={**bearer(user(key)), "Content-Type": XLSX},
+        )
+        expect(reply, 200, f"send the form of {region} for {CYCLE_PERIOD}")
+
+    try:
+        line.set(now - timedelta(days=2))
+        regions = YAML(typ="safe").load(CATALOGUE.read_text(encoding="utf8"))["regions"]
+        expect(
+            client.put("/catalogue/regions", headers=admin, json={"items": regions}),
+            200,
+            "load the catalogue",
+        )
+        listed = client.get(f"/workflows/{NAME}/versions", headers=designer)
+        published = (
+            [v["number"] for v in listed.json() if v["status"] == "published"]
+            if listed.status_code == 200
+            else []
+        )
+        if not published:  # called alone: the workflow of the example, published
+            text = EXAMPLE.read_text(encoding="utf8")
+            expect(
+                client.post(f"/workflows/{NAME}/versions", headers=designer, json={"text": text}),
+                201,
+                "save the workflow",
+            )
+            expect(
+                client.post(f"/workflows/{NAME}/versions/1/publish", headers=designer),
+                200,
+                "publish",
+            )
+            published = [1]
+        made = client.post(
+            "/campaigns",
+            headers=admin,
+            json={
+                "name": CYCLE_NAME,
+                "year": 2025,
+                "quarter": 2,
+                "regions": [r["code"] for r in regions],
+                "deadline": (now + timedelta(days=3)).date().isoformat(),
+                "workflow": NAME,
+                "workflow_version": published[-1],
+                "rules": CYCLE_RULES,
+                "preliminary_min": 5,
+                "final_min": 7,
+            },
+        )
+        expect(made, 201, f"make the campaign {CYCLE_NAME}")
+        cid = made.json()["id"]
+
+        def move(to: str) -> None:
+            reply = client.post(f"/campaigns/{cid}/transitions", headers=admin, json={"to": to})
+            expect(reply, 200, f"move the campaign to {to}")
+
+        def result(kind: str, key: str = "operator") -> int:
+            reply = client.post(
+                f"/campaigns/{cid}/consolidations", headers=bearer(user(key)), json={"kind": kind}
+            )
+            expect(reply, 201, f"make a {kind} result")
+            return int(reply.json()["number"])
+
+        def run() -> None:
+            reply = client.post(f"/campaigns/{cid}/runs", headers=bearer(user("operator")))
+            expect(reply, 202, "run the workflow of the campaign")
+
+        move("OPEN")
+        move("COLLECTING")
+        # the first forms: five good ones and three with a mistake, each of another kind
+        line.set(now - timedelta(hours=5))
+        for region, (case, key) in CYCLE_FORMS.items():
+            send(region, case, key)
+        # Batken sends the row that was missing; six forms are valid
+        line.set(now - timedelta(hours=4))
+        send("BAT", "good", "operator2")
+        move("VALIDATING")
+        result("PRELIMINARY")  # 1: six of nine, incomplete
+        run()
+        # Jalal-Abad corrects its sum: the preliminary result is stale, the campaign collects again
+        line.set(now - timedelta(hours=3))
+        send("JAL", "good", "operator")
+        move("VALIDATING")
+        second = result("FINAL")  # 2: seven of nine, what the policy asks for
+        line.set(now - timedelta(hours=2, minutes=30))
+        rejected = client.post(
+            f"/campaigns/{cid}/consolidations/{second}/decision",
+            headers=chief,
+            json={"decision": "REJECT", "comment": REJECTION},
+        )
+        expect(rejected, 200, "reject the second result")
+        # the collecting is opened again and Talas sends its births as a number
+        line.set(now - timedelta(hours=1))
+        move("COLLECTING")
+        send("TAL", "good", "operator2")
+        move("VALIDATING")
+        run()
+        line.set(now - timedelta(minutes=30))
+        third = result("FINAL")  # 3: eight of nine; it waits for the chief statistician
+        line.set(now)
+    finally:
+        client.close()
+        gc.collect()  # a connection left to the collector keeps the file locked on Windows
+    return {"campaign": cid, "period": CYCLE_PERIOD, "results": third, "name": CYCLE_NAME}
 
 
 def seed(work: Path, db: str, tokens: dict[str, str], now: datetime) -> dict[str, Any]:

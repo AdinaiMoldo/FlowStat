@@ -254,3 +254,34 @@ def test_without_the_option_the_core_starts_empty(tmp_path: Path) -> None:
         assert setup.service is None
     finally:
         exercise_setup.stop(setup)
+
+
+def test_with_campaign_the_core_starts_with_a_campaign_that_waits_for_the_approval(
+    tmp_path: Path,
+) -> None:
+    """US-63, in a real core process: the campaign of the cycle is there and the old start is not
+    changed by the option being absent (the test above)."""
+    from datetime import UTC, datetime
+
+    setup = exercise_setup.prepare(
+        tmp_path / "data", demo.free_port(), campaign=True, now=datetime.now(UTC)
+    )
+    try:
+        admin = setup.tokens["admin"]
+        status, campaigns = demo.http("GET", f"{setup.base}/campaigns", admin)
+        assert status == 200 and [c["status"] for c in campaigns] == ["PENDING_APPROVAL"]
+        cid = campaigns[0]["id"]
+        status, body = demo.http("GET", f"{setup.base}/campaigns/{cid}/consolidations", admin)
+        assert status == 200 and [r["number"] for r in body["results"]] == [3, 2, 1]
+        status, decided = demo.http(  # the demonstration goes on from here: the chief approves
+            "POST",
+            f"{setup.base}/campaigns/{cid}/consolidations/3/decision",
+            setup.tokens["chief"],
+            {"decision": "APPROVE", "comment": ""},
+        )
+        assert status == 200 and decided["decision"]["by"] == "alua"
+        status, forms = demo.http("GET", f"{setup.base}/forms?quarter=2025Q2", admin)
+        sent_by = {f["region"]: f["uploaded_by"] for f in forms["forms"]}
+        assert sent_by["OSH"] == "aibek" and sent_by["CHU"] == "gulnara" and sent_by["NAR"] is None
+    finally:
+        exercise_setup.stop(setup)

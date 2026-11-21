@@ -88,6 +88,7 @@ Recount of 5 November: the baseline of 203 SP stays the zero point of the burndo
 | US-57 | As a statistician of the committee, I make a preliminary and a final result of a campaign that says which regions are in it and why the others are not, so that an incomplete total is never read as the total of the country | A5 | 13 | Must | M11 | done |
 | US-58 | As an operator, I run the workflow of a campaign from the campaign, and a run after a correction does again only the steps whose inputs changed, so that one corrected form does not cost the work of nine | B6 | 8 | Must | M11 | done |
 | US-61 | As the chief statistician, I see one result version of a campaign and approve it, reject it or ask for a correction, so that what is published is what somebody answered for | B2 | 8 | Must | M11 | done |
+| US-63 | As a presenter, I start the demonstration with a campaign that has been through the whole cycle, so that every case of a form and every decision about a result can be shown without preparing it by hand | B2 | 3 | Should | M11 | done |
 | US-64 | As an operator of a regional office, I send and remove only the forms of my office, so that one region cannot change or delete the report of another | A3 | 3 | Must | M11 | done |
 | DEF-2 | As a developer, I am told who holds the database when a test dies of `database is locked`, so that the lock that comes now and then on the Ubuntu runner can be explained and not run again until it is green | B2 | 3 | Must | M11 | in progress (the report is there; the cause is not found) |
 

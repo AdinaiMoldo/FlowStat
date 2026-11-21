@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 from openpyxl import Workbook
@@ -44,7 +45,48 @@ def rows_of(region: str, mistake: bool = False) -> list[tuple[str, str, float]]:
     return rows
 
 
-def write_form(path: Path, rows: list[tuple[str, str, float]]) -> None:
+DEMOGRAPHY = (
+    ("D01", "Resident population, total"),
+    ("D02", "Urban population"),
+    ("D03", "Rural population"),
+    ("D04", "Households"),
+    ("D05", "Live births"),
+    ("D06", "Deaths"),
+    ("D07", "Marriages"),
+    ("D08", "Divorces"),
+)
+# The cases of a form that the demonstration of a campaign shows (US-63).
+CASES = ("good", "missing-row", "wrong-sum", "text-for-a-number")
+
+
+def demography_rows(region: str, case: str = "good") -> list[tuple[str, str, object]]:
+    """The invented demographic figures of a region for the template ``regional-demography-v2``.
+
+    ``case`` makes one mistake: ``missing-row`` leaves the deaths out, ``wrong-sum`` gives an
+    urban population that does not add up with the rural one to the total, and
+    ``text-for-a-number`` writes the births in words.
+    """
+    if case not in CASES:
+        raise ValueError(f"the case must be one of {', '.join(CASES)}")
+    n = REGIONS.index(region) + 1
+    total = 180_000 + 95_500 * n
+    urban = total * (25 + 5 * n) // 100
+    rural = total - urban
+    values: list[object] = [
+        total, urban, rural, total // 5, total * 21 // 1000, total * 5 // 1000,
+        total * 7 // 1000, total * 2 // 1000,
+    ]  # fmt: skip
+    rows = [(code, name, value) for (code, name), value in zip(DEMOGRAPHY, values, strict=True)]
+    if case == "missing-row":
+        rows = [r for r in rows if r[0] != "D06"]
+    elif case == "wrong-sum":
+        rows[1] = (rows[1][0], rows[1][1], urban + 1_500)
+    elif case == "text-for-a-number":
+        rows[4] = (rows[4][0], rows[4][1], "about four thousand")
+    return rows
+
+
+def write_form(path: Path, rows: Sequence[tuple[str, str, object]]) -> None:
     book = Workbook()
     sheet = book.active
     assert sheet is not None
